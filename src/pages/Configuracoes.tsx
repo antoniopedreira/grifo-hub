@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PipelineList } from "@/components/settings/PipelineList";
 import { StageEditor } from "@/components/settings/StageEditor";
+import { TeamMembersList } from "@/components/settings/TeamMembersList";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Pipeline = Tables<"pipelines">;
@@ -70,22 +71,7 @@ export default function Configuracoes() {
 
         {/* Tab: Equipe */}
         <TabsContent value="equipe">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-primary flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Gestão de Equipe
-              </CardTitle>
-              <CardDescription>
-                Convide e gerencie membros da sua equipe
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Gestão de equipe será implementada em breve.
-              </p>
-            </CardContent>
-          </Card>
+          <TeamMembersList />
         </TabsContent>
       </Tabs>
     </div>

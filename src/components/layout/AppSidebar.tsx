@@ -7,6 +7,7 @@ import {
   Megaphone,
   FileText,
   Settings,
+  CalendarDays,
 } from "lucide-react";
 import {
   Sidebar,
@@ -23,6 +24,7 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Pipeline", url: "/pipeline", icon: GitBranch },
+  { title: "Agenda", url: "/agenda", icon: CalendarDays },
   { title: "Produtos", url: "/produtos", icon: Package },
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Templates", url: "/templates", icon: FileText },
