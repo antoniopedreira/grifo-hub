@@ -113,9 +113,13 @@ const formatAnswerKey = (key: string): string => {
 
 export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetProps) {
   const queryClient = useQueryClient();
-  const [editStatus, setEditStatus] = useState(lead?.status || "Novo");
-  const [editLtv, setEditLtv] = useState(lead?.ltv?.toString() || "0");
   const [activeTab, setActiveTab] = useState("perfil");
+
+  // Editable contact fields
+  const [editName, setEditName] = useState(lead?.full_name || "");
+  const [editEmail, setEditEmail] = useState(lead?.email || "");
+  const [editPhone, setEditPhone] = useState(lead?.phone || "");
+  const [isEditing, setIsEditing] = useState(false);
 
   // Manual sale form state
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
@@ -125,8 +129,10 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
 
   useEffect(() => {
     if (lead) {
-      setEditStatus(lead.status || "Novo");
-      setEditLtv(lead.ltv?.toString() || "0");
+      setEditName(lead.full_name || "");
+      setEditEmail(lead.email || "");
+      setEditPhone(lead.phone || "");
+      setIsEditing(false);
     }
   }, [lead]);
 
@@ -180,21 +186,24 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
   // Calculate total LTV from sales
   const calculatedLtv = sales?.reduce((sum, sale) => sum + (sale.amount || 0), 0) || 0;
 
+  // Update contact info mutation
   const updateLead = useMutation({
     mutationFn: async () => {
       if (!lead?.id) return;
       const { error } = await supabase
         .from("leads")
         .update({
-          status: editStatus,
-          ltv: parseFloat(editLtv) || 0,
+          full_name: editName || null,
+          email: editEmail || null,
+          phone: editPhone || null,
         })
         .eq("id", lead.id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
-      toast.success("Lead atualizado!");
+      toast.success("Contato atualizado!");
+      setIsEditing(false);
     },
     onError: (error) => {
       toast.error("Erro ao atualizar: " + error.message);
@@ -238,6 +247,13 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
     }
   };
 
+  const handleCancelEdit = () => {
+    setEditName(lead?.full_name || "");
+    setEditEmail(lead?.email || "");
+    setEditPhone(lead?.phone || "");
+    setIsEditing(false);
+  };
+
   if (!lead) return null;
 
   return (
@@ -257,108 +273,166 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
           <ScrollArea className="h-[calc(100vh-180px)] pr-4 mt-4">
             {/* TAB: Perfil */}
             <TabsContent value="perfil" className="space-y-6 mt-0">
-              {/* Profile Section */}
+              {/* Profile Card - Info Display */}
               <section className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Perfil
-                </h3>
-                <div className="bg-muted/30 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold text-foreground">
-                      {lead.full_name || "Sem nome"}
-                    </span>
-                    <Badge className={statusColors[lead.status || "Novo"]}>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Informações
+                  </h3>
+                  {!isEditing && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditing(true)}
+                      className="text-secondary hover:text-secondary/80"
+                    >
+                      Editar Contato
+                    </Button>
+                  )}
+                </div>
+
+                <div className="bg-muted/30 rounded-lg p-5 space-y-4 border border-border/50">
+                  {/* Header with name and status badge */}
+                  <div className="flex items-start justify-between gap-3">
+                    {isEditing ? (
+                      <div className="flex-1 space-y-2">
+                        <Label className="text-xs text-muted-foreground">Nome</Label>
+                        <Input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          placeholder="Nome completo"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-xl font-bold text-primary">
+                        {lead.full_name || "Sem nome"}
+                      </span>
+                    )}
+                    <Badge className={`${statusColors[lead.status || "Novo"]} shrink-0`}>
                       {lead.status || "Novo"}
                     </Badge>
                   </div>
 
-                  {lead.email && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Mail className="h-4 w-4" />
-                      <a href={`mailto:${lead.email}`} className="hover:underline">
-                        {lead.email}
-                      </a>
-                    </div>
-                  )}
+                  <Separator />
 
-                  {lead.phone && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Phone className="h-4 w-4" />
-                      <a
-                        href={`https://wa.me/55${lead.phone.replace(/\D/g, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:underline text-green-600"
+                  {/* Contact info */}
+                  <div className="space-y-3">
+                    {isEditing ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                            <Mail className="h-3 w-3" /> Email
+                          </Label>
+                          <Input
+                            type="email"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            placeholder="email@exemplo.com"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                            <Phone className="h-3 w-3" /> Telefone
+                          </Label>
+                          <Input
+                            type="tel"
+                            value={editPhone}
+                            onChange={(e) => setEditPhone(e.target.value)}
+                            placeholder="(11) 99999-9999"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {lead.email && (
+                          <div className="flex items-center gap-3 text-sm">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                            <a href={`mailto:${lead.email}`} className="hover:underline text-foreground">
+                              {lead.email}
+                            </a>
+                          </div>
+                        )}
+                        {lead.phone && (
+                          <div className="flex items-center gap-3 text-sm">
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                            <a
+                              href={`https://wa.me/55${lead.phone.replace(/\D/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline text-green-600 font-medium"
+                            >
+                              {lead.phone}
+                            </a>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {isEditing && (
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCancelEdit}
+                        className="flex-1"
                       >
-                        {lead.phone}
-                      </a>
+                        Cancelar
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => updateLead.mutate()}
+                        disabled={updateLead.isPending}
+                        className="flex-1 bg-secondary hover:bg-secondary/90"
+                      >
+                        {updateLead.isPending ? "Salvando..." : "Salvar"}
+                      </Button>
                     </div>
                   )}
+                </div>
+              </section>
 
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      Cadastrado em{" "}
+              {/* Additional Info Card */}
+              <section className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Detalhes
+                </h3>
+                <div className="bg-muted/30 rounded-lg p-5 space-y-4 border border-border/50">
+                  {/* LTV Display - Static, highlighted */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-green-100">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                      </div>
+                      <span className="text-sm text-muted-foreground">LTV (Lifetime Value)</span>
+                    </div>
+                    <span className="text-lg font-bold text-green-600">
+                      R$ {(lead.ltv || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+
+                  <Separator />
+
+                  {/* Registration date */}
+                  <div className="flex items-center gap-3 text-sm">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Cadastrado em</span>
+                    <span className="text-foreground font-medium ml-auto">
                       {lead.created_at
                         ? format(new Date(lead.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
                         : "-"}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <DollarSign className="h-4 w-4" />
-                    <span>
-                      LTV: R$ {(lead.ltv || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-
+                  {/* Origin */}
                   {lead.origin && (
-                    <div className="text-sm text-muted-foreground">
-                      <span className="font-medium">Origem:</span> {lead.origin}
+                    <div className="flex items-center gap-3 text-sm">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Origem</span>
+                      <span className="text-foreground font-medium ml-auto">{lead.origin}</span>
                     </div>
                   )}
                 </div>
-              </section>
-
-              <Separator />
-
-              {/* Edit Section */}
-              <section className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Editar
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Status</Label>
-                    <Select value={editStatus} onValueChange={setEditStatus}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Novo">Novo</SelectItem>
-                        <SelectItem value="Cliente">Cliente</SelectItem>
-                        <SelectItem value="Arquivado">Arquivado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>LTV (R$)</Label>
-                    <Input
-                      type="number"
-                      value={editLtv}
-                      onChange={(e) => setEditLtv(e.target.value)}
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                </div>
-                <Button
-                  onClick={() => updateLead.mutate()}
-                  disabled={updateLead.isPending}
-                  className="w-full bg-secondary hover:bg-secondary/90"
-                >
-                  {updateLead.isPending ? "Salvando..." : "Salvar Alterações"}
-                </Button>
               </section>
             </TabsContent>
 
