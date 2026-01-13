@@ -103,7 +103,6 @@ export function TeamMembersList() {
             <TableHeader>
               <TableRow>
                 <TableHead>Membro</TableHead>
-                <TableHead>Cargo</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Status</TableHead>
@@ -123,7 +122,6 @@ export function TeamMembersList() {
                       <span className="font-medium">{member.name}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{member.role || "-"}</TableCell>
                   <TableCell className="text-muted-foreground">{member.email || "-"}</TableCell>
                   <TableCell className="text-muted-foreground">{member.phone || "-"}</TableCell>
                   <TableCell>

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
@@ -17,7 +17,6 @@ type TeamMember = Tables<"team_members">;
 
 const formSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-  role: z.string().optional(),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   phone: z.string().optional(),
   active: z.boolean(),
@@ -39,7 +38,6 @@ export function TeamMemberDialog({ open, onOpenChange, member }: TeamMemberDialo
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      role: "",
       email: "",
       phone: "",
       active: true,
@@ -50,7 +48,6 @@ export function TeamMemberDialog({ open, onOpenChange, member }: TeamMemberDialo
     if (member) {
       form.reset({
         name: member.name,
-        role: member.role || "",
         email: member.email || "",
         phone: member.phone || "",
         active: member.active ?? true,
@@ -58,7 +55,6 @@ export function TeamMemberDialog({ open, onOpenChange, member }: TeamMemberDialo
     } else {
       form.reset({
         name: "",
-        role: "",
         email: "",
         phone: "",
         active: true,
@@ -70,7 +66,6 @@ export function TeamMemberDialog({ open, onOpenChange, member }: TeamMemberDialo
     mutationFn: async (data: FormData) => {
       const payload = {
         name: data.name,
-        role: data.role || null,
         email: data.email || null,
         phone: data.phone || null,
         active: data.active,
@@ -101,8 +96,6 @@ export function TeamMemberDialog({ open, onOpenChange, member }: TeamMemberDialo
     mutation.mutate(data);
   };
 
-  const roles = ["Gerente", "Coordenador", "Analista", "Assistente", "Estagiário", "Consultor"];
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -126,31 +119,6 @@ export function TeamMemberDialog({ open, onOpenChange, member }: TeamMemberDialo
                   <FormControl>
                     <Input placeholder="Ex: João Silva" {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cargo</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um cargo" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {roles.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {role}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
