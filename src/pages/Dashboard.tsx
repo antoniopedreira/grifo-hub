@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DollarSign, Users, Target, Clock, TrendingUp, Package, Loader2 } from "lucide-react";
+import { DollarSign, Users, Clock, TrendingUp, Package, Loader2, CheckSquare } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -203,9 +203,7 @@ export default function Dashboard() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-primary">Visão Geral</h1>
-        <p className="text-muted-foreground mt-1">
-          Bem-vindo de volta, {user?.email?.split("@")[0] || "Usuário"}
-        </p>
+        <p className="text-muted-foreground mt-1">Bem-vindo ao Grifo Academy Hub</p>
       </div>
 
       {/* KPI Cards */}
@@ -213,7 +211,7 @@ export default function Dashboard() {
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Receita Total
+              Receita Confirmada
             </CardTitle>
             <DollarSign className="h-5 w-5 text-secondary" />
           </CardHeader>
@@ -228,7 +226,7 @@ export default function Dashboard() {
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Em Negociação
+              Pipeline Ativo
             </CardTitle>
             <TrendingUp className="h-5 w-5 text-secondary" />
           </CardHeader>
@@ -243,7 +241,7 @@ export default function Dashboard() {
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total de Leads
+              Leads Totais
             </CardTitle>
             <Users className="h-5 w-5 text-secondary" />
           </CardHeader>
@@ -258,7 +256,7 @@ export default function Dashboard() {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Missões Pendentes
             </CardTitle>
-            <Target className="h-5 w-5 text-secondary" />
+            <CheckSquare className="h-5 w-5 text-secondary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{data.pendingMissions}</div>
@@ -447,7 +445,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <Target className="h-12 w-12 mb-2 opacity-30" />
+                <CheckSquare className="h-12 w-12 mb-2 opacity-30" />
                 <p>Nenhuma missão pendente</p>
               </div>
             )}
