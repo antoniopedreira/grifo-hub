@@ -278,6 +278,7 @@ export type Database = {
           active: boolean | null
           category_id: string | null
           checkout_url: string | null
+          create_deal: boolean | null
           created_at: string | null
           funnel_type: Database["public"]["Enums"]["product_funnel_type"] | null
           id: string
@@ -290,6 +291,7 @@ export type Database = {
           active?: boolean | null
           category_id?: string | null
           checkout_url?: string | null
+          create_deal?: boolean | null
           created_at?: string | null
           funnel_type?:
             | Database["public"]["Enums"]["product_funnel_type"]
@@ -304,6 +306,7 @@ export type Database = {
           active?: boolean | null
           category_id?: string | null
           checkout_url?: string | null
+          create_deal?: boolean | null
           created_at?: string | null
           funnel_type?:
             | Database["public"]["Enums"]["product_funnel_type"]
