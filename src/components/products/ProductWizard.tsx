@@ -68,12 +68,27 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
     },
   });
 
-  const { data: templates } = useQuery({
-    queryKey: ["page_templates"],
+  const { data: landingPageTemplates } = useQuery({
+    queryKey: ["page_templates", "landing_page"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("page_templates")
         .select("*")
+        .eq("type", "landing_page")
+        .order("name");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: formTemplates } = useQuery({
+    queryKey: ["page_templates", "application_form"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("page_templates")
+        .select("*")
+        .eq("type", "application_form")
         .order("name");
       
       if (error) throw error;
@@ -83,13 +98,15 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
 
   const createProduct = useMutation({
     mutationFn: async () => {
+      // Landing Pages always need checkout_url and template_id
+      // Forms only need template_id
       const productData = {
         name: form.name,
         price: form.price ? parseFloat(form.price) : null,
         category_id: form.category_id || null,
         funnel_type: form.funnel_type,
         checkout_url: form.funnel_type === "external_link" ? form.checkout_url : null,
-        template_id: form.funnel_type === "internal_form" ? form.template_id : null,
+        template_id: form.template_id || null,
         slug: form.slug || null,
         active: true,
       };
@@ -122,7 +139,7 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
   const canProceedStep1 = form.name.trim() !== "";
   const canProceedStep2 = 
     form.funnel_type === "external_link" 
-      ? form.checkout_url.trim() !== "" 
+      ? form.checkout_url.trim() !== "" && form.template_id !== ""
       : form.template_id !== "";
 
   const handleNext = () => {
@@ -234,57 +251,89 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
               <h3 className="font-semibold text-primary">Configuração do Funil</h3>
               
               <div className="space-y-2">
-                <Label htmlFor="funnel_type">Tipo de Funil *</Label>
+                <Label htmlFor="funnel_type">Tipo de Página *</Label>
                 <Select
                   value={form.funnel_type}
-                  onValueChange={(value: FunnelType) => setForm({ ...form, funnel_type: value })}
+                  onValueChange={(value: FunnelType) => setForm({ ...form, funnel_type: value, template_id: "", checkout_url: "" })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="external_link">Link Externo (Checkout)</SelectItem>
-                    <SelectItem value="internal_form">Formulário Interno</SelectItem>
+                    <SelectItem value="external_link">Página de Vendas (Landing Pages)</SelectItem>
+                    <SelectItem value="internal_form">Formulários</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               {form.funnel_type === "external_link" && (
-                <div className="space-y-2">
-                  <Label htmlFor="checkout_url">URL do Checkout *</Label>
-                  <Input
-                    id="checkout_url"
-                    type="url"
-                    placeholder="https://checkout.exemplo.com/produto"
-                    value={form.checkout_url}
-                    onChange={(e) => setForm({ ...form, checkout_url: e.target.value })}
-                  />
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="template">Template Visual *</Label>
+                    <Select
+                      value={form.template_id}
+                      onValueChange={(value) => setForm({ ...form, template_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma Landing Page" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {landingPageTemplates?.map((tpl) => (
+                          <SelectItem key={tpl.id} value={tpl.id}>
+                            {tpl.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {landingPageTemplates?.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Nenhum template de Landing Page disponível. Crie um em Templates.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="checkout_url">Link do CTA (Checkout) *</Label>
+                    <Input
+                      id="checkout_url"
+                      type="url"
+                      placeholder="https://lastlink.com/p/XXXXX"
+                      value={form.checkout_url}
+                      onChange={(e) => setForm({ ...form, checkout_url: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Este link será inserido no botão de compra da página.
+                    </p>
+                  </div>
+                </>
               )}
               
               {form.funnel_type === "internal_form" && (
                 <div className="space-y-2">
-                  <Label htmlFor="template">Template Visual *</Label>
+                  <Label htmlFor="template">Template do Formulário *</Label>
                   <Select
                     value={form.template_id}
                     onValueChange={(value) => setForm({ ...form, template_id: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione um template" />
+                      <SelectValue placeholder="Selecione um formulário" />
                     </SelectTrigger>
                     <SelectContent>
-                      {templates?.map((tpl) => (
+                      {formTemplates?.map((tpl) => (
                         <SelectItem key={tpl.id} value={tpl.id}>
                           {tpl.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {templates?.length === 0 && (
+                  {formTemplates?.length === 0 && (
                     <p className="text-xs text-muted-foreground">
-                      Nenhum template disponível. Crie um em Templates.
+                      Nenhum template de Formulário disponível. Crie um em Templates.
                     </p>
                   )}
+                  <p className="text-xs text-muted-foreground">
+                    Os leads serão capturados diretamente no CRM interno.
+                  </p>
                 </div>
               )}
             </div>
@@ -324,7 +373,7 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
                 <div className="text-sm space-y-1">
                   <p><span className="text-muted-foreground">Nome:</span> {form.name}</p>
                   <p><span className="text-muted-foreground">Preço:</span> {form.price ? `R$ ${form.price}` : "—"}</p>
-                  <p><span className="text-muted-foreground">Funil:</span> {form.funnel_type === "external_link" ? "Link Externo" : "Formulário Interno"}</p>
+                  <p><span className="text-muted-foreground">Tipo:</span> {form.funnel_type === "external_link" ? "Página de Vendas" : "Formulário"}</p>
                 </div>
               </div>
             </div>
