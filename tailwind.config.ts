@@ -57,6 +57,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Grifo brand colors
+        grifo: {
+          navy: "hsl(var(--grifo-navy))",
+          gold: "hsl(var(--grifo-gold))",
+          beige: "hsl(var(--grifo-beige))",
+          content: "hsl(var(--grifo-content-bg))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
