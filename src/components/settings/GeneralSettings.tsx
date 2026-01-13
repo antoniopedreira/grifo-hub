@@ -21,11 +21,10 @@ export function GeneralSettings() {
     cnpj: "",
     endereco: "",
     emailCorporativo: "",
+    webhookLastlink: "https://api.grifo.academy/webhook/lastlink",
     whatsappToken: "",
     openaiKey: "",
   });
-
-  const webhookUrl = "https://api.grifo.academy/webhook/lastlink";
 
   // Load settings from Supabase
   useEffect(() => {
@@ -48,6 +47,7 @@ export function GeneralSettings() {
             cnpj: settingsMap["cnpj"] || "",
             endereco: settingsMap["endereco"] || "",
             emailCorporativo: settingsMap["email_corporativo"] || "",
+            webhookLastlink: settingsMap["webhook_lastlink"] || "https://api.grifo.academy/webhook/lastlink",
             whatsappToken: settingsMap["whatsapp_token"] || "",
             openaiKey: settingsMap["openai_key"] || "",
           });
@@ -68,7 +68,7 @@ export function GeneralSettings() {
   }, [toast]);
 
   const handleCopyWebhook = async () => {
-    await navigator.clipboard.writeText(webhookUrl);
+    await navigator.clipboard.writeText(formData.webhookLastlink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast({
@@ -89,6 +89,7 @@ export function GeneralSettings() {
         { key: "cnpj", value: formData.cnpj },
         { key: "endereco", value: formData.endereco },
         { key: "email_corporativo", value: formData.emailCorporativo },
+        { key: "webhook_lastlink", value: formData.webhookLastlink },
         { key: "whatsapp_token", value: formData.whatsappToken },
         { key: "openai_key", value: formData.openaiKey },
       ];
@@ -202,9 +203,10 @@ export function GeneralSettings() {
             <div className="flex gap-2">
               <Input
                 id="webhook"
-                value={webhookUrl}
-                readOnly
-                className="bg-muted font-mono text-sm"
+                value={formData.webhookLastlink}
+                onChange={(e) => handleInputChange("webhookLastlink", e.target.value)}
+                placeholder="https://api.exemplo.com/webhook"
+                className="font-mono text-sm"
               />
               <Button
                 variant="outline"
