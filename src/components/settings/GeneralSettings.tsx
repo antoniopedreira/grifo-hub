@@ -1,28 +1,71 @@
-import { useState } from "react";
-import { Building2, Copy, Check, Eye, EyeOff, Link2, Key } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Building2, Copy, Check, Eye, EyeOff, Link2, Key, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export function GeneralSettings() {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [showWhatsAppToken, setShowWhatsAppToken] = useState(false);
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
     razaoSocial: "",
     cnpj: "",
     endereco: "",
-    emailFinanceiro: "",
+    emailCorporativo: "",
     whatsappToken: "",
     openaiKey: "",
   });
 
   const webhookUrl = "https://api.grifo.academy/webhook/lastlink";
+
+  // Load settings from Supabase
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("settings")
+          .select("key, value");
+
+        if (error) throw error;
+
+        if (data) {
+          const settingsMap: Record<string, string> = {};
+          data.forEach((item) => {
+            settingsMap[item.key] = item.value || "";
+          });
+
+          setFormData({
+            razaoSocial: settingsMap["razao_social"] || "",
+            cnpj: settingsMap["cnpj"] || "",
+            endereco: settingsMap["endereco"] || "",
+            emailCorporativo: settingsMap["email_corporativo"] || "",
+            whatsappToken: settingsMap["whatsapp_token"] || "",
+            openaiKey: settingsMap["openai_key"] || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error loading settings:", error);
+        toast({
+          title: "Erro ao carregar configurações",
+          description: "Não foi possível carregar as configurações salvas.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [toast]);
 
   const handleCopyWebhook = async () => {
     await navigator.clipboard.writeText(webhookUrl);
@@ -38,13 +81,50 @@ export function GeneralSettings() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    // TODO: Implement actual save to Supabase
-    toast({
-      title: "Configurações salvas!",
-      description: "Seus dados foram atualizados com sucesso.",
-    });
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updates = [
+        { key: "razao_social", value: formData.razaoSocial },
+        { key: "cnpj", value: formData.cnpj },
+        { key: "endereco", value: formData.endereco },
+        { key: "email_corporativo", value: formData.emailCorporativo },
+        { key: "whatsapp_token", value: formData.whatsappToken },
+        { key: "openai_key", value: formData.openaiKey },
+      ];
+
+      for (const update of updates) {
+        const { error } = await supabase
+          .from("settings")
+          .update({ value: update.value })
+          .eq("key", update.key);
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Configurações salvas!",
+        description: "Seus dados foram atualizados com sucesso.",
+      });
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar as configurações.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -91,13 +171,13 @@ export function GeneralSettings() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="emailFinanceiro">Email Financeiro</Label>
+              <Label htmlFor="emailCorporativo">Email Corporativo</Label>
               <Input
-                id="emailFinanceiro"
+                id="emailCorporativo"
                 type="email"
-                placeholder="financeiro@empresa.com"
-                value={formData.emailFinanceiro}
-                onChange={(e) => handleInputChange("emailFinanceiro", e.target.value)}
+                placeholder="contato@empresa.com"
+                value={formData.emailCorporativo}
+                onChange={(e) => handleInputChange("emailCorporativo", e.target.value)}
               />
             </div>
           </div>
@@ -222,9 +302,17 @@ export function GeneralSettings() {
       <div className="flex justify-end">
         <Button
           onClick={handleSave}
+          disabled={saving}
           className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
         >
-          Salvar Configurações
+          {saving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Salvando...
+            </>
+          ) : (
+            "Salvar Configurações"
+          )}
         </Button>
       </div>
     </div>
