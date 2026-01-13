@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Settings, GitBranch, Users, Sliders } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PipelineList } from "@/components/settings/PipelineList";
 import { StageEditor } from "@/components/settings/StageEditor";
 import { TeamMembersList } from "@/components/settings/TeamMembersList";
+import { GeneralSettings } from "@/components/settings/GeneralSettings";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Pipeline = Tables<"pipelines">;
@@ -21,7 +21,7 @@ export default function Configuracoes() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="pipelines" className="space-y-6">
+      <Tabs defaultValue="geral" className="space-y-6">
         <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="geral" className="gap-2">
             <Sliders className="h-4 w-4" />
@@ -39,22 +39,7 @@ export default function Configuracoes() {
 
         {/* Tab: Geral */}
         <TabsContent value="geral">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-primary flex items-center gap-2">
-                <Sliders className="h-5 w-5" />
-                Configurações Gerais
-              </CardTitle>
-              <CardDescription>
-                Configurações básicas do sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Configurações gerais serão implementadas em breve.
-              </p>
-            </CardContent>
-          </Card>
+          <GeneralSettings />
         </TabsContent>
 
         {/* Tab: Pipelines */}
