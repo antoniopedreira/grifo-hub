@@ -300,44 +300,44 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
             )}
             
             {form.funnel_type === "internal_form" && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="template">Template do Formulário</Label>
-                  <Select
-                    value={form.template_id}
-                    onValueChange={(value) => setForm({ ...form, template_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um formulário" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {formTemplates?.map((tpl) => (
-                        <SelectItem key={tpl.id} value={tpl.id}>
-                          {tpl.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Create Deal Switch */}
-                <div className="flex items-start gap-4 p-4 rounded-lg border border-border bg-muted/50">
-                  <Switch
-                    id="create_deal"
-                    checked={form.create_deal}
-                    onCheckedChange={(checked) => setForm({ ...form, create_deal: checked })}
-                  />
-                  <div className="space-y-1">
-                    <Label htmlFor="create_deal" className="font-medium cursor-pointer">
-                      Gerar Card no Kanban de Vendas?
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Se ativado, cada resposta deste formulário criará automaticamente um negócio na coluna "Novo Lead". Ideal para High-Ticket.
-                    </p>
-                  </div>
-                </div>
-              </>
+              <div className="space-y-2">
+                <Label htmlFor="template">Template do Formulário</Label>
+                <Select
+                  value={form.template_id}
+                  onValueChange={(value) => setForm({ ...form, template_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um formulário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formTemplates?.map((tpl) => (
+                      <SelectItem key={tpl.id} value={tpl.id}>
+                        {tpl.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
+
+            {/* Create Deal Switch - Always visible */}
+            <div className="flex items-start gap-4 p-4 rounded-lg border border-border bg-muted/50">
+              <Switch
+                id="create_deal"
+                checked={form.create_deal}
+                onCheckedChange={(checked) => setForm({ ...form, create_deal: checked })}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="create_deal" className="font-medium cursor-pointer">
+                  Gerar Card no Kanban de Vendas?
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {form.funnel_type === "internal_form" 
+                    ? "Se ativado, cada resposta do formulário criará automaticamente um negócio na coluna \"Novo Lead\". Ideal para High-Ticket."
+                    : "Se ativado, futuras integrações (webhooks) criarão automaticamente um negócio no Kanban quando uma venda for registrada."}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Slug */}
