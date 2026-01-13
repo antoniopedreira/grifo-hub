@@ -14,6 +14,7 @@ import Marketing from "@/pages/Marketing";
 import Templates from "@/pages/Templates";
 import Configuracoes from "@/pages/Configuracoes";
 import NotFound from "@/pages/NotFound";
+import PublicPageRenderer from "@/pages/PublicPageRenderer";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Public page route */}
+          <Route path="/p/:slug" element={<PublicPageRenderer />} />
+          
           {/* Auth routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
