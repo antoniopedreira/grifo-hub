@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -15,43 +16,71 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { signUp, user, loading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+
+    if (!name || !email || !password) {
+      toast.error("Por favor, preencha todos os campos.");
+      return;
+    }
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem.",
-        variant: "destructive",
-      });
+      toast.error("As senhas não coincidem.");
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    const { error } = await signUp(email, password);
+
+    if (error) {
+      let message = "Erro ao criar conta. Tente novamente.";
+      
+      if (error.message.includes("User already registered")) {
+        message = "Este e-mail já está cadastrado.";
+      } else if (error.message.includes("Invalid email")) {
+        message = "E-mail inválido.";
+      } else if (error.message.includes("Password should be at least")) {
+        message = "A senha deve ter pelo menos 6 caracteres.";
+      }
+      
+      toast.error(message);
       setIsLoading(false);
       return;
     }
 
-    // TODO: Replace with actual Supabase auth when connected
-    setTimeout(() => {
-      if (name && email && password) {
-        toast({
-          title: "Cadastro simulado",
-          description: "Conecte o Supabase para autenticação real.",
-        });
-        navigate("/login");
-      } else {
-        toast({
-          title: "Erro",
-          description: "Por favor, preencha todos os campos.",
-          variant: "destructive",
-        });
-      }
-      setIsLoading(false);
-    }, 1000);
+    toast.success("Conta criada com sucesso! Verifique seu e-mail para confirmar.", {
+      duration: 5000,
+    });
+    navigate("/login");
+    setIsLoading(false);
   };
 
+  // Don't render form if still loading or already logged in
+  if (loading || user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-grifo-content p-4">
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="space-y-4 text-center pb-2">
           <div className="mx-auto w-16 h-16 rounded-xl bg-primary flex items-center justify-center">

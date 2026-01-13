@@ -10,14 +10,21 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export function AppHeader() {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
-  const handleLogout = () => {
-    // TODO: Implement actual logout when Supabase is connected
-    navigate("/login");
+  const handleLogout = async () => {
+    await signOut();
+    toast.success("Logout realizado com sucesso!");
+    navigate("/login", { replace: true });
   };
+
+  const userEmail = user?.email || "usuario@grifo.com";
+  const userInitials = userEmail.charAt(0).toUpperCase();
 
   return (
     <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
@@ -32,7 +39,7 @@ export function AppHeader() {
               <Avatar className="h-10 w-10 border-2 border-accent">
                 <AvatarImage src="" alt="User avatar" />
                 <AvatarFallback className="bg-muted text-muted-foreground">
-                  <User className="h-5 w-5" />
+                  {userInitials}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -41,12 +48,12 @@ export function AppHeader() {
             <div className="flex items-center gap-2 p-2">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-muted text-muted-foreground">
-                  <User className="h-4 w-4" />
+                  {userInitials}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">Usuário</span>
-                <span className="text-xs text-muted-foreground">usuario@grifo.com</span>
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-sm font-medium truncate">{userEmail}</span>
+                <span className="text-xs text-muted-foreground">Administrador</span>
               </div>
             </div>
             <DropdownMenuSeparator />
