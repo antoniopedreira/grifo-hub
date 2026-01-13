@@ -19,6 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -37,6 +38,7 @@ interface ProductForm {
   checkout_url: string;
   template_id: string;
   slug: string;
+  create_deal: boolean;
 }
 
 const initialForm: ProductForm = {
@@ -47,6 +49,7 @@ const initialForm: ProductForm = {
   checkout_url: "",
   template_id: "",
   slug: "",
+  create_deal: false,
 };
 
 export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
@@ -108,6 +111,7 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
         checkout_url: form.funnel_type === "external_link" ? form.checkout_url : null,
         template_id: form.template_id || null,
         slug: form.slug || null,
+        create_deal: form.create_deal,
         active: true,
       };
 
@@ -309,32 +313,51 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
               )}
               
               {form.funnel_type === "internal_form" && (
-                <div className="space-y-2">
-                  <Label htmlFor="template">Template do Formulário *</Label>
-                  <Select
-                    value={form.template_id}
-                    onValueChange={(value) => setForm({ ...form, template_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um formulário" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {formTemplates?.map((tpl) => (
-                        <SelectItem key={tpl.id} value={tpl.id}>
-                          {tpl.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formTemplates?.length === 0 && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="template">Template do Formulário *</Label>
+                    <Select
+                      value={form.template_id}
+                      onValueChange={(value) => setForm({ ...form, template_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um formulário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {formTemplates?.map((tpl) => (
+                          <SelectItem key={tpl.id} value={tpl.id}>
+                            {tpl.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formTemplates?.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Nenhum template de Formulário disponível. Crie um em Templates.
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
-                      Nenhum template de Formulário disponível. Crie um em Templates.
+                      Os leads serão capturados diretamente no CRM interno.
                     </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Os leads serão capturados diretamente no CRM interno.
-                  </p>
-                </div>
+                  </div>
+
+                  {/* Create Deal Switch */}
+                  <div className="flex items-start gap-4 p-4 rounded-lg border border-border bg-muted/50">
+                    <Switch
+                      id="create_deal"
+                      checked={form.create_deal}
+                      onCheckedChange={(checked) => setForm({ ...form, create_deal: checked })}
+                    />
+                    <div className="space-y-1">
+                      <Label htmlFor="create_deal" className="font-medium cursor-pointer">
+                        Gerar Card no Kanban de Vendas?
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Se ativado, cada resposta deste formulário criará automaticamente um negócio na coluna "Novo Lead". Ideal para High-Ticket.
+                      </p>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -374,6 +397,9 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
                   <p><span className="text-muted-foreground">Nome:</span> {form.name}</p>
                   <p><span className="text-muted-foreground">Preço:</span> {form.price ? `R$ ${form.price}` : "—"}</p>
                   <p><span className="text-muted-foreground">Tipo:</span> {form.funnel_type === "external_link" ? "Página de Vendas" : "Formulário"}</p>
+                  {form.funnel_type === "internal_form" && (
+                    <p><span className="text-muted-foreground">Criar Deal:</span> {form.create_deal ? "Sim" : "Não"}</p>
+                  )}
                 </div>
               </div>
             </div>
