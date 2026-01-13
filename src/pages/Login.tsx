@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -13,34 +14,56 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { signIn, user, loading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast.error("Por favor, preencha todos os campos.");
+      return;
+    }
+
     setIsLoading(true);
 
-    // TODO: Replace with actual Supabase auth when connected
-    // Simulating login for UI demo
-    setTimeout(() => {
-      if (email && password) {
-        toast({
-          title: "Login simulado",
-          description: "Conecte o Supabase para autenticação real.",
-        });
-        navigate("/dashboard");
-      } else {
-        toast({
-          title: "Erro",
-          description: "Por favor, preencha todos os campos.",
-          variant: "destructive",
-        });
+    const { error } = await signIn(email, password);
+
+    if (error) {
+      let message = "Erro ao fazer login. Tente novamente.";
+      
+      if (error.message.includes("Invalid login credentials")) {
+        message = "E-mail ou senha incorretos.";
+      } else if (error.message.includes("Email not confirmed")) {
+        message = "E-mail não confirmado. Verifique sua caixa de entrada.";
       }
+      
+      toast.error(message);
       setIsLoading(false);
-    }, 1000);
+      return;
+    }
+
+    toast.success("Login realizado com sucesso!");
+    navigate("/dashboard", { replace: true });
   };
 
+  // Don't render form if still loading or already logged in
+  if (loading || user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-grifo-content p-4">
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="space-y-4 text-center pb-2">
           <div className="mx-auto w-16 h-16 rounded-xl bg-primary flex items-center justify-center">

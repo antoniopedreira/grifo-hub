@@ -393,6 +393,90 @@ export type Database = {
           },
         ]
       }
+      team_members: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          role: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          role?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          role?: string | null
+        }
+        Relationships: []
+      }
+      team_missions: {
+        Row: {
+          created_at: string | null
+          deadline: string | null
+          department: string | null
+          id: string
+          mission: string
+          notes: string | null
+          owner_id: string | null
+          status: Database["public"]["Enums"]["mission_status"] | null
+          support_id: string | null
+          target_goal: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deadline?: string | null
+          department?: string | null
+          id?: string
+          mission: string
+          notes?: string | null
+          owner_id?: string | null
+          status?: Database["public"]["Enums"]["mission_status"] | null
+          support_id?: string | null
+          target_goal?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deadline?: string | null
+          department?: string | null
+          id?: string
+          mission?: string
+          notes?: string | null
+          owner_id?: string | null
+          status?: Database["public"]["Enums"]["mission_status"] | null
+          support_id?: string | null
+          target_goal?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_missions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_missions_support_id_fkey"
+            columns: ["support_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -402,6 +486,12 @@ export type Database = {
     }
     Enums: {
       deal_status: "open" | "won" | "lost" | "abandoned"
+      mission_status:
+        | "Pendente"
+        | "Em Andamento"
+        | "Em Revisão"
+        | "Concluído"
+        | "Stand-by"
       product_funnel_type: "external_link" | "internal_form"
       sale_origin: "lastlink_auto" | "crm_manual"
       template_type: "landing_page" | "application_form"
@@ -533,6 +623,13 @@ export const Constants = {
   public: {
     Enums: {
       deal_status: ["open", "won", "lost", "abandoned"],
+      mission_status: [
+        "Pendente",
+        "Em Andamento",
+        "Em Revisão",
+        "Concluído",
+        "Stand-by",
+      ],
       product_funnel_type: ["external_link", "internal_form"],
       sale_origin: ["lastlink_auto", "crm_manual"],
       template_type: ["landing_page", "application_form"],
