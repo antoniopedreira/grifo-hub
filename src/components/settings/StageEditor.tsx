@@ -5,7 +5,6 @@ import {
   Plus,
   Trash2,
   Pencil,
-  GripVertical,
   Layers,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -248,8 +247,8 @@ export function StageEditor({ pipeline, onBack }: StageEditorProps) {
                   key={stage.id}
                   className="flex items-center justify-between rounded-lg border border-border bg-white p-4 hover:border-secondary/50 transition-colors"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -269,7 +268,6 @@ export function StageEditor({ pipeline, onBack }: StageEditorProps) {
                         <span className="text-xs">▼</span>
                       </Button>
                     </div>
-                    <GripVertical className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <span className="font-medium text-primary">{stage.name}</span>
                       <span className="ml-2 text-xs text-muted-foreground">
