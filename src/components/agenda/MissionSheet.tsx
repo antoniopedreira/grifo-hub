@@ -24,7 +24,6 @@ type TeamMember = Tables<"team_members">;
 type MissionStatus = Enums<"mission_status">;
 
 const statuses: MissionStatus[] = ["Pendente", "Em Andamento", "Em Revisão", "Concluído", "Stand-by"];
-const departments = ["Marketing", "Comercial", "Produto", "Admin", "Financeiro"];
 
 const formSchema = z.object({
   mission: z.string().min(3, "Missão deve ter pelo menos 3 caracteres"),
@@ -175,20 +174,9 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Setor</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o setor" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <Input placeholder="Ex: Marketing, Obras, Financeiro..." {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
