@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, ExternalLink, Trash2, Loader2 } from "lucide-react";
+import { Eye, Trash2, Loader2, Pencil, Zap } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ProductEditSheet } from "./ProductEditSheet";
 import type { Tables } from "@/integrations/supabase/types";
 
 interface ProductCardProps {
@@ -25,6 +26,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editSheetOpen, setEditSheetOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const formatPrice = (price: number | null) => {
@@ -38,6 +40,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const hasSlug = !!product.slug;
   const hasTemplate = !!product.template_id;
   const canViewPage = hasSlug && hasTemplate;
+  const isFormType = product.funnel_type === "internal_form";
 
   const handleViewPage = () => {
     if (canViewPage) {
@@ -73,6 +76,23 @@ export function ProductCard({ product }: ProductCardProps) {
               {product.name}
             </CardTitle>
             <div className="flex items-center gap-2">
+              {/* Create Deal Indicator */}
+              {isFormType && product.create_deal && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Badge 
+                      variant="outline"
+                      className="border-secondary text-secondary bg-secondary/10"
+                    >
+                      <Zap className="h-3 w-3 mr-1" />
+                      Kanban
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Gera card automaticamente no Pipeline de Vendas
+                  </TooltipContent>
+                </Tooltip>
+              )}
               <Badge 
                 variant={product.active ? "default" : "secondary"}
                 className={product.active ? "bg-green-600 text-white" : ""}
@@ -135,6 +155,20 @@ export function ProductCard({ product }: ProductCardProps) {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => setEditSheetOpen(true)}
+                  className="border-muted-foreground/30 text-muted-foreground hover:bg-muted"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Editar produto</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setDeleteDialogOpen(true)}
                   className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
                 >
@@ -146,6 +180,13 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Sheet */}
+      <ProductEditSheet
+        product={product}
+        open={editSheetOpen}
+        onOpenChange={setEditSheetOpen}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
