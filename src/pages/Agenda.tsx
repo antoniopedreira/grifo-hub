@@ -38,23 +38,23 @@ export default function Agenda() {
           <h1 className="text-3xl font-bold text-primary">Agenda Operacional</h1>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Search Bar */}
-          <div className="relative w-full sm:w-[250px]">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Search Bar - Largura reduzida para caber melhor */}
+          <div className="relative w-full sm:w-[180px] lg:w-[220px]">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Pesquisar missão..."
+              placeholder="Pesquisar..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8 bg-background"
             />
           </div>
 
-          {/* Owner Filter */}
+          {/* Owner Filter - Largura reduzida */}
           <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-            <SelectTrigger className="w-[180px] bg-background">
+            <SelectTrigger className="w-[140px] bg-background">
               <User className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Filtrar responsável" />
+              <SelectValue placeholder="Responsável" />
             </SelectTrigger>
             <SelectContent className="min-w-[--radix-select-trigger-width]">
               <SelectItem value="all">Todos</SelectItem>
@@ -70,21 +70,21 @@ export default function Agenda() {
             type="single"
             value={viewMode}
             onValueChange={(value) => value && setViewMode(value as ViewMode)}
-            className="border rounded-lg"
+            className="border rounded-lg hidden sm:flex"
           >
-            <ToggleGroupItem value="kanban" aria-label="Visualização Kanban" className="gap-2">
+            <ToggleGroupItem value="kanban" aria-label="Visualização Kanban" className="gap-2 px-3">
               <LayoutGrid className="h-4 w-4" />
-              Kanban
+              <span className="hidden lg:inline">Kanban</span>
             </ToggleGroupItem>
-            <ToggleGroupItem value="calendar" aria-label="Visualização Calendário" className="gap-2">
+            <ToggleGroupItem value="calendar" aria-label="Visualização Calendário" className="gap-2 px-3">
               <CalendarDays className="h-4 w-4" />
-              Calendário
+              <span className="hidden lg:inline">Calendário</span>
             </ToggleGroupItem>
           </ToggleGroup>
 
           <Button
             onClick={() => setSheetOpen(true)}
-            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground whitespace-nowrap"
           >
             <Plus className="h-4 w-4 mr-2" />
             Nova Missão
