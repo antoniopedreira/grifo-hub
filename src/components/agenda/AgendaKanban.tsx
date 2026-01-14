@@ -145,7 +145,7 @@ export function AgendaKanban() {
                         ref={provided.innerRef}
                         {...provided.droppableProps}
                         className={cn(
-                          "min-h-[400px] space-y-3 transition-colors rounded-lg p-1",
+                          "h-[500px] overflow-y-auto space-y-3 transition-colors rounded-lg p-1",
                           snapshot.isDraggingOver && "bg-secondary/10"
                         )}
                       >
