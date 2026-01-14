@@ -461,6 +461,7 @@ export type Database = {
           id: string
           mission: string
           notes: string | null
+          order_index: number | null
           owner_id: string | null
           status: Database["public"]["Enums"]["mission_status"] | null
           support_id: string | null
@@ -474,6 +475,7 @@ export type Database = {
           id?: string
           mission: string
           notes?: string | null
+          order_index?: number | null
           owner_id?: string | null
           status?: Database["public"]["Enums"]["mission_status"] | null
           support_id?: string | null
@@ -487,6 +489,7 @@ export type Database = {
           id?: string
           mission?: string
           notes?: string | null
+          order_index?: number | null
           owner_id?: string | null
           status?: Database["public"]["Enums"]["mission_status"] | null
           support_id?: string | null

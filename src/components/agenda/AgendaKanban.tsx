@@ -44,7 +44,7 @@ export function AgendaKanban() {
       const { data, error } = await supabase
         .from("team_missions")
         .select("*")
-        .order("deadline", { ascending: true });
+        .order("order_index", { ascending: true });
       if (error) throw error;
       return data as Mission[];
     },
@@ -61,45 +61,75 @@ export function AgendaKanban() {
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: MissionStatus }) => {
+  // Mutation for updating status only (moving between columns)
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status, order_index }: { id: string; status: MissionStatus; order_index: number }) => {
       const { error } = await supabase
         .from("team_missions")
-        .update({ status })
+        .update({ status, order_index })
         .eq("id", id);
       if (error) throw error;
     },
-    // Optimistic update for zero-latency UX
-    onMutate: async ({ id, status }) => {
-      // Cancel any outgoing refetches
+    onMutate: async ({ id, status, order_index }) => {
       await queryClient.cancelQueries({ queryKey: ["team_missions"] });
-
-      // Snapshot the previous value
       const previousMissions = queryClient.getQueryData<Mission[]>(["team_missions"]);
-
-      // Optimistically update to the new value
+      
       queryClient.setQueryData<Mission[]>(["team_missions"], (old) =>
         old?.map((mission) =>
-          mission.id === id ? { ...mission, status } : mission
+          mission.id === id ? { ...mission, status, order_index } : mission
         )
       );
-
-      // Return context with the previous value
+      
       return { previousMissions };
     },
     onError: (_err, _variables, context) => {
-      // Rollback to previous value on error
       if (context?.previousMissions) {
         queryClient.setQueryData(["team_missions"], context.previousMissions);
       }
-      toast.error("Erro ao atualizar status");
+      toast.error("Erro ao mover missão");
     },
     onSettled: () => {
-      // Sync with server after mutation settles
       queryClient.invalidateQueries({ queryKey: ["team_missions"] });
     },
-    onSuccess: () => {
-      toast.success("Status atualizado!");
+  });
+
+  // Mutation for batch reordering within the same column
+  const reorderMutation = useMutation({
+    mutationFn: async (updates: { id: string; order_index: number }[]) => {
+      // Update each mission's order_index
+      const promises = updates.map(({ id, order_index }) =>
+        supabase
+          .from("team_missions")
+          .update({ order_index })
+          .eq("id", id)
+      );
+      const results = await Promise.all(promises);
+      const error = results.find((r) => r.error)?.error;
+      if (error) throw error;
+    },
+    onMutate: async (updates) => {
+      await queryClient.cancelQueries({ queryKey: ["team_missions"] });
+      const previousMissions = queryClient.getQueryData<Mission[]>(["team_missions"]);
+      
+      queryClient.setQueryData<Mission[]>(["team_missions"], (old) => {
+        if (!old) return old;
+        const updateMap = new Map(updates.map((u) => [u.id, u.order_index]));
+        return old.map((mission) => {
+          const newIndex = updateMap.get(mission.id);
+          return newIndex !== undefined ? { ...mission, order_index: newIndex } : mission;
+        });
+      });
+      
+      return { previousMissions };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousMissions) {
+        queryClient.setQueryData(["team_missions"], context.previousMissions);
+      }
+      toast.error("Erro ao reordenar");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["team_missions"] });
     },
   });
 
@@ -126,16 +156,63 @@ export function AgendaKanban() {
   };
 
   const getMissionsByStatus = (status: MissionStatus) => {
-    return missions.filter((m) => m.status === status);
+    return missions
+      .filter((m) => m.status === status)
+      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
   };
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
 
-    const missionId = result.draggableId;
-    const newStatus = result.destination.droppableId as MissionStatus;
+    const { source, destination, draggableId } = result;
+    const sourceStatus = source.droppableId as MissionStatus;
+    const destStatus = destination.droppableId as MissionStatus;
 
-    updateMutation.mutate({ id: missionId, status: newStatus });
+    // Get current missions for source and destination columns
+    const sourceMissions = getMissionsByStatus(sourceStatus);
+    const destMissions = sourceStatus === destStatus 
+      ? sourceMissions 
+      : getMissionsByStatus(destStatus);
+
+    // Find the dragged mission
+    const draggedMission = missions.find((m) => m.id === draggableId);
+    if (!draggedMission) return;
+
+    if (sourceStatus === destStatus) {
+      // Reordering within the same column
+      const reordered = [...sourceMissions];
+      const [removed] = reordered.splice(source.index, 1);
+      reordered.splice(destination.index, 0, removed);
+
+      // Create updates with new order indices
+      const updates = reordered.map((mission, index) => ({
+        id: mission.id,
+        order_index: index,
+      }));
+
+      reorderMutation.mutate(updates);
+    } else {
+      // Moving to a different column
+      // Calculate new order_index for destination
+      let newOrderIndex: number;
+      if (destMissions.length === 0) {
+        newOrderIndex = 0;
+      } else if (destination.index === 0) {
+        newOrderIndex = (destMissions[0]?.order_index ?? 0) - 1;
+      } else if (destination.index >= destMissions.length) {
+        newOrderIndex = (destMissions[destMissions.length - 1]?.order_index ?? 0) + 1;
+      } else {
+        const prevIndex = destMissions[destination.index - 1]?.order_index ?? 0;
+        const nextIndex = destMissions[destination.index]?.order_index ?? prevIndex + 2;
+        newOrderIndex = Math.floor((prevIndex + nextIndex) / 2);
+      }
+
+      updateStatusMutation.mutate({
+        id: draggableId,
+        status: destStatus,
+        order_index: newOrderIndex,
+      });
+    }
   };
 
   const handleMissionClick = (mission: Mission) => {
@@ -180,7 +257,6 @@ export function AgendaKanban() {
                         {columnMissions.map((mission, index) => {
                           const owner = getMemberById(mission.owner_id);
                           const supportMembers = getSupportMembers((mission as any).support_ids);
-                          // Parse date-only string correctly to avoid timezone offset issues
                           const deadlineDate = mission.deadline ? parseISO(mission.deadline) : null;
                           const isOverdue =
                             deadlineDate &&
