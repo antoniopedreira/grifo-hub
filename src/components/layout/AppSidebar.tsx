@@ -18,8 +18,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
 import grifoLogo from "@/assets/grifo-logo.png";
 import {
   Tooltip,
@@ -42,8 +44,15 @@ export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const { user } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user?.email) return "U";
+    return user.email.charAt(0).toUpperCase();
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r-0 bg-sidebar">
@@ -143,6 +152,24 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      {/* User Profile Footer */}
+      <SidebarFooter className={`border-t border-sidebar-border transition-all duration-200 ${isCollapsed ? "p-2" : "p-4"}`}>
+        <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
+          <div className="w-9 h-9 rounded-full bg-sidebar-primary flex items-center justify-center shrink-0">
+            <span className="text-sm font-semibold text-sidebar-primary-foreground">
+              {getUserInitials()}
+            </span>
+          </div>
+          {!isCollapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
+                {user?.email || "Usuário"}
+              </p>
+            </div>
+          )}
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }
