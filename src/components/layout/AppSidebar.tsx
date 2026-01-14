@@ -8,6 +8,7 @@ import {
   FileText,
   Settings,
   CalendarDays,
+  LogOut,
 } from "lucide-react";
 import {
   Sidebar,
@@ -22,6 +23,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 import grifoLogo from "@/assets/grifo-logo.png";
 import {
   Tooltip,
@@ -44,7 +46,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -154,7 +156,7 @@ export function AppSidebar() {
 
       {/* User Profile Footer */}
       <SidebarFooter className={`border-t border-sidebar-border transition-all duration-200 ${isCollapsed ? "p-2" : "p-4"}`}>
-        <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
+        <div className={`flex items-center ${isCollapsed ? "flex-col gap-2" : "gap-3"}`}>
           <div className="w-9 h-9 rounded-full bg-sidebar-primary flex items-center justify-center shrink-0">
             <span className="text-sm font-semibold text-sidebar-primary-foreground">
               {getUserInitials()}
@@ -166,6 +168,32 @@ export function AppSidebar() {
                 {user?.email || "Usuário"}
               </p>
             </div>
+          )}
+          {isCollapsed ? (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={signOut}
+                  className="h-9 w-9 text-sidebar-foreground/70 hover:text-sidebar-primary hover:bg-white/5"
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-sidebar text-sidebar-foreground border-sidebar-border">
+                Sair
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={signOut}
+              className="h-9 w-9 text-sidebar-foreground/70 hover:text-sidebar-primary hover:bg-white/5 shrink-0"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
           )}
         </div>
       </SidebarFooter>
