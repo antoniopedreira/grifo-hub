@@ -369,6 +369,7 @@ export type Database = {
           origin: Database["public"]["Enums"]["sale_origin"]
           product_name: string | null
           transaction_date: string | null
+          transaction_id: string | null
         }
         Insert: {
           amount: number
@@ -377,6 +378,7 @@ export type Database = {
           origin: Database["public"]["Enums"]["sale_origin"]
           product_name?: string | null
           transaction_date?: string | null
+          transaction_id?: string | null
         }
         Update: {
           amount?: number
@@ -385,6 +387,7 @@ export type Database = {
           origin?: Database["public"]["Enums"]["sale_origin"]
           product_name?: string | null
           transaction_date?: string | null
+          transaction_id?: string | null
         }
         Relationships: [
           {
@@ -509,6 +512,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      convert_deal_to_sale: {
+        Args: { p_amount: number; p_deal_id: string; p_product_id: string }
+        Returns: Json
+      }
+      handle_churn_refund: {
+        Args: {
+          p_email: string
+          p_event_type: string
+          p_transaction_id?: string
+        }
+        Returns: Json
+      }
       handle_new_sale: {
         Args: {
           p_amount: number
@@ -517,6 +532,19 @@ export type Database = {
           p_phone: string
           p_product_external_id: string
           p_transaction_id: string
+        }
+        Returns: Json
+      }
+      handle_recovery_deal: {
+        Args: {
+          p_email: string
+          p_event_type: string
+          p_name: string
+          p_offer_name: string
+          p_offer_url: string
+          p_offer_value: number
+          p_phone: string
+          p_product_external_id: string
         }
         Returns: Json
       }
