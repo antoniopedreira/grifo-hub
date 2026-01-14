@@ -64,16 +64,20 @@ export function CloseSaleDialog({
     },
   });
 
-  // Pre-select product when deal changes
+  // Pre-select product and fill value when deal/products are ready
   useEffect(() => {
-    if (deal?.product_id) {
+    if (open && deal?.product_id && products.length > 0) {
       setSelectedProductId(deal.product_id);
-    } else {
+      const dealProduct = products.find((p) => p.id === deal.product_id);
+      if (dealProduct?.price && !finalValue) {
+        setFinalValue(Number(dealProduct.price).toString().replace(".", ","));
+      }
+    } else if (open && !deal?.product_id) {
       setSelectedProductId("");
     }
-  }, [deal]);
+  }, [deal, products, open]);
 
-  // Auto-fill value when product changes
+  // Auto-fill value when product changes manually
   const handleProductChange = (productId: string) => {
     setSelectedProductId(productId);
     const selectedProduct = products.find((p) => p.id === productId);
