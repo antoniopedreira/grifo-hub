@@ -30,9 +30,7 @@ export function GeneralSettings() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const { data, error } = await supabase
-          .from("settings")
-          .select("key, value");
+        const { data, error } = await supabase.from("settings").select("key, value");
 
         if (error) throw error;
 
@@ -95,10 +93,7 @@ export function GeneralSettings() {
       ];
 
       for (const update of updates) {
-        const { error } = await supabase
-          .from("settings")
-          .update({ value: update.value })
-          .eq("key", update.key);
+        const { error } = await supabase.from("settings").update({ value: update.value }).eq("key", update.key);
 
         if (error) throw error;
       }
@@ -136,9 +131,7 @@ export function GeneralSettings() {
             <Building2 className="h-5 w-5" />
             Dados Corporativos
           </CardTitle>
-          <CardDescription>
-            Informações da empresa para geração de contratos e faturas
-          </CardDescription>
+          <CardDescription>Informações da empresa para geração de contratos e faturas</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -192,9 +185,7 @@ export function GeneralSettings() {
             <Link2 className="h-5 w-5" />
             Conexões Externas
           </CardTitle>
-          <CardDescription>
-            Configure integrações com serviços externos
-          </CardDescription>
+          <CardDescription>Configure integrações com serviços externos</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Webhook Lastlink */}
@@ -208,17 +199,8 @@ export function GeneralSettings() {
                 placeholder="https://api.exemplo.com/webhook"
                 className="font-mono text-sm"
               />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleCopyWebhook}
-                className="shrink-0"
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-green-600" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
+              <Button variant="outline" size="icon" onClick={handleCopyWebhook} className="shrink-0">
+                {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -230,7 +212,7 @@ export function GeneralSettings() {
           <div className="space-y-2">
             <Label htmlFor="whatsappToken" className="flex items-center gap-2">
               <Key className="h-4 w-4" />
-              Token WhatsApp / Evolution API
+              Token WhatsApp
             </Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -257,9 +239,7 @@ export function GeneralSettings() {
                 </Button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Token para envio de mensagens via WhatsApp
-            </p>
+            <p className="text-xs text-muted-foreground">Token para envio de mensagens via WhatsApp</p>
           </div>
 
           {/* OpenAI Key */}
