@@ -464,6 +464,7 @@ export type Database = {
           owner_id: string | null
           status: Database["public"]["Enums"]["mission_status"] | null
           support_id: string | null
+          support_ids: string[] | null
           target_goal: string | null
         }
         Insert: {
@@ -476,6 +477,7 @@ export type Database = {
           owner_id?: string | null
           status?: Database["public"]["Enums"]["mission_status"] | null
           support_id?: string | null
+          support_ids?: string[] | null
           target_goal?: string | null
         }
         Update: {
@@ -488,6 +490,7 @@ export type Database = {
           owner_id?: string | null
           status?: Database["public"]["Enums"]["mission_status"] | null
           support_id?: string | null
+          support_ids?: string[] | null
           target_goal?: string | null
         }
         Relationships: [

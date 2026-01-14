@@ -75,10 +75,16 @@ export function AgendaKanban() {
     },
   });
 
-  const getMemberName = (memberId: string | null) => {
+  const getMemberById = (memberId: string | null) => {
     if (!memberId) return null;
-    const member = members.find((m) => m.id === memberId);
-    return member?.name || null;
+    return members.find((m) => m.id === memberId) || null;
+  };
+
+  const getSupportMembers = (supportIds: string[] | null) => {
+    if (!supportIds || supportIds.length === 0) return [];
+    return supportIds
+      .map((id) => members.find((m) => m.id === id))
+      .filter((m): m is TeamMember => m !== undefined);
   };
 
   const getInitials = (name: string | null) => {
@@ -144,7 +150,8 @@ export function AgendaKanban() {
                         )}
                       >
                         {columnMissions.map((mission, index) => {
-                          const ownerName = getMemberName(mission.owner_id);
+                          const owner = getMemberById(mission.owner_id);
+                          const supportMembers = getSupportMembers((mission as any).support_ids);
                           const isOverdue =
                             mission.deadline &&
                             isBefore(new Date(mission.deadline), new Date()) &&
@@ -181,13 +188,27 @@ export function AgendaKanban() {
                                   )}
 
                                   <div className="flex items-center justify-between mt-3">
-                                    {ownerName && (
-                                      <Avatar className="h-7 w-7">
-                                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                                          {getInitials(ownerName)}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                    )}
+                                    <div className="flex items-center -space-x-1">
+                                      {owner && (
+                                        <Avatar className="h-7 w-7 ring-2 ring-background z-10" title={`Responsável: ${owner.name}`}>
+                                          <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                                            {getInitials(owner.name)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      )}
+                                      {supportMembers.map((support, idx) => (
+                                        <Avatar 
+                                          key={support.id} 
+                                          className="h-6 w-6 ring-2 ring-background" 
+                                          style={{ zIndex: 9 - idx }}
+                                          title={`Apoio: ${support.name}`}
+                                        >
+                                          <AvatarFallback className="bg-muted text-muted-foreground text-[10px]">
+                                            {getInitials(support.name)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      ))}
+                                    </div>
 
                                     {mission.deadline && (
                                       <div
