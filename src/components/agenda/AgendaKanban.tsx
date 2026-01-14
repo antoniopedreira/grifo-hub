@@ -69,8 +69,36 @@ export function AgendaKanban() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    // Optimistic update for zero-latency UX
+    onMutate: async ({ id, status }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["team_missions"] });
+
+      // Snapshot the previous value
+      const previousMissions = queryClient.getQueryData<Mission[]>(["team_missions"]);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData<Mission[]>(["team_missions"], (old) =>
+        old?.map((mission) =>
+          mission.id === id ? { ...mission, status } : mission
+        )
+      );
+
+      // Return context with the previous value
+      return { previousMissions };
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback to previous value on error
+      if (context?.previousMissions) {
+        queryClient.setQueryData(["team_missions"], context.previousMissions);
+      }
+      toast.error("Erro ao atualizar status");
+    },
+    onSettled: () => {
+      // Sync with server after mutation settles
       queryClient.invalidateQueries({ queryKey: ["team_missions"] });
+    },
+    onSuccess: () => {
       toast.success("Status atualizado!");
     },
   });
