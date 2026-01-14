@@ -110,6 +110,15 @@ export function ProductCard({ product }: ProductCardProps) {
             </span>
           </div>
           
+          {product.external_id && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">ID Lastlink</span>
+              <code className="text-xs bg-muted px-2 py-1 rounded max-w-[120px] truncate text-muted-foreground">
+                {product.external_id}
+              </code>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Slug</span>
             <code className="text-xs bg-muted px-2 py-1 rounded max-w-[150px] truncate">

@@ -39,6 +39,7 @@ interface ProductForm {
   template_id: string;
   slug: string;
   create_deal: boolean;
+  external_id: string;
 }
 
 const initialForm: ProductForm = {
@@ -50,6 +51,7 @@ const initialForm: ProductForm = {
   template_id: "",
   slug: "",
   create_deal: false,
+  external_id: "",
 };
 
 export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
@@ -112,6 +114,7 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
         template_id: form.template_id || null,
         slug: form.slug || null,
         create_deal: form.create_deal,
+        external_id: form.external_id || null,
         active: true,
       };
 
@@ -226,6 +229,19 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="external_id">ID do Produto na Lastlink</Label>
+                <Input
+                  id="external_id"
+                  placeholder="Ex: 98273-abcde..."
+                  value={form.external_id}
+                  onChange={(e) => setForm({ ...form, external_id: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cole aqui o ID do produto na Lastlink. Isso permitirá que o n8n identifique a venda automaticamente.
+                </p>
               </div>
               
               <div className="space-y-2">
@@ -406,6 +422,7 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
                 <div className="text-sm space-y-1">
                   <p><span className="text-muted-foreground">Nome:</span> {form.name}</p>
                   <p><span className="text-muted-foreground">Preço:</span> {form.price ? `R$ ${form.price}` : "—"}</p>
+                  <p><span className="text-muted-foreground">ID Lastlink:</span> {form.external_id || "—"}</p>
                   <p><span className="text-muted-foreground">Tipo:</span> {form.funnel_type === "external_link" ? "Página de Vendas" : "Formulário"}</p>
                   <p><span className="text-muted-foreground">Criar Deal:</span> {form.create_deal ? "Sim" : "Não"}</p>
                 </div>
