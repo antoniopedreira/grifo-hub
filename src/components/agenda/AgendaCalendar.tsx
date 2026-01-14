@@ -241,7 +241,7 @@ export function AgendaCalendar() {
                             {dayMissions.length} {dayMissions.length === 1 ? "tarefa" : "tarefas"} agendadas
                           </p>
                         </div>
-                        <ScrollArea className="max-h-72">
+                        <ScrollArea className="max-h-72 [&_[data-radix-scroll-area-scrollbar]]:w-1.5 [&_[data-radix-scroll-area-scrollbar]]:opacity-0 [&_[data-radix-scroll-area-scrollbar]]:hover:opacity-100 [&_[data-radix-scroll-area-scrollbar]]:transition-opacity">
                           <div className="p-2 space-y-1">
                             {dayMissions.map((mission) => {
                               const isOverdue = mission.deadline && isBefore(parseISO(mission.deadline), new Date()) && mission.status !== "Concluído";
