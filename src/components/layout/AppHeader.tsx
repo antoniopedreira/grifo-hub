@@ -1,4 +1,4 @@
-import { LogOut, User } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -27,37 +27,40 @@ export function AppHeader() {
   const userInitials = userEmail.charAt(0).toUpperCase();
 
   return (
-    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
+    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shadow-sm">
       <div className="flex items-center gap-4">
-        <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+        <SidebarTrigger className="text-muted-foreground hover:text-foreground transition-colors" />
       </div>
       
       <div className="flex items-center gap-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-              <Avatar className="h-10 w-10 border-2 border-accent">
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-muted transition-colors">
+              <Avatar className="h-10 w-10 border-2 border-secondary shadow-soft">
                 <AvatarImage src="" alt="User avatar" />
-                <AvatarFallback className="bg-muted text-muted-foreground">
+                <AvatarFallback className="bg-secondary text-secondary-foreground font-semibold">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <div className="flex items-center gap-2 p-2">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-muted text-muted-foreground">
+          <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-soft-md">
+            <div className="flex items-center gap-3 p-3">
+              <Avatar className="h-10 w-10 border-2 border-secondary">
+                <AvatarFallback className="bg-secondary text-secondary-foreground font-semibold">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col overflow-hidden">
-                <span className="text-sm font-medium truncate">{userEmail}</span>
+                <span className="text-sm font-semibold truncate text-foreground">{userEmail}</span>
                 <span className="text-xs text-muted-foreground">Administrador</span>
               </div>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+            <DropdownMenuItem 
+              onClick={handleLogout} 
+              className="text-destructive cursor-pointer rounded-lg mx-1 mb-1 focus:text-destructive focus:bg-destructive/10"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </DropdownMenuItem>

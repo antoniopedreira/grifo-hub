@@ -9,9 +9,9 @@ interface DealCardProps {
 }
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
-  High: { label: "Alta", className: "bg-red-100 text-red-700 border-red-200" },
-  Medium: { label: "Média", className: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-  Low: { label: "Baixa", className: "bg-green-100 text-green-700 border-green-200" },
+  High: { label: "Alta", className: "bg-red-50 text-red-600 border-red-200" },
+  Medium: { label: "Média", className: "bg-amber-50 text-amber-600 border-amber-200" },
+  Low: { label: "Baixa", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
 };
 
 export function DealCard({ deal, index, onClick }: DealCardProps) {
@@ -34,14 +34,14 @@ export function DealCard({ deal, index, onClick }: DealCardProps) {
           {...provided.dragHandleProps}
           onClick={onClick}
           className={cn(
-            "rounded-lg border bg-white p-3 shadow-sm transition-all cursor-pointer",
-            "hover:border-secondary hover:shadow-md",
-            snapshot.isDragging && "shadow-lg ring-2 ring-secondary/30"
+            "rounded-xl border border-border bg-card p-4 shadow-card transition-all duration-200 cursor-pointer",
+            "hover:border-secondary/50 hover:shadow-card-hover",
+            snapshot.isDragging && "shadow-soft-lg ring-2 ring-secondary/40 rotate-1 scale-[1.02]"
           )}
         >
-          <div className="space-y-2">
+          <div className="space-y-3">
             {/* Lead Name */}
-            <p className="font-semibold text-primary truncate">
+            <p className="font-semibold text-foreground truncate text-sm">
               {deal.lead?.full_name || "Lead desconhecido"}
             </p>
 
@@ -51,11 +51,11 @@ export function DealCard({ deal, index, onClick }: DealCardProps) {
             </p>
 
             {/* Value and Priority */}
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium text-secondary">{formattedValue}</span>
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <span className="font-bold text-secondary text-base">{formattedValue}</span>
               <span
                 className={cn(
-                  "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+                  "inline-flex items-center rounded-lg border px-2 py-1 text-xs font-semibold",
                   config.className
                 )}
               >

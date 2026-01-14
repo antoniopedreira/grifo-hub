@@ -535,19 +535,34 @@ export type Database = {
         }
         Returns: Json
       }
-      handle_recovery_deal: {
-        Args: {
-          p_email: string
-          p_event_type: string
-          p_name: string
-          p_offer_name: string
-          p_offer_url: string
-          p_offer_value: number
-          p_phone: string
-          p_product_external_id: string
-        }
-        Returns: Json
-      }
+      handle_recovery_deal:
+        | {
+            Args: {
+              p_email: string
+              p_event_type: string
+              p_name: string
+              p_offer_name: string
+              p_offer_url: string
+              p_offer_value: number
+              p_phone: string
+              p_product_external_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_email: string
+              p_event_type: string
+              p_name: string
+              p_offer_name: string
+              p_offer_url: string
+              p_offer_value: number
+              p_phone: string
+              p_product_external_id?: string
+              p_product_uuid?: string
+            }
+            Returns: Json
+          }
     }
     Enums: {
       deal_status: "open" | "won" | "lost" | "abandoned"
