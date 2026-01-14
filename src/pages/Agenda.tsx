@@ -1,16 +1,35 @@
 import { useState } from "react";
-import { CalendarDays, LayoutGrid, Plus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CalendarDays, LayoutGrid, Plus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AgendaCalendar } from "@/components/agenda/AgendaCalendar";
 import { AgendaKanban } from "@/components/agenda/AgendaKanban";
 import { MissionSheet } from "@/components/agenda/MissionSheet";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 
 type ViewMode = "calendar" | "kanban";
+type TeamMember = Tables<"team_members">;
 
 export default function Agenda() {
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [ownerFilter, setOwnerFilter] = useState<string>("all");
+
+  const { data: members = [] } = useQuery({
+    queryKey: ["team_members"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("*")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data as TeamMember[];
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -21,7 +40,23 @@ export default function Agenda() {
           <h1 className="text-3xl font-bold text-primary">Agenda Operacional</h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Owner Filter */}
+          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+            <SelectTrigger className="w-[180px] bg-background">
+              <User className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Filtrar responsável" />
+            </SelectTrigger>
+            <SelectContent className="min-w-[--radix-select-trigger-width]">
+              <SelectItem value="all">Todos</SelectItem>
+              {members.map((member) => (
+                <SelectItem key={member.id} value={member.id}>
+                  {member.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <ToggleGroup
             type="single"
             value={viewMode}
@@ -49,7 +84,11 @@ export default function Agenda() {
       </div>
 
       {/* Content */}
-      {viewMode === "calendar" ? <AgendaCalendar /> : <AgendaKanban />}
+      {viewMode === "calendar" ? (
+        <AgendaCalendar ownerFilter={ownerFilter === "all" ? null : ownerFilter} />
+      ) : (
+        <AgendaKanban ownerFilter={ownerFilter === "all" ? null : ownerFilter} />
+      )}
 
       {/* Mission Sheet */}
       <MissionSheet open={sheetOpen} onOpenChange={setSheetOpen} mission={null} />

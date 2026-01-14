@@ -33,7 +33,11 @@ const statusLabels: Record<string, string> = {
   "Stand-by": "Stand-by",
 };
 
-export function AgendaCalendar() {
+interface AgendaCalendarProps {
+  ownerFilter: string | null;
+}
+
+export function AgendaCalendar({ ownerFilter }: AgendaCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -65,8 +69,13 @@ export function AgendaCalendar() {
   const monthEnd = endOfMonth(currentMonth);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
+  // Filter missions by owner if filter is active
+  const filteredMissions = ownerFilter 
+    ? missions.filter((m) => m.owner_id === ownerFilter)
+    : missions;
+
   const getMissionsForDay = (date: Date) => {
-    return missions.filter((m) => m.deadline && isSameDay(parseISO(m.deadline), date));
+    return filteredMissions.filter((m) => m.deadline && isSameDay(parseISO(m.deadline), date));
   };
 
   const getMemberById = (memberId: string | null) => {
