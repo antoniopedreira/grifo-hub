@@ -51,28 +51,18 @@ export function AppSidebar() {
       <SidebarHeader className={`border-b border-sidebar-border transition-all duration-200 ${isCollapsed ? "p-2 flex items-center justify-center" : "p-5"}`}>
         <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
           {/* Grifo Logo */}
-          {isCollapsed ? (
-            <img 
-              src={grifoLogo} 
-              alt="Grifo Academy" 
-              className="w-8 h-8 object-contain"
-            />
-          ) : (
-            <>
-              <div className="w-11 h-11 rounded-xl bg-sidebar-accent flex items-center justify-center p-1.5">
-                <img 
-                  src={grifoLogo} 
-                  alt="Grifo Academy" 
-                  className="h-full w-auto object-contain"
-                />
-              </div>
-              <div>
-                <h1 className="font-bold text-sidebar-foreground text-lg leading-tight tracking-tight">
-                  Grifo Academy
-                </h1>
-                <p className="text-xs text-sidebar-foreground/60 font-medium">Hub</p>
-              </div>
-            </>
+          <img 
+            src={grifoLogo} 
+            alt="Grifo Academy" 
+            className={`object-contain transition-all duration-200 ${isCollapsed ? "w-8 h-8" : "w-12 h-12"}`}
+          />
+          {!isCollapsed && (
+            <div>
+              <h1 className="font-bold text-sidebar-foreground text-lg leading-tight tracking-tight">
+                Grifo Academy
+              </h1>
+              <p className="text-xs text-sidebar-foreground/60 font-medium">Hub</p>
+            </div>
           )}
         </div>
       </SidebarHeader>
