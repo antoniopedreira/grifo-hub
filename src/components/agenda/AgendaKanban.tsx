@@ -116,7 +116,7 @@ export function AgendaKanban() {
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-4 min-w-0 overflow-x-auto pb-4">
         {columns.map((column) => {
           const columnMissions = getMissionsByStatus(column.id);
 
