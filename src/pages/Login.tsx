@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import grifoLogo from "@/assets/grifo-logo.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -56,21 +57,26 @@ export default function Login() {
   // Don't render form if still loading or already logged in
   if (loading || user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin h-8 w-8 border-4 border-secondary border-t-transparent rounded-full" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-md shadow-xl border-0">
-        <CardHeader className="space-y-4 text-center pb-2">
-          <div className="mx-auto w-16 h-16 rounded-xl bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-2xl">G</span>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md shadow-soft-lg border-0 rounded-2xl">
+        <CardHeader className="space-y-6 text-center pb-2 pt-8">
+          {/* Grifo Logo */}
+          <div className="mx-auto">
+            <img 
+              src={grifoLogo} 
+              alt="Grifo Academy" 
+              className="h-20 w-auto"
+            />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-primary">
+            <CardTitle className="text-2xl font-bold text-foreground">
               Grifo Academy Hub
             </CardTitle>
             <CardDescription className="text-muted-foreground mt-2">
@@ -78,10 +84,10 @@ export default function Login() {
             </CardDescription>
           </div>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 pb-8 px-8">
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground">
+              <Label htmlFor="email" className="text-foreground font-medium">
                 E-mail
               </Label>
               <div className="relative">
@@ -92,14 +98,14 @@ export default function Login() {
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-11 rounded-xl"
                   disabled={isLoading}
                 />
               </div>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground">
+              <Label htmlFor="password" className="text-foreground font-medium">
                 Senha
               </Label>
               <div className="relative">
@@ -110,7 +116,7 @@ export default function Login() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="pl-10 pr-10 h-11 rounded-xl"
                   disabled={isLoading}
                 />
                 <button
@@ -125,25 +131,12 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full h-11 bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold"
+              className="w-full h-12 text-base"
               disabled={isLoading}
             >
               {isLoading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Ainda não tem conta?{" "}
-              <button
-                type="button"
-                onClick={() => navigate("/register")}
-                className="text-secondary hover:underline font-medium"
-              >
-                Cadastre-se
-              </button>
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

@@ -19,6 +19,7 @@ import {
   SidebarMenuItem,
   SidebarHeader,
 } from "@/components/ui/sidebar";
+import grifoLogo from "@/assets/grifo-logo.png";
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -39,11 +40,15 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r-0 bg-sidebar">
       {/* Logo Header */}
-      <SidebarHeader className="p-6 border-b border-sidebar-border">
+      <SidebarHeader className="p-5 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          {/* Logo Placeholder - Replace with actual logo */}
-          <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center shadow-soft">
-            <span className="text-sidebar-primary-foreground font-bold text-lg">G</span>
+          {/* Grifo Logo */}
+          <div className="w-11 h-11 rounded-xl bg-sidebar-accent flex items-center justify-center p-1.5">
+            <img 
+              src={grifoLogo} 
+              alt="Grifo Academy" 
+              className="h-full w-auto object-contain"
+            />
           </div>
           <div>
             <h1 className="font-bold text-sidebar-foreground text-lg leading-tight tracking-tight">
