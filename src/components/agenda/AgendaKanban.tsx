@@ -188,26 +188,22 @@ export function AgendaKanban() {
                                   )}
 
                                   <div className="flex items-center justify-between mt-3">
-                                    <div className="flex items-center -space-x-1">
+                                    <div className="flex items-center gap-2">
                                       {owner && (
-                                        <Avatar className="h-7 w-7 ring-2 ring-background z-10" title={`Responsável: ${owner.name}`}>
+                                        <Avatar className="h-7 w-7" title={`Responsável: ${owner.name}`}>
                                           <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
                                             {getInitials(owner.name)}
                                           </AvatarFallback>
                                         </Avatar>
                                       )}
-                                      {supportMembers.map((support, idx) => (
-                                        <Avatar 
-                                          key={support.id} 
-                                          className="h-6 w-6 ring-2 ring-background" 
-                                          style={{ zIndex: 9 - idx }}
-                                          title={`Apoio: ${support.name}`}
+                                      {supportMembers.length > 0 && (
+                                        <span 
+                                          className="text-[11px] text-muted-foreground font-medium tracking-wide"
+                                          title={`Apoio: ${supportMembers.map(s => s.name).join(', ')}`}
                                         >
-                                          <AvatarFallback className="bg-muted text-muted-foreground text-[10px]">
-                                            {getInitials(support.name)}
-                                          </AvatarFallback>
-                                        </Avatar>
-                                      ))}
+                                          {supportMembers.map(s => getInitials(s.name)).join(' ')}
+                                        </span>
+                                      )}
                                     </div>
 
                                     {mission.deadline && (
