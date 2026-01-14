@@ -87,7 +87,9 @@ export function AppSidebar() {
                         )}
                         <item.icon
                           className={`h-5 w-5 transition-colors ${
-                            active ? "text-sidebar-primary" : "group-hover:text-sidebar-primary"
+                            active 
+                              ? "text-sidebar-primary" 
+                              : "text-sidebar-foreground/70 group-hover:text-sidebar-primary"
                           }`}
                         />
                         <span className="font-medium">{item.title}</span>
