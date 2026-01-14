@@ -41,6 +41,7 @@ interface ProductForm {
   slug: string;
   create_deal: boolean;
   active: boolean;
+  external_id: string;
 }
 
 export function ProductEditSheet({ product, open, onOpenChange }: ProductEditSheetProps) {
@@ -54,6 +55,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
     slug: "",
     create_deal: false,
     active: true,
+    external_id: "",
   });
   
   const queryClient = useQueryClient();
@@ -71,6 +73,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         slug: product.slug || "",
         create_deal: product.create_deal || false,
         active: product.active ?? true,
+        external_id: product.external_id || "",
       });
     }
   }, [product]);
@@ -130,6 +133,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         slug: form.slug || null,
         create_deal: form.create_deal,
         active: form.active,
+        external_id: form.external_id || null,
       };
 
       const { data, error } = await supabase
@@ -209,6 +213,19 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="external_id">ID do Produto na Lastlink</Label>
+              <Input
+                id="external_id"
+                placeholder="Ex: 98273-abcde..."
+                value={form.external_id}
+                onChange={(e) => setForm({ ...form, external_id: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Cole aqui o ID do produto na Lastlink. Isso permitirá que o n8n identifique a venda automaticamente.
+              </p>
             </div>
             
             <div className="space-y-2">
