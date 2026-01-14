@@ -228,12 +228,12 @@ export function AgendaCalendar() {
                         </button>
                       </HoverCardTrigger>
                       <HoverCardContent 
-                        className="w-80 p-0 shadow-lg" 
+                        className="w-80 p-0 shadow-lg max-h-80 flex flex-col" 
                         side="right" 
                         align="start"
                         sideOffset={8}
                       >
-                        <div className="p-3 border-b bg-muted/30">
+                        <div className="p-3 border-b bg-muted/30 flex-shrink-0">
                           <p className="font-semibold text-sm">
                             {format(day, "d 'de' MMMM", { locale: ptBR })}
                           </p>
@@ -241,54 +241,52 @@ export function AgendaCalendar() {
                             {dayMissions.length} {dayMissions.length === 1 ? "tarefa" : "tarefas"} agendadas
                           </p>
                         </div>
-                        <ScrollArea className="max-h-72 [&_[data-radix-scroll-area-scrollbar]]:w-1.5 [&_[data-radix-scroll-area-scrollbar]]:opacity-0 [&_[data-radix-scroll-area-scrollbar]]:hover:opacity-100 [&_[data-radix-scroll-area-scrollbar]]:transition-opacity">
-                          <div className="p-2 space-y-1">
-                            {dayMissions.map((mission) => {
-                              const isOverdue = mission.deadline && isBefore(parseISO(mission.deadline), new Date()) && mission.status !== "Concluído";
-                              const owner = getMemberById(mission.owner_id);
-                              const supportMembers = getSupportMembers((mission as any).support_ids);
+                        <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40">
+                          {dayMissions.map((mission) => {
+                            const isOverdue = mission.deadline && isBefore(parseISO(mission.deadline), new Date()) && mission.status !== "Concluído";
+                            const owner = getMemberById(mission.owner_id);
+                            const supportMembers = getSupportMembers((mission as any).support_ids);
 
-                              return (
-                                <button
-                                  key={mission.id}
-                                  onClick={() => handleMissionClick(mission)}
-                                  className={cn(
-                                    "w-full p-2 rounded-lg text-left transition-colors",
-                                    isOverdue 
-                                      ? "bg-destructive/5 hover:bg-destructive/10" 
-                                      : "hover:bg-muted/50"
-                                  )}
-                                >
-                                  <div className="flex items-start gap-2">
-                                    <span
-                                      className={cn(
-                                        "w-2 h-2 rounded-full flex-shrink-0 mt-1.5",
-                                        statusColors[mission.status || "Pendente"]
-                                      )}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <p className={cn(
-                                        "text-xs font-medium line-clamp-2",
-                                        isOverdue && "text-destructive"
-                                      )}>
-                                        {mission.mission}
-                                      </p>
-                                      {owner && (
-                                        <div className="flex items-center gap-1 mt-1">
-                                          <User className="h-3 w-3 text-muted-foreground" />
-                                          <span className="text-[10px] text-muted-foreground truncate">
-                                            {owner.name}
-                                            {supportMembers.length > 0 && ` +${supportMembers.length}`}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
+                            return (
+                              <button
+                                key={mission.id}
+                                onClick={() => handleMissionClick(mission)}
+                                className={cn(
+                                  "w-full p-2 rounded-lg text-left transition-colors",
+                                  isOverdue 
+                                    ? "bg-destructive/5 hover:bg-destructive/10" 
+                                    : "hover:bg-muted/50"
+                                )}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <span
+                                    className={cn(
+                                      "w-2 h-2 rounded-full flex-shrink-0 mt-1.5",
+                                      statusColors[mission.status || "Pendente"]
+                                    )}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className={cn(
+                                      "text-xs font-medium line-clamp-2",
+                                      isOverdue && "text-destructive"
+                                    )}>
+                                      {mission.mission}
+                                    </p>
+                                    {owner && (
+                                      <div className="flex items-center gap-1 mt-1">
+                                        <User className="h-3 w-3 text-muted-foreground" />
+                                        <span className="text-[10px] text-muted-foreground truncate">
+                                          {owner.name}
+                                          {supportMembers.length > 0 && ` +${supportMembers.length}`}
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </ScrollArea>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </HoverCardContent>
                     </HoverCard>
                   )}
