@@ -48,46 +48,56 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r-0 bg-sidebar">
       {/* Logo Header */}
-      <SidebarHeader className={`border-b border-sidebar-border transition-all duration-200 ${isCollapsed ? "p-3" : "p-5"}`}>
+      <SidebarHeader className={`border-b border-sidebar-border transition-all duration-200 ${isCollapsed ? "p-2 flex items-center justify-center" : "p-5"}`}>
         <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}>
           {/* Grifo Logo */}
-          <div className={`rounded-xl bg-sidebar-accent flex items-center justify-center transition-all duration-200 ${isCollapsed ? "w-9 h-9 p-1" : "w-11 h-11 p-1.5"}`}>
+          {isCollapsed ? (
             <img 
               src={grifoLogo} 
               alt="Grifo Academy" 
-              className="h-full w-auto object-contain"
+              className="w-8 h-8 object-contain"
             />
-          </div>
-          {!isCollapsed && (
-            <div>
-              <h1 className="font-bold text-sidebar-foreground text-lg leading-tight tracking-tight">
-                Grifo Academy
-              </h1>
-              <p className="text-xs text-sidebar-foreground/60 font-medium">Hub</p>
-            </div>
+          ) : (
+            <>
+              <div className="w-11 h-11 rounded-xl bg-sidebar-accent flex items-center justify-center p-1.5">
+                <img 
+                  src={grifoLogo} 
+                  alt="Grifo Academy" 
+                  className="h-full w-auto object-contain"
+                />
+              </div>
+              <div>
+                <h1 className="font-bold text-sidebar-foreground text-lg leading-tight tracking-tight">
+                  Grifo Academy
+                </h1>
+                <p className="text-xs text-sidebar-foreground/60 font-medium">Hub</p>
+              </div>
+            </>
           )}
         </div>
       </SidebarHeader>
 
       {/* Navigation */}
-      <SidebarContent className={`py-6 transition-all duration-200 ${isCollapsed ? "px-1.5" : "px-3"}`}>
-        <SidebarGroup>
+      <SidebarContent className={`py-6 transition-all duration-200 ${isCollapsed ? "px-0" : "px-3"}`}>
+        <SidebarGroup className={isCollapsed ? "p-0" : ""}>
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
+            <SidebarMenu className={`space-y-1 ${isCollapsed ? "items-center" : ""}`}>
               {menuItems.map((item) => {
                 const active = isActive(item.url);
                 const Icon = item.icon;
                 
                 const menuContent = (
-                  <SidebarMenuItem key={item.title}>
+                  <SidebarMenuItem key={item.title} className={isCollapsed ? "flex justify-center w-full" : ""}>
                     <SidebarMenuButton
                       asChild
                       isActive={active}
-                      className={`relative h-11 rounded-xl transition-all duration-200 ${isCollapsed ? "px-0 justify-center" : "px-3"}`}
+                      className={`relative rounded-xl transition-all duration-200 ${isCollapsed ? "h-10 w-10 p-0 flex items-center justify-center" : "h-11 px-3"}`}
                     >
                       <NavLink
                         to={item.url}
-                        className={`group/item flex items-center gap-3 w-full ${
+                        className={`group/item flex items-center w-full ${
+                          isCollapsed ? "justify-center" : "gap-3"
+                        } ${
                           active
                             ? "bg-white/10 text-sidebar-foreground"
                             : "text-sidebar-foreground/70 hover:bg-white/5 hover:text-sidebar-foreground"
@@ -98,10 +108,12 @@ export function AppSidebar() {
                           <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-sidebar-primary rounded-r-full" />
                         )}
                         {active && isCollapsed && (
-                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-sidebar-primary rounded-r-full" />
+                          <span className="absolute left-1 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-sidebar-primary rounded-full" />
                         )}
                         <Icon
-                          className={`h-5 w-5 shrink-0 transition-colors duration-200 ${
+                          className={`shrink-0 transition-colors duration-200 ${
+                            isCollapsed ? "h-5 w-5" : "h-5 w-5"
+                          } ${
                             active 
                               ? "text-sidebar-primary" 
                               : "text-sidebar-foreground/70 group-hover/item:text-sidebar-primary"
