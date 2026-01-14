@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, LayoutGrid, Plus, User } from "lucide-react";
+import { CalendarDays, LayoutGrid, Plus, User, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AgendaCalendar } from "@/components/agenda/AgendaCalendar";
@@ -17,15 +18,12 @@ export default function Agenda() {
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: members = [] } = useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("team_members")
-        .select("*")
-        .eq("active", true)
-        .order("name");
+      const { data, error } = await supabase.from("team_members").select("*").eq("active", true).order("name");
       if (error) throw error;
       return data as TeamMember[];
     },
@@ -41,6 +39,17 @@ export default function Agenda() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Search Bar */}
+          <div className="relative w-full sm:w-[250px]">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Pesquisar missão..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 bg-background"
+            />
+          </div>
+
           {/* Owner Filter */}
           <Select value={ownerFilter} onValueChange={setOwnerFilter}>
             <SelectTrigger className="w-[180px] bg-background">
@@ -87,7 +96,7 @@ export default function Agenda() {
       {viewMode === "calendar" ? (
         <AgendaCalendar ownerFilter={ownerFilter === "all" ? null : ownerFilter} />
       ) : (
-        <AgendaKanban ownerFilter={ownerFilter === "all" ? null : ownerFilter} />
+        <AgendaKanban ownerFilter={ownerFilter === "all" ? null : ownerFilter} searchTerm={searchTerm} />
       )}
 
       {/* Mission Sheet */}
