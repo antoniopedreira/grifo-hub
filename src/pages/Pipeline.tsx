@@ -83,7 +83,7 @@ export default function PipelinePage() {
     enabled: !!activePipelineId,
   });
 
-  // Move deal mutation
+  // Move deal mutation with Optimistic Updates
   const moveDeal = useMutation({
     mutationFn: async ({
       dealId,
@@ -98,15 +98,37 @@ export default function PipelinePage() {
         .eq("id", dealId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
+    onMutate: async ({ dealId, stageId }) => {
+      // Cancel any outgoing refetches to prevent overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: ["deals", activePipelineId] });
+
+      // Snapshot the previous value
+      const previousDeals = queryClient.getQueryData<Deal[]>(["deals", activePipelineId]);
+
+      // Optimistically update the cache - move card instantly
+      queryClient.setQueryData<Deal[]>(["deals", activePipelineId], (old) =>
+        old?.map((deal) =>
+          deal.id === dealId ? { ...deal, stage_id: stageId } : deal
+        )
+      );
+
+      // Return context with the snapshot for rollback
+      return { previousDeals };
     },
-    onError: () => {
+    onError: (_err, _variables, context) => {
+      // Rollback to previous state on error
+      if (context?.previousDeals) {
+        queryClient.setQueryData(["deals", activePipelineId], context.previousDeals);
+      }
       toast({
         title: "Erro ao mover card",
         description: "Não foi possível atualizar o estágio.",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      // Silently refetch to ensure data consistency
+      queryClient.invalidateQueries({ queryKey: ["deals", activePipelineId] });
     },
   });
 
