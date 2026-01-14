@@ -90,10 +90,7 @@ export default function Dashboard() {
         ] = await Promise.all([
           supabase.from("deals").select("*"),
           supabase.from("leads").select("*", { count: "exact", head: true }),
-          supabase
-            .from("team_missions")
-            .select("*", { count: "exact", head: true })
-            .neq("status", "Concluído"),
+          supabase.from("team_missions").select("*", { count: "exact", head: true }).neq("status", "Concluído"),
           supabase
             .from("deals")
             .select("*, leads(full_name), products(name)")
@@ -113,7 +110,7 @@ export default function Dashboard() {
         // Calculate KPIs
         const wonDeals = (allDeals || []).filter((d) => d.status === "won");
         const inNegotiationDeals = (allDeals || []).filter(
-          (d) => d.status !== "won" && d.status !== "lost" && d.status !== "abandoned"
+          (d) => d.status !== "won" && d.status !== "lost" && d.status !== "abandoned",
         );
 
         const totalRevenue = wonDeals.reduce((sum, d) => sum + (d.value || 0), 0);
@@ -203,46 +200,36 @@ export default function Dashboard() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-primary">Visão Geral</h1>
-        <p className="text-muted-foreground mt-1">Bem-vindo ao Grifo Academy Hub</p>
+        <p className="text-muted-foreground mt-1">Bem-vindo ao GrifoHub</p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Receita Confirmada
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Receita Confirmada</CardTitle>
             <DollarSign className="h-5 w-5 text-secondary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">
-              {formatCurrency(data.totalRevenue)}
-            </div>
+            <div className="text-2xl font-bold text-primary">{formatCurrency(data.totalRevenue)}</div>
             <p className="text-xs text-muted-foreground mt-1">Negócios ganhos</p>
           </CardContent>
         </Card>
 
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pipeline Ativo
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pipeline Ativo</CardTitle>
             <TrendingUp className="h-5 w-5 text-secondary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">
-              {formatCurrency(data.inNegotiation)}
-            </div>
+            <div className="text-2xl font-bold text-primary">{formatCurrency(data.inNegotiation)}</div>
             <p className="text-xs text-muted-foreground mt-1">Deals em aberto</p>
           </CardContent>
         </Card>
 
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Leads Totais
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Leads Totais</CardTitle>
             <Users className="h-5 w-5 text-secondary" />
           </CardHeader>
           <CardContent>
@@ -253,9 +240,7 @@ export default function Dashboard() {
 
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Missões Pendentes
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Missões Pendentes</CardTitle>
             <CheckSquare className="h-5 w-5 text-secondary" />
           </CardHeader>
           <CardContent>
@@ -279,13 +264,7 @@ export default function Dashboard() {
                 <BarChart data={data.monthlyRevenue}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="month" stroke="#64748b" fontSize={12} />
-                  <YAxis
-                    stroke="#64748b"
-                    fontSize={12}
-                    tickFormatter={(value) =>
-                      `R$ ${(value / 1000).toFixed(0)}k`
-                    }
-                  />
+                  <YAxis stroke="#64748b" fontSize={12} tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`} />
                   <Tooltip
                     formatter={(value: number) => [formatCurrency(value), "Receita"]}
                     contentStyle={{
@@ -325,16 +304,11 @@ export default function Dashboard() {
                     paddingAngle={2}
                     dataKey="value"
                     nameKey="name"
-                    label={({ name, percent }) =>
-                      `${name}: ${(percent * 100).toFixed(0)}%`
-                    }
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                     labelLine={false}
                   >
                     {data.salesByProduct.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
-                      />
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -377,16 +351,12 @@ export default function Dashboard() {
                     className="flex items-center justify-between py-2 border-b border-border last:border-0"
                   >
                     <div className="flex flex-col">
-                      <span className="font-medium text-foreground">
-                        {deal.leads?.full_name || "Lead sem nome"}
-                      </span>
+                      <span className="font-medium text-foreground">{deal.leads?.full_name || "Lead sem nome"}</span>
                       <span className="text-sm text-muted-foreground">
                         {deal.products?.name || "Produto não especificado"}
                       </span>
                     </div>
-                    <span className="font-semibold text-green-600">
-                      {formatCurrency(deal.value || 0)}
-                    </span>
+                    <span className="font-semibold text-green-600">{formatCurrency(deal.value || 0)}</span>
                   </div>
                 ))}
               </div>
@@ -411,22 +381,15 @@ export default function Dashboard() {
             {data.upcomingMissions.length > 0 ? (
               <div className="space-y-4">
                 {data.upcomingMissions.map((mission) => (
-                  <div
-                    key={mission.id}
-                    className="flex items-center gap-3 py-2 border-b border-border last:border-0"
-                  >
+                  <div key={mission.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                         {getInitials(mission.team_members?.name || null)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">
-                        {mission.mission}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {mission.team_members?.name || "Sem responsável"}
-                      </p>
+                      <p className="font-medium text-foreground truncate">{mission.mission}</p>
+                      <p className="text-sm text-muted-foreground">{mission.team_members?.name || "Sem responsável"}</p>
                     </div>
                     <Badge
                       variant="outline"
@@ -436,9 +399,7 @@ export default function Dashboard() {
                           : "border-secondary text-secondary"
                       }
                     >
-                      {mission.deadline
-                        ? format(parseISO(mission.deadline), "dd/MM", { locale: ptBR })
-                        : "Sem prazo"}
+                      {mission.deadline ? format(parseISO(mission.deadline), "dd/MM", { locale: ptBR }) : "Sem prazo"}
                     </Badge>
                   </div>
                 ))}
