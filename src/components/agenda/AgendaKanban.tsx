@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { format, isBefore, isToday } from "date-fns";
+import { format, isBefore, isToday, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Clock, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -152,10 +152,12 @@ export function AgendaKanban() {
                         {columnMissions.map((mission, index) => {
                           const owner = getMemberById(mission.owner_id);
                           const supportMembers = getSupportMembers((mission as any).support_ids);
+                          // Parse date-only string correctly to avoid timezone offset issues
+                          const deadlineDate = mission.deadline ? parseISO(mission.deadline) : null;
                           const isOverdue =
-                            mission.deadline &&
-                            isBefore(new Date(mission.deadline), new Date()) &&
-                            !isToday(new Date(mission.deadline)) &&
+                            deadlineDate &&
+                            isBefore(deadlineDate, new Date()) &&
+                            !isToday(deadlineDate) &&
                             mission.status !== "Concluído";
 
                           return (
@@ -218,7 +220,7 @@ export function AgendaKanban() {
                                         ) : (
                                           <Clock className="h-3 w-3" />
                                         )}
-                                        {format(new Date(mission.deadline), "dd/MM", { locale: ptBR })}
+                                        {format(deadlineDate!, "dd/MM", { locale: ptBR })}
                                       </div>
                                     )}
                                   </div>

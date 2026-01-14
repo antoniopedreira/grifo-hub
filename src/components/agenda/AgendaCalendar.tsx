@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isBefore } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isBefore, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export function AgendaCalendar() {
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   const getMissionsForDay = (date: Date) => {
-    return missions.filter((m) => m.deadline && isSameDay(new Date(m.deadline), date));
+    return missions.filter((m) => m.deadline && isSameDay(parseISO(m.deadline), date));
   };
 
   const handleMissionClick = (mission: Mission) => {
@@ -115,7 +115,7 @@ export function AgendaCalendar() {
                 </span>
                 <div className="mt-1 space-y-1 overflow-hidden">
                   {dayMissions.slice(0, 3).map((mission) => {
-                    const isOverdue = mission.deadline && isBefore(new Date(mission.deadline), new Date()) && mission.status !== "Concluído";
+                    const isOverdue = mission.deadline && isBefore(parseISO(mission.deadline), new Date()) && mission.status !== "Concluído";
                     return (
                       <button
                         key={mission.id}
