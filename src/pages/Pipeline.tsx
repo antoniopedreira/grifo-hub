@@ -240,7 +240,7 @@ export default function PipelinePage() {
       </div>
 
       {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto rounded-lg bg-[#F8FAFC] p-4">
+      <div className="flex-1 min-w-0 overflow-x-auto rounded-lg bg-[#F8FAFC] p-4">
         {loadingPipelines || loadingDeals ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-8 w-8 animate-spin text-secondary" />
