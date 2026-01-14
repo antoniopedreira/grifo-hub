@@ -2,99 +2,113 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Grifo Academy Hub Design System
+/* Grifo Academy - Modern Fintech CRM Design System
    Brand Colors:
-   - Primary (Deep Navy Blue): #112232 → hsl(210, 52%, 13%)
-   - Secondary/Accent (Gold): #A47428 → hsl(39, 61%, 40%)
-   - Tertiary (Beige): #E1D8CF → hsl(29, 24%, 85%)
-   All colors are in HSL format.
+   - Primary (Grifo Navy): #0B1C2E → hsl(210, 63%, 11%)
+   - Accent (Grifo Gold): #A47428 → hsl(39, 61%, 40%)
+   - Background: #F4F6F8 → hsl(210, 20%, 97%)
+   - Surface: #FFFFFF
 */
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 215 25% 27%;
+    /* Main surfaces */
+    --background: 210 20% 97%;
+    --foreground: 210 63% 11%;
 
+    /* Cards, modals, tables */
     --card: 0 0% 100%;
-    --card-foreground: 210 52% 13%;
+    --card-foreground: 210 63% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 52% 13%;
+    --popover-foreground: 210 63% 11%;
 
-    --primary: 210 52% 13%;
-    --primary-foreground: 29 24% 85%;
+    /* Primary: Grifo Navy */
+    --primary: 210 63% 11%;
+    --primary-foreground: 0 0% 100%;
 
+    /* Secondary: Grifo Gold */
     --secondary: 39 61% 40%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 29 24% 85%;
-    --muted-foreground: 215 16% 47%;
+    /* Muted backgrounds */
+    --muted: 210 20% 94%;
+    --muted-foreground: 210 20% 45%;
 
+    /* Accent: Grifo Gold */
     --accent: 39 61% 40%;
     --accent-foreground: 0 0% 100%;
 
+    /* Destructive */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 29 20% 88%;
-    --input: 29 20% 88%;
+    /* Borders and inputs */
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
     --ring: 39 61% 40%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    /* Sidebar uses brand primary (deep navy) */
-    --sidebar-background: 210 52% 13%;
-    --sidebar-foreground: 29 24% 85%;
+    /* Sidebar: Grifo Navy dark theme */
+    --sidebar-background: 210 63% 11%;
+    --sidebar-foreground: 210 20% 90%;
     --sidebar-primary: 39 61% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 45% 18%;
-    --sidebar-accent-foreground: 29 24% 85%;
-    --sidebar-border: 210 45% 20%;
+    --sidebar-accent: 210 60% 16%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 210 50% 18%;
     --sidebar-ring: 39 61% 40%;
 
     /* Grifo custom tokens */
-    --grifo-navy: 210 52% 13%;
+    --grifo-navy: 210 63% 11%;
     --grifo-gold: 39 61% 40%;
-    --grifo-beige: 29 24% 85%;
-    --grifo-content-bg: 210 20% 98%;
+    --grifo-gold-hover: 39 61% 35%;
+    --grifo-surface: 0 0% 100%;
+    --grifo-background: 210 20% 97%;
+    --grifo-kanban-column: 210 40% 96%;
+
+    /* Success state for "Ganho" */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 210 52% 13%;
-    --foreground: 29 24% 85%;
+    --background: 210 63% 8%;
+    --foreground: 210 20% 90%;
 
-    --card: 210 45% 18%;
-    --card-foreground: 29 24% 85%;
+    --card: 210 55% 12%;
+    --card-foreground: 210 20% 90%;
 
-    --popover: 210 45% 18%;
-    --popover-foreground: 29 24% 85%;
+    --popover: 210 55% 12%;
+    --popover-foreground: 210 20% 90%;
 
-    --primary: 29 24% 85%;
-    --primary-foreground: 210 52% 13%;
+    --primary: 210 20% 90%;
+    --primary-foreground: 210 63% 11%;
 
     --secondary: 39 61% 40%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 45% 20%;
-    --muted-foreground: 29 20% 70%;
+    --muted: 210 50% 18%;
+    --muted-foreground: 210 20% 60%;
 
     --accent: 39 61% 40%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 31%;
+    --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 45% 20%;
-    --input: 210 45% 20%;
+    --border: 210 50% 18%;
+    --input: 210 50% 18%;
     --ring: 39 61% 40%;
 
-    --sidebar-background: 210 52% 10%;
-    --sidebar-foreground: 29 24% 85%;
+    --sidebar-background: 210 63% 6%;
+    --sidebar-foreground: 210 20% 90%;
     --sidebar-primary: 39 61% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 45% 15%;
-    --sidebar-accent-foreground: 29 24% 85%;
-    --sidebar-border: 210 45% 15%;
+    --sidebar-accent: 210 55% 12%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 210 50% 15%;
     --sidebar-ring: 39 61% 40%;
   }
 }
@@ -105,6 +119,43 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  /* Modern scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+}
+
+/* Component enhancements */
+@layer components {
+  /* Table styling */
+  .table-header-cell {
+    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-transparent;
+  }
+
+  /* Gold badge for "Ganho" */
+  .badge-ganho {
+    @apply bg-secondary text-secondary-foreground font-medium;
+  }
+
+  /* Kanban column background */
+  .kanban-column-bg {
+    background-color: hsl(var(--grifo-kanban-column));
   }
 }

@@ -37,38 +37,60 @@ export function AppSidebar() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <Sidebar className="border-r-0">
+    <Sidebar className="border-r-0 bg-sidebar">
+      {/* Logo Header */}
       <SidebarHeader className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center">
+          {/* Logo Placeholder - Replace with actual logo */}
+          <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center shadow-soft">
             <span className="text-sidebar-primary-foreground font-bold text-lg">G</span>
           </div>
           <div>
-            <h1 className="font-bold text-sidebar-foreground text-lg leading-tight">
+            <h1 className="font-bold text-sidebar-foreground text-lg leading-tight tracking-tight">
               Grifo Academy
             </h1>
-            <p className="text-xs text-sidebar-foreground/70">Hub</p>
+            <p className="text-xs text-sidebar-foreground/60 font-medium">Hub</p>
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent className="px-3 py-4">
+
+      {/* Navigation */}
+      <SidebarContent className="px-3 py-6">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    className="h-11 px-3 rounded-lg transition-all duration-200 hover:bg-sidebar-accent data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground"
-                  >
-                    <NavLink to={item.url} className="flex items-center gap-3">
-                      <item.icon className="h-5 w-5" />
-                      <span className="font-medium">{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems.map((item) => {
+                const active = isActive(item.url);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      className="relative h-11 px-3 rounded-xl transition-all duration-200 group"
+                    >
+                      <NavLink
+                        to={item.url}
+                        className={`flex items-center gap-3 ${
+                          active
+                            ? "bg-white/10 text-sidebar-foreground"
+                            : "text-sidebar-foreground/70 hover:bg-white/5 hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        {/* Gold accent bar for active item */}
+                        {active && (
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-sidebar-primary rounded-r-full" />
+                        )}
+                        <item.icon
+                          className={`h-5 w-5 transition-colors ${
+                            active ? "text-sidebar-primary" : "group-hover:text-sidebar-primary"
+                          }`}
+                        />
+                        <span className="font-medium">{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
