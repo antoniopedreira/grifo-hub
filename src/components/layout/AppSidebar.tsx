@@ -67,10 +67,9 @@ export function AppSidebar() {
           />
           {!isCollapsed && (
             <div>
-              <h1 className="font-bold text-sidebar-foreground text-lg leading-tight tracking-tight">
-                Grifo Academy
+              <h1 className="font-bold text-sidebar-foreground text-xl leading-tight tracking-tight">
+                GrifoHub
               </h1>
-              <p className="text-xs text-sidebar-foreground/60 font-medium">Hub</p>
             </div>
           )}
         </div>
