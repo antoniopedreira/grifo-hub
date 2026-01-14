@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Target } from "lucide-react";
+import { CalendarIcon, Target, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Tables, Enums } from "@/integrations/supabase/types";
@@ -30,7 +31,7 @@ const formSchema = z.object({
   department: z.string().optional(),
   target_goal: z.string().optional(),
   owner_id: z.string().optional(),
-  support_id: z.string().optional(),
+  support_ids: z.array(z.string()).optional(),
   deadline: z.date().optional(),
   status: z.enum(["Pendente", "Em Andamento", "Em Revisão", "Concluído", "Stand-by"]),
   notes: z.string().optional(),
@@ -68,7 +69,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
       department: "",
       target_goal: "",
       owner_id: "",
-      support_id: "",
+      support_ids: [],
       deadline: undefined,
       status: "Pendente",
       notes: "",
@@ -77,12 +78,13 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
 
   useEffect(() => {
     if (mission) {
+      const missionData = mission as any;
       form.reset({
         mission: mission.mission,
         department: mission.department || "",
         target_goal: mission.target_goal || "",
         owner_id: mission.owner_id || "",
-        support_id: mission.support_id || "",
+        support_ids: missionData.support_ids || [],
         deadline: mission.deadline ? new Date(mission.deadline) : undefined,
         status: mission.status || "Pendente",
         notes: mission.notes || "",
@@ -93,7 +95,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
         department: "",
         target_goal: "",
         owner_id: "",
-        support_id: "",
+        support_ids: [],
         deadline: undefined,
         status: "Pendente",
         notes: "",
@@ -108,7 +110,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
         department: data.department || null,
         target_goal: data.target_goal || null,
         owner_id: data.owner_id || null,
-        support_id: data.support_id || null,
+        support_ids: data.support_ids || [],
         deadline: data.deadline ? data.deadline.toISOString() : null,
         status: data.status,
         notes: data.notes || null,
@@ -117,11 +119,11 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
       if (isEditing) {
         const { error } = await supabase
           .from("team_missions")
-          .update(payload)
+          .update(payload as any)
           .eq("id", mission.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("team_missions").insert(payload);
+        const { error } = await supabase.from("team_missions").insert(payload as any);
         if (error) throw error;
       }
     },
@@ -224,27 +226,59 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
 
               <FormField
                 control={form.control}
-                name="support_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Apoio</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {members.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
-                            {member.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                name="support_ids"
+                render={({ field }) => {
+                  const selectedIds = field.value || [];
+                  const availableMembers = members.filter((m) => !selectedIds.includes(m.id));
+                  
+                  const handleAddSupport = (memberId: string) => {
+                    field.onChange([...selectedIds, memberId]);
+                  };
+                  
+                  const handleRemoveSupport = (memberId: string) => {
+                    field.onChange(selectedIds.filter((id) => id !== memberId));
+                  };
+                  
+                  return (
+                    <FormItem>
+                      <FormLabel>Apoio(s)</FormLabel>
+                      <Select onValueChange={handleAddSupport} value="">
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Adicionar apoio" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableMembers.map((member) => (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedIds.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {selectedIds.map((id) => {
+                            const member = members.find((m) => m.id === id);
+                            return (
+                              <Badge key={id} variant="secondary" className="gap-1 pr-1">
+                                {member?.name || "Desconhecido"}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSupport(id)}
+                                  className="ml-1 hover:bg-muted rounded-full p-0.5"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
 
