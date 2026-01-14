@@ -71,11 +71,11 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={active}
-                      className="relative h-11 px-3 rounded-xl transition-all duration-200 group"
+                      className="relative h-11 px-3 rounded-xl transition-all duration-200"
                     >
                       <NavLink
                         to={item.url}
-                        className={`flex items-center gap-3 ${
+                        className={`group flex items-center gap-3 ${
                           active
                             ? "bg-white/10 text-sidebar-foreground"
                             : "text-sidebar-foreground/70 hover:bg-white/5 hover:text-sidebar-foreground"
