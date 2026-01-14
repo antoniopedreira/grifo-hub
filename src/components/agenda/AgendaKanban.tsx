@@ -33,7 +33,11 @@ const departmentColors: Record<string, string> = {
   Financeiro: "bg-yellow-100 text-yellow-800",
 };
 
-export function AgendaKanban() {
+interface AgendaKanbanProps {
+  ownerFilter: string | null;
+}
+
+export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
   const queryClient = useQueryClient();
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -155,8 +159,13 @@ export function AgendaKanban() {
       .slice(0, 2);
   };
 
+  // Filter missions by owner if filter is active
+  const filteredMissions = ownerFilter 
+    ? missions.filter((m) => m.owner_id === ownerFilter)
+    : missions;
+
   const getMissionsByStatus = (status: MissionStatus) => {
-    return missions
+    return filteredMissions
       .filter((m) => m.status === status)
       .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
   };
