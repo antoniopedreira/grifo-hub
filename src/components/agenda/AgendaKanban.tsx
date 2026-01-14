@@ -35,9 +35,10 @@ const departmentColors: Record<string, string> = {
 
 interface AgendaKanbanProps {
   ownerFilter: string | null;
+  searchTerm?: string;
 }
 
-export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
+export function AgendaKanban({ ownerFilter, searchTerm = "" }: AgendaKanbanProps) {
   const queryClient = useQueryClient();
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -57,9 +58,7 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
   const { data: members = [] } = useQuery({
     queryKey: ["team_members"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("team_members")
-        .select("*");
+      const { data, error } = await supabase.from("team_members").select("*");
       if (error) throw error;
       return data as TeamMember[];
     },
@@ -68,22 +67,17 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
   // Mutation for updating status only (moving between columns)
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status, order_index }: { id: string; status: MissionStatus; order_index: number }) => {
-      const { error } = await supabase
-        .from("team_missions")
-        .update({ status, order_index })
-        .eq("id", id);
+      const { error } = await supabase.from("team_missions").update({ status, order_index }).eq("id", id);
       if (error) throw error;
     },
     onMutate: async ({ id, status, order_index }) => {
       await queryClient.cancelQueries({ queryKey: ["team_missions"] });
       const previousMissions = queryClient.getQueryData<Mission[]>(["team_missions"]);
-      
+
       queryClient.setQueryData<Mission[]>(["team_missions"], (old) =>
-        old?.map((mission) =>
-          mission.id === id ? { ...mission, status, order_index } : mission
-        )
+        old?.map((mission) => (mission.id === id ? { ...mission, status, order_index } : mission)),
       );
-      
+
       return { previousMissions };
     },
     onError: (_err, _variables, context) => {
@@ -102,10 +96,7 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
     mutationFn: async (updates: { id: string; order_index: number }[]) => {
       // Update each mission's order_index
       const promises = updates.map(({ id, order_index }) =>
-        supabase
-          .from("team_missions")
-          .update({ order_index })
-          .eq("id", id)
+        supabase.from("team_missions").update({ order_index }).eq("id", id),
       );
       const results = await Promise.all(promises);
       const error = results.find((r) => r.error)?.error;
@@ -114,7 +105,7 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
     onMutate: async (updates) => {
       await queryClient.cancelQueries({ queryKey: ["team_missions"] });
       const previousMissions = queryClient.getQueryData<Mission[]>(["team_missions"]);
-      
+
       queryClient.setQueryData<Mission[]>(["team_missions"], (old) => {
         if (!old) return old;
         const updateMap = new Map(updates.map((u) => [u.id, u.order_index]));
@@ -123,7 +114,7 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
           return newIndex !== undefined ? { ...mission, order_index: newIndex } : mission;
         });
       });
-      
+
       return { previousMissions };
     },
     onError: (_err, _variables, context) => {
@@ -144,9 +135,7 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
 
   const getSupportMembers = (supportIds: string[] | null) => {
     if (!supportIds || supportIds.length === 0) return [];
-    return supportIds
-      .map((id) => members.find((m) => m.id === id))
-      .filter((m): m is TeamMember => m !== undefined);
+    return supportIds.map((id) => members.find((m) => m.id === id)).filter((m): m is TeamMember => m !== undefined);
   };
 
   const getInitials = (name: string | null) => {
@@ -159,10 +148,12 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
       .slice(0, 2);
   };
 
-  // Filter missions by owner if filter is active
-  const filteredMissions = ownerFilter 
-    ? missions.filter((m) => m.owner_id === ownerFilter)
-    : missions;
+  // Filter missions by owner and search term
+  const filteredMissions = missions.filter((m) => {
+    const matchesOwner = ownerFilter ? m.owner_id === ownerFilter : true;
+    const matchesSearch = searchTerm ? m.mission?.toLowerCase().includes(searchTerm.toLowerCase()) : true;
+    return matchesOwner && matchesSearch;
+  });
 
   const getMissionsByStatus = (status: MissionStatus) => {
     return filteredMissions
@@ -179,9 +170,7 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
 
     // Get current missions for source and destination columns
     const sourceMissions = getMissionsByStatus(sourceStatus);
-    const destMissions = sourceStatus === destStatus 
-      ? sourceMissions 
-      : getMissionsByStatus(destStatus);
+    const destMissions = sourceStatus === destStatus ? sourceMissions : getMissionsByStatus(destStatus);
 
     // Find the dragged mission
     const draggedMission = missions.find((m) => m.id === draggableId);
@@ -260,7 +249,7 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
                         {...provided.droppableProps}
                         className={cn(
                           "h-[500px] overflow-y-auto space-y-3 transition-colors rounded-lg p-1",
-                          snapshot.isDraggingOver && "bg-secondary/10"
+                          snapshot.isDraggingOver && "bg-secondary/10",
                         )}
                       >
                         {columnMissions.map((mission, index) => {
@@ -283,19 +272,17 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
                                   onClick={() => handleMissionClick(mission)}
                                   className={cn(
                                     "bg-background rounded-lg border p-3 cursor-pointer transition-shadow hover:shadow-md",
-                                    snapshot.isDragging && "shadow-lg rotate-2"
+                                    snapshot.isDragging && "shadow-lg rotate-2",
                                   )}
                                 >
-                                  <h4 className="font-medium text-sm mb-2 line-clamp-2">
-                                    {mission.mission}
-                                  </h4>
+                                  <h4 className="font-medium text-sm mb-2 line-clamp-2">{mission.mission}</h4>
 
                                   {mission.department && (
                                     <Badge
                                       variant="secondary"
                                       className={cn(
                                         "text-xs mb-2",
-                                        departmentColors[mission.department] || "bg-gray-100 text-gray-800"
+                                        departmentColors[mission.department] || "bg-gray-100 text-gray-800",
                                       )}
                                     >
                                       {mission.department}
@@ -312,11 +299,11 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
                                         </Avatar>
                                       )}
                                       {supportMembers.length > 0 && (
-                                        <span 
+                                        <span
                                           className="text-[11px] text-muted-foreground font-medium tracking-wide"
-                                          title={`Apoio: ${supportMembers.map(s => s.name).join(', ')}`}
+                                          title={`Apoio: ${supportMembers.map((s) => s.name).join(", ")}`}
                                         >
-                                          {supportMembers.map(s => getInitials(s.name)).join(' ')}
+                                          {supportMembers.map((s) => getInitials(s.name)).join(" ")}
                                         </span>
                                       )}
                                     </div>
@@ -325,7 +312,7 @@ export function AgendaKanban({ ownerFilter }: AgendaKanbanProps) {
                                       <div
                                         className={cn(
                                           "flex items-center gap-1 text-xs",
-                                          isOverdue ? "text-destructive" : "text-muted-foreground"
+                                          isOverdue ? "text-destructive" : "text-muted-foreground",
                                         )}
                                       >
                                         {isOverdue ? (
