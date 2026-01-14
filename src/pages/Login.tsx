@@ -26,7 +26,7 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast.error("Por favor, preencha todos os campos.");
       return;
@@ -38,13 +38,13 @@ export default function Login() {
 
     if (error) {
       let message = "Erro ao fazer login. Tente novamente.";
-      
+
       if (error.message.includes("Invalid login credentials")) {
         message = "E-mail ou senha incorretos.";
       } else if (error.message.includes("Email not confirmed")) {
         message = "E-mail não confirmado. Verifique sua caixa de entrada.";
       }
-      
+
       toast.error(message);
       setIsLoading(false);
       return;
@@ -69,19 +69,11 @@ export default function Login() {
         <CardHeader className="space-y-6 text-center pb-2 pt-8">
           {/* Grifo Logo */}
           <div className="mx-auto">
-            <img 
-              src={grifoLogo} 
-              alt="Grifo Academy" 
-              className="h-20 w-auto"
-            />
+            <img src={grifoLogo} alt="Grifo Academy" className="h-20 w-auto" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-foreground">
-              Grifo Academy Hub
-            </CardTitle>
-            <CardDescription className="text-muted-foreground mt-2">
-              Faça login para acessar sua conta
-            </CardDescription>
+            <CardTitle className="text-2xl font-bold text-foreground">GrifoHub</CardTitle>
+            <CardDescription className="text-muted-foreground mt-2">Faça login para acessar sua conta</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="pt-6 pb-8 px-8">
@@ -103,7 +95,7 @@ export default function Login() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password" className="text-foreground font-medium">
                 Senha
@@ -129,11 +121,7 @@ export default function Login() {
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full h-12 text-base"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
               {isLoading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
