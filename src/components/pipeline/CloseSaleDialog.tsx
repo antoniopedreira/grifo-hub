@@ -73,6 +73,15 @@ export function CloseSaleDialog({
     }
   }, [deal]);
 
+  // Auto-fill value when product changes
+  const handleProductChange = (productId: string) => {
+    setSelectedProductId(productId);
+    const selectedProduct = products.find((p) => p.id === productId);
+    if (selectedProduct?.price) {
+      setFinalValue(Number(selectedProduct.price).toString().replace(".", ","));
+    }
+  };
+
   // Close sale mutation using convert_deal_to_sale function
   const closeSale = useMutation({
     mutationFn: async () => {
@@ -138,14 +147,20 @@ export function CloseSaleDialog({
     onCancel();
   };
 
-  // Pre-fill with deal value
+  // Pre-fill with product price when modal opens
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen && deal) {
-      if (deal.value) {
-        setFinalValue(deal.value.toString().replace(".", ","));
-      }
       if (deal.product_id) {
         setSelectedProductId(deal.product_id);
+        // Use product price as default value
+        const dealProduct = products.find((p) => p.id === deal.product_id);
+        if (dealProduct?.price) {
+          setFinalValue(Number(dealProduct.price).toString().replace(".", ","));
+        } else if (deal.value) {
+          setFinalValue(deal.value.toString().replace(".", ","));
+        }
+      } else if (deal.value) {
+        setFinalValue(deal.value.toString().replace(".", ","));
       }
     }
     onOpenChange(isOpen);
@@ -174,7 +189,7 @@ export function CloseSaleDialog({
             </Label>
             <Select
               value={selectedProductId}
-              onValueChange={setSelectedProductId}
+              onValueChange={handleProductChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o produto..." />
