@@ -105,7 +105,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
 
   const mutation = useMutation({
     mutationFn: async (data: FormData) => {
-      const payload = {
+      const payload: Record<string, any> = {
         mission: data.mission,
         department: data.department || null,
         target_goal: data.target_goal || null,
@@ -117,9 +117,13 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
       };
 
       if (isEditing) {
+        // Preserve order_index when editing (only status changes via drag should modify it)
+        if (mission.order_index !== null && mission.order_index !== undefined) {
+          payload.order_index = mission.order_index;
+        }
         const { error } = await supabase
           .from("team_missions")
-          .update(payload as any)
+          .update(payload)
           .eq("id", mission.id);
         if (error) throw error;
       } else {
