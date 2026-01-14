@@ -509,7 +509,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      handle_new_sale: {
+        Args: {
+          p_amount: number
+          p_email: string
+          p_name: string
+          p_phone: string
+          p_product_external_id: string
+          p_transaction_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       deal_status: "open" | "won" | "lost" | "abandoned"
