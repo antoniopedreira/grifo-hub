@@ -20,9 +20,9 @@ interface CloseSaleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   deal: Deal;
-  targetStageId?: string | null; // Adicionado
+  targetStageId?: string | null;
   onSuccess: () => void;
-  onCancel?: () => void; // Adicionado
+  onCancel?: () => void;
 }
 
 export function CloseSaleDialog({
@@ -33,29 +33,62 @@ export function CloseSaleDialog({
   onSuccess,
   onCancel,
 }: CloseSaleDialogProps) {
+  const queryClient = useQueryClient();
   const [value, setValue] = useState(deal.value?.toString() || "0");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
     setLoading(true);
+    const finalAmount = parseFloat(value) || 0;
+    
     try {
-      // 1. Atualiza o Deal (Valor e Status)
-      const { error } = await supabase
+      // 1. Atualiza o Deal (Valor e Status para "won")
+      const { error: dealError } = await supabase
         .from("deals")
         .update({
-          value: parseFloat(value),
+          value: finalAmount,
           status: "won",
-          // Se tiver targetStageId (veio do drag and drop), atualiza o stage
           ...(targetStageId ? { stage_id: targetStageId } : {}),
         })
         .eq("id", deal.id);
 
-      if (error) throw error;
+      if (dealError) throw dealError;
 
-      // 2. Cria a Venda na Tabela de Vendas (Opcional, se tiver tabela sales)
-      // ... (Lógica existente de criar venda)
+      // 2. Cria o registro de Venda na tabela Sales (Ação B - Nova)
+      const productName = deal.product?.name || "Venda Consultiva";
+      const transactionId = `deal-${deal.id}`;
 
+      const { error: saleError } = await supabase
+        .from("sales")
+        .insert({
+          lead_id: deal.lead_id || null,
+          amount: finalAmount,
+          product_name: productName,
+          transaction_id: transactionId,
+          origin: "crm_manual" as const,
+        });
+
+      if (saleError) {
+        // Se falhar ao criar a venda, avisa o usuário (mas o deal já foi atualizado)
+        console.error("Erro ao criar registro de venda:", saleError);
+        toast.error(
+          "Negócio marcado como ganho, mas houve erro ao registrar a venda. Verifique o histórico financeiro.",
+          { duration: 6000 }
+        );
+        // Ainda considera sucesso parcial para fechar o dialog
+        queryClient.invalidateQueries({ queryKey: ["deals"] });
+        queryClient.invalidateQueries({ queryKey: ["sales"] });
+        onSuccess();
+        onOpenChange(false);
+        return;
+      }
+
+      // Sucesso completo
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-sales"] });
+      
       toast.success("Venda registrada com sucesso! 🚀");
       onSuccess();
       onOpenChange(false);
@@ -82,7 +115,7 @@ export function CloseSaleDialog({
 
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label>Valor Final (R$)</Label>
+            <Label>Valor Final Negociado (R$)</Label>
             <Input type="number" value={value} onChange={(e) => setValue(e.target.value)} />
           </div>
           <div className="grid gap-2">
