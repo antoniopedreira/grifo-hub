@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Settings, GitBranch, Users, Sliders } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PipelineList } from "@/components/settings/PipelineList";
-import { StageEditor } from "@/components/settings/StageEditor";
+import { PipelineStageEditor } from "@/components/settings/PipelineStageEditor";
 import { TeamMembersList } from "@/components/settings/TeamMembersList";
 import { GeneralSettings } from "@/components/settings/GeneralSettings";
 import type { Tables } from "@/integrations/supabase/types";
@@ -45,7 +45,7 @@ export default function Configuracoes() {
         {/* Tab: Pipelines */}
         <TabsContent value="pipelines">
           {selectedPipeline ? (
-            <StageEditor
+            <PipelineStageEditor
               pipeline={selectedPipeline}
               onBack={() => setSelectedPipeline(null)}
             />
