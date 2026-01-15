@@ -86,7 +86,7 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
         <SheetHeader>
           <SheetTitle className="text-primary flex items-center gap-2">
             <User className="h-5 w-5" />
-            {lead?.name || "Lead desconhecido"}
+            {lead?.full_name || "Lead desconhecido"}
           </SheetTitle>
         </SheetHeader>
 

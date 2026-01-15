@@ -20,6 +20,7 @@ export type Database = {
           id: string
           lead_id: string | null
           meeting_date: string | null
+          order_index: number | null
           pipeline_id: string | null
           priority: string | null
           product_id: string | null
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           meeting_date?: string | null
+          order_index?: number | null
           pipeline_id?: string | null
           priority?: string | null
           product_id?: string | null
@@ -44,6 +46,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           meeting_date?: string | null
+          order_index?: number | null
           pipeline_id?: string | null
           priority?: string | null
           product_id?: string | null

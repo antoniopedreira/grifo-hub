@@ -13,6 +13,7 @@ import { CloseSaleDialog } from "@/components/pipeline/CloseSaleDialog";
 import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { toast } from "sonner";
 import type { Deal, Pipeline as PipelineType, PipelineStage } from "@/components/pipeline/types";
+import { GitBranch } from "lucide-react";
 
 export default function Pipeline() {
   const queryClient = useQueryClient();
@@ -164,19 +165,20 @@ export default function Pipeline() {
   const filteredDeals = deals.filter((deal) => deal.title?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
-    <div className="h-[calc(100vh-2rem)] flex flex-col space-y-4 p-8 pt-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="h-[calc(100vh-2rem)] flex flex-col p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
-          <LayoutGrid className="h-6 w-6 text-primary" />
-          <h2 className="text-3xl font-bold tracking-tight">Pipeline de Vendas</h2>
+          <GitBranch className="h-6 w-6 text-primary" />
+          <h2 className="text-2xl font-bold tracking-tight text-primary">Pipeline de Vendas</h2>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar oportunidade..."
-              className="pl-8"
+              className="pl-9"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -186,7 +188,7 @@ export default function Pipeline() {
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Selecione o funil" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="min-w-[--radix-select-trigger-width]">
               {pipelines.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.name}
@@ -195,15 +197,19 @@ export default function Pipeline() {
             </SelectContent>
           </Select>
 
-          <Button onClick={() => setIsNewDealOpen(true)}>
+          <Button 
+            onClick={() => setIsNewDealOpen(true)}
+            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+          >
             <Plus className="mr-2 h-4 w-4" /> Novo Deal
           </Button>
         </div>
       </div>
 
+      {/* Kanban Board */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex-1 overflow-x-auto pb-4">
-          <div className="flex h-full gap-4 min-w-max">
+        <div className="flex-1 overflow-x-auto">
+          <div className="flex gap-4 h-full pb-4">
             {stages.map((stage) => {
               const stageDeals = filteredDeals
                 .filter((d) => d.stage_id === stage.id)

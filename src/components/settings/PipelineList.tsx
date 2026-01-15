@@ -102,6 +102,25 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
   // Delete pipeline mutation
   const deletePipeline = useMutation({
     mutationFn: async (id: string) => {
+      // Check if there are deals linked to any stage of this pipeline
+      const { data: pipelineStages } = await supabase
+        .from("pipeline_stages")
+        .select("id")
+        .eq("pipeline_id", id);
+      
+      if (pipelineStages && pipelineStages.length > 0) {
+        const stageIds = pipelineStages.map(s => s.id);
+        const { data: linkedDeals } = await supabase
+          .from("deals")
+          .select("id")
+          .in("stage_id", stageIds)
+          .limit(1);
+        
+        if (linkedDeals && linkedDeals.length > 0) {
+          throw new Error("Este pipeline possui deals vinculados. Mova ou exclua os deals antes de excluir o pipeline.");
+        }
+      }
+
       // First delete all stages of this pipeline
       const { error: stagesError } = await supabase
         .from("pipeline_stages")
@@ -118,8 +137,8 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
       toast({ title: "Pipeline excluído!" });
       setDeletingPipelineId(null);
     },
-    onError: () => {
-      toast({ title: "Erro", description: "Não foi possível excluir.", variant: "destructive" });
+    onError: (error: Error) => {
+      toast({ title: "Erro", description: error.message || "Não foi possível excluir.", variant: "destructive" });
     },
   });
 
