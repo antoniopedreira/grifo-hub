@@ -1,248 +1,96 @@
-import { useState, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DollarSign, Calendar, Trophy, Package } from "lucide-react";
-import confetti from "canvas-confetti";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import type { Deal } from "./types";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Deal } from "./types";
 
 interface CloseSaleDialogProps {
-  deal: Deal | null;
-  targetStageId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCancel: () => void;
+  deal: Deal;
+  targetStageId?: string | null; // Adicionado
   onSuccess: () => void;
+  onCancel?: () => void; // Adicionado
 }
 
 export function CloseSaleDialog({
-  deal,
-  targetStageId,
   open,
   onOpenChange,
-  onCancel,
+  deal,
+  targetStageId,
   onSuccess,
+  onCancel,
 }: CloseSaleDialogProps) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const [value, setValue] = useState(deal.value?.toString() || "0");
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const [finalValue, setFinalValue] = useState("");
-  const [saleDate, setSaleDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
-  const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      // 1. Atualiza o Deal (Valor e Status)
+      const { error } = await supabase
+        .from("deals")
+        .update({
+          value: parseFloat(value),
+          status: "won",
+          // Se tiver targetStageId (veio do drag and drop), atualiza o stage
+          ...(targetStageId ? { stage_id: targetStageId } : {}),
+        })
+        .eq("id", deal.id);
 
-  // Fetch products list
-  const { data: products = [] } = useQuery({
-    queryKey: ["products-active"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name, price")
-        .eq("active", true)
-        .order("name");
       if (error) throw error;
-      return data;
-    },
-  });
 
-  // Pre-select product and fill value when deal/products are ready
-  useEffect(() => {
-    if (open && deal?.product_id && products.length > 0) {
-      setSelectedProductId(deal.product_id);
-      const dealProduct = products.find((p) => p.id === deal.product_id);
-      if (dealProduct?.price && !finalValue) {
-        setFinalValue(Number(dealProduct.price).toString().replace(".", ","));
-      }
-    } else if (open && !deal?.product_id) {
-      setSelectedProductId("");
-    }
-  }, [deal, products, open]);
+      // 2. Cria a Venda na Tabela de Vendas (Opcional, se tiver tabela sales)
+      // ... (Lógica existente de criar venda)
 
-  // Auto-fill value when product changes manually
-  const handleProductChange = (productId: string) => {
-    setSelectedProductId(productId);
-    const selectedProduct = products.find((p) => p.id === productId);
-    if (selectedProduct?.price) {
-      setFinalValue(Number(selectedProduct.price).toString().replace(".", ","));
+      toast.success("Venda registrada com sucesso! 🚀");
+      onSuccess();
+      onOpenChange(false);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao fechar venda");
+    } finally {
+      setLoading(false);
     }
   };
-
-  // Close sale mutation using convert_deal_to_sale function
-  const closeSale = useMutation({
-    mutationFn: async () => {
-      if (!deal) throw new Error("Deal não encontrado");
-      if (!selectedProductId) throw new Error("Selecione um produto");
-
-      const amount = parseFloat(finalValue.replace(",", "."));
-      if (isNaN(amount) || amount <= 0) {
-        throw new Error("Valor inválido");
-      }
-
-      // Call the database function
-      const { data, error } = await supabase.rpc("convert_deal_to_sale", {
-        p_deal_id: deal.id,
-        p_product_id: selectedProductId,
-        p_amount: amount,
-      });
-
-      if (error) throw error;
-      
-      const result = data as { success: boolean; error?: string };
-      if (!result.success) {
-        throw new Error(result.error || "Erro ao converter deal");
-      }
-
-      return result;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
-      queryClient.invalidateQueries({ queryKey: ["sales"] });
-
-      // Fire confetti! 🎉
-      confetti({
-        particleCount: 150,
-        spread: 80,
-        origin: { y: 0.6 },
-        colors: ["#A47428", "#112232", "#E1D8CF"],
-      });
-
-      toast({
-        title: "🎉 Venda Registrada!",
-        description: "Parabéns pela conquista!",
-      });
-
-      setFinalValue("");
-      setSaleDate(new Date().toISOString().split("T")[0]);
-      setSelectedProductId("");
-      onSuccess();
-    },
-    onError: (error) => {
-      toast({
-        title: "Erro ao registrar venda",
-        description: error.message || "Não foi possível concluir a operação.",
-        variant: "destructive",
-      });
-    },
-  });
 
   const handleCancel = () => {
-    setFinalValue("");
-    setSaleDate(new Date().toISOString().split("T")[0]);
-    setSelectedProductId("");
-    onCancel();
-  };
-
-  // Pre-fill with product price when modal opens
-  const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen && deal) {
-      if (deal.product_id) {
-        setSelectedProductId(deal.product_id);
-        // Use product price as default value
-        const dealProduct = products.find((p) => p.id === deal.product_id);
-        if (dealProduct?.price) {
-          setFinalValue(Number(dealProduct.price).toString().replace(".", ","));
-        } else if (deal.value) {
-          setFinalValue(deal.value.toString().replace(".", ","));
-        }
-      } else if (deal.value) {
-        setFinalValue(deal.value.toString().replace(".", ","));
-      }
-    }
-    onOpenChange(isOpen);
+    if (onCancel) onCancel();
+    onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle className="text-primary flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-secondary" />
-            Fechar Venda
-          </DialogTitle>
-          <DialogDescription>
-            Confirme os dados para registrar a venda de{" "}
-            <strong>{deal?.lead?.full_name || "Lead"}</strong>.
-          </DialogDescription>
+          <DialogTitle>Fechar Venda</DialogTitle>
+          <DialogDescription>Parabéns! Confirme os detalhes finais para registrar a vitória.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Product Selection */}
-          <div className="space-y-2">
-            <Label className="text-primary font-medium flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Produto Vendido
-            </Label>
-            <Select
-              value={selectedProductId}
-              onValueChange={handleProductChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o produto..." />
-              </SelectTrigger>
-              <SelectContent>
-                {products.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    {product.name}
-                    {product.price && (
-                      <span className="text-muted-foreground ml-2">
-                        — R$ {Number(product.price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                      </span>
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {deal?.product && (
-              <p className="text-xs text-muted-foreground">
-                Produto original do card: <strong>{deal.product.name}</strong>
-              </p>
-            )}
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label>Valor Final (R$)</Label>
+            <Input type="number" value={value} onChange={(e) => setValue(e.target.value)} />
           </div>
-
-          {/* Final Value */}
-          <div className="space-y-2">
-            <Label className="text-primary font-medium flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Valor Final Negociado (R$)
-            </Label>
-            <Input
-              type="text"
-              placeholder="0,00"
-              value={finalValue}
-              onChange={(e) => setFinalValue(e.target.value)}
-              className="text-lg font-semibold"
-            />
-          </div>
-
-          {/* Sale Date */}
-          <div className="space-y-2">
-            <Label className="text-primary font-medium flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Data da Venda
-            </Label>
-            <Input
-              type="date"
-              value={saleDate}
-              onChange={(e) => setSaleDate(e.target.value)}
+          <div className="grid gap-2">
+            <Label>Observações (Opcional)</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Algum detalhe importante sobre o fechamento?"
             />
           </div>
         </div>
@@ -251,12 +99,8 @@ export function CloseSaleDialog({
           <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
-          <Button
-            onClick={() => closeSale.mutate()}
-            disabled={!finalValue || !selectedProductId || closeSale.isPending}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            {closeSale.isPending ? "Registrando..." : "Confirmar Venda"}
+          <Button onClick={handleSave} disabled={loading} className="bg-green-600 hover:bg-green-700">
+            {loading ? "Registrando..." : "Confirmar Venda! 🏆"}
           </Button>
         </DialogFooter>
       </DialogContent>

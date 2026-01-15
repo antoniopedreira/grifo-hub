@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
+import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { Plus, LayoutGrid, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,23 +18,16 @@ export default function Pipeline() {
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("");
   const [isNewDealOpen, setIsNewDealOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-
-  const [meetingDialog, setMeetingDialog] = useState<{
-    open: boolean;
-    deal: Deal | null;
-    targetStageId: string | null;
-  }>({
-    open: false,
-    deal: null,
-    targetStageId: null,
+  
+  // Estados para controlar os Modais de Ação (Agendamento e Fechamento)
+  const [meetingDialog, setMeetingDialog] = useState<{ open: boolean; deal: Deal | null; targetStageId: string | null }>({
+    open: false, deal: null, targetStageId: null
   });
   const [closeDialog, setCloseDialog] = useState<{ open: boolean; deal: Deal | null; targetStageId: string | null }>({
-    open: false,
-    deal: null,
-    targetStageId: null,
+    open: false, deal: null, targetStageId: null
   });
 
-  // 1. Busca Pipelines
+  // 1. Busca a lista de Pipelines
   const { data: pipelines = [] } = useQuery({
     queryKey: ["pipelines"],
     queryFn: async () => {
@@ -44,13 +37,14 @@ export default function Pipeline() {
     },
   });
 
+  // Seleciona o primeiro pipeline automaticamente ao carregar
   useEffect(() => {
     if (pipelines.length > 0 && !selectedPipelineId) {
       setSelectedPipelineId(pipelines[0].id);
     }
   }, [pipelines, selectedPipelineId]);
 
-  // 2. Busca Etapas
+  // 2. Busca as Etapas (Stages) do pipeline selecionado
   const { data: stages = [] } = useQuery({
     queryKey: ["pipeline_stages", selectedPipelineId],
     queryFn: async () => {
@@ -66,34 +60,38 @@ export default function Pipeline() {
     enabled: !!selectedPipelineId,
   });
 
-  // 3. Busca Deals
+  // 3. Busca os Deals (Negócios)
   const { data: deals = [] } = useQuery({
     queryKey: ["deals", selectedPipelineId],
     queryFn: async () => {
       if (!selectedPipelineId) return [];
-
-      // Busca todos os deals que pertencem a este pipeline (indiretamente via stage)
-      // Precisamos garantir que estamos pegando apenas deals desse pipeline
-      const { data, error } = await supabase.from("deals").select("*").order("order_index");
-
+      
+      // Busca todos os deals. 
+      // Nota: Idealmente filtraríamos no banco, mas para garantir que pegamos apenas
+      // deals cujas etapas pertencem a este pipeline, faremos um filtro no front abaixo.
+      const { data, error } = await supabase
+        .from("deals")
+        .select("*")
+        .order("order_index");
+        
       if (error) throw error;
-
-      // Hack de Frontend: Filtra os deals cujos stage_id estão na lista de stages carregada
-      // O ideal seria um join no backend, mas isso resolve rápido.
-      const validStageIds = stages.map((s) => s.id);
-      const filteredDeals = (data as any[]).filter((d) => validStageIds.includes(d.stage_id));
+      
+      // Filtra apenas deals que estão nas etapas carregadas deste pipeline
+      const validStageIds = stages.map(s => s.id);
+      // O cast para 'any' ajuda se o tipo Deal vindo do banco estiver incompleto temporariamente
+      const filteredDeals = (data as any[]).filter(d => validStageIds.includes(d.stage_id));
 
       return filteredDeals as Deal[];
     },
     enabled: !!selectedPipelineId && stages.length > 0,
   });
 
-  // Mutation para mover o card
+  // Mutation para mover o card de etapa ou reordenar
   const moveDealMutation = useMutation({
     mutationFn: async ({ dealId, stageId, orderIndex }: { dealId: string; stageId: string; orderIndex: number }) => {
       const { error } = await supabase
         .from("deals")
-        .update({ stage_id: stageId, order_index: orderIndex }) // CORRIGIDO: stage_id
+        .update({ stage_id: stageId, order_index: orderIndex }) // Usa 'stage_id' corretamente
         .eq("id", dealId);
       if (error) throw error;
     },
@@ -101,9 +99,10 @@ export default function Pipeline() {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       toast.success("Card movido!");
     },
-    onError: () => toast.error("Erro ao mover card"),
+    onError: () => toast.error("Erro ao mover card");
   });
 
+  // Lógica principal do Drag and Drop
   const handleDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
@@ -116,17 +115,19 @@ export default function Pipeline() {
     const targetStageId = destination.droppableId;
     const targetStage = stages.find((s) => s.id === targetStageId);
 
-    // Lógica de Interceptação
+    // Regra 1: Se soltou numa etapa de Agendamento (Meeting) -> Abre Modal
     if (targetStage?.type === "meeting" && source.droppableId !== targetStageId) {
       setMeetingDialog({ open: true, deal, targetStageId });
-      return;
+      return; // Interrompe o movimento automático
     }
 
+    // Regra 2: Se soltou numa etapa de Ganho (Won) -> Abre Modal
     if (targetStage?.type === "won" && source.droppableId !== targetStageId) {
       setCloseDialog({ open: true, deal, targetStageId });
-      return;
+      return; // Interrompe o movimento automático
     }
 
+    // Caso padrão: Move o card direto
     moveDealMutation.mutate({
       dealId: draggableId,
       stageId: targetStageId,
@@ -134,6 +135,7 @@ export default function Pipeline() {
     });
   };
 
+  // Callback: Sucesso no Agendamento
   const handleMeetingSuccess = () => {
     if (meetingDialog.deal && meetingDialog.targetStageId) {
       moveDealMutation.mutate({
@@ -145,6 +147,7 @@ export default function Pipeline() {
     setMeetingDialog({ open: false, deal: null, targetStageId: null });
   };
 
+  // Callback: Sucesso no Fechamento da Venda
   const handleCloseSuccess = () => {
     if (closeDialog.deal && closeDialog.targetStageId) {
       moveDealMutation.mutate({
@@ -156,36 +159,40 @@ export default function Pipeline() {
     setCloseDialog({ open: false, deal: null, targetStageId: null });
   };
 
-  const filteredDeals = deals.filter((deal) => deal.title?.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Filtro de busca na tela
+  const filteredDeals = deals.filter(deal => 
+    deal.title?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="h-[calc(100vh-2rem)] flex flex-col space-y-4 p-8 pt-6">
+      {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <LayoutGrid className="h-6 w-6 text-primary" />
           <h2 className="text-3xl font-bold tracking-tight">Pipeline de Vendas</h2>
         </div>
-
+        
         <div className="flex items-center gap-2 w-full sm:w-auto">
+          {/* Barra de Pesquisa */}
           <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar oportunidade..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+             <Input 
+               placeholder="Buscar oportunidade..." 
+               className="pl-8" 
+               value={searchTerm}
+               onChange={e => setSearchTerm(e.target.value)}
+             />
           </div>
 
+          {/* Seletor de Pipeline */}
           <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Selecione o funil" />
             </SelectTrigger>
             <SelectContent>
               {pipelines.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -196,18 +203,20 @@ export default function Pipeline() {
         </div>
       </div>
 
+      {/* Área do Kanban */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex-1 overflow-x-auto pb-4">
           <div className="flex h-full gap-4 min-w-max">
             {stages.map((stage) => {
+              // Filtra os deals desta coluna
               const stageDeals = filteredDeals
-                .filter((d) => d.stage_id === stage.id) // CORRIGIDO: stage_id
+                .filter((d) => d.stage_id === stage.id)
                 .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
               return (
                 <KanbanColumn
                   key={stage.id}
-                  stage={stage}
+                  stage={stage} // Passa o objeto stage completo
                   deals={stageDeals}
                   totalValue={stageDeals.reduce((acc, curr) => acc + Number(curr.value), 0)}
                 />
@@ -217,18 +226,19 @@ export default function Pipeline() {
         </div>
       </DragDropContext>
 
-      <NewDealDialog
-        open={isNewDealOpen}
-        onOpenChange={setIsNewDealOpen}
+      {/* Modal: Novo Deal */}
+      <NewDealDialog 
+        open={isNewDealOpen} 
+        onOpenChange={setIsNewDealOpen} 
         pipelineId={selectedPipelineId}
-        // Removido defaultStageId se o componente não suportar, ou passar o ID da primeira etapa:
-        // defaultStageId={stages[0]?.id}
+        firstStageId={stages[0]?.id} // Passa o ID da primeira etapa para criar o card lá
       />
 
+      {/* Modal: Agendamento (Reunião) */}
       {meetingDialog.deal && (
         <ScheduleMeetingDialog
           open={meetingDialog.open}
-          onOpenChange={(open) => !open && setMeetingDialog((prev) => ({ ...prev, open: false }))}
+          onOpenChange={(open) => !open && setMeetingDialog(prev => ({ ...prev, open: false }))}
           dealId={meetingDialog.deal.id}
           dealTitle={meetingDialog.deal.title}
           currentDate={null}
@@ -236,12 +246,14 @@ export default function Pipeline() {
         />
       )}
 
+      {/* Modal: Fechar Venda */}
       {closeDialog.deal && (
         <CloseSaleDialog
           open={closeDialog.open}
-          onOpenChange={(open) => !open && setCloseDialog((prev) => ({ ...prev, open: false }))}
+          onOpenChange={(open) => !open && setCloseDialog(prev => ({ ...prev, open: false }))}
           deal={closeDialog.deal}
-          // targetStageId={closeDialog.targetStageId} // Se o componente precisar
+          targetStageId={closeDialog.targetStageId} // Passa para onde o card vai depois de ganhar
+          onCancel={() => setCloseDialog(prev => ({ ...prev, open: false }))}
           onSuccess={handleCloseSuccess}
         />
       )}

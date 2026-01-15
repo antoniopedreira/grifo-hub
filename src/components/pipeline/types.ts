@@ -1,18 +1,33 @@
 export interface Deal {
   id: string;
-  title: string; // Adicionado
+  title: string;
   value: number;
-  company_name?: string; // Adicionado (opcional)
+  company_name?: string;
   status: "open" | "won" | "lost" | "abandoned" | "archived";
   created_at: string;
   pipeline_id?: string;
-  stage_id: string; // Atenção: no banco pode ser stage_id ou pipeline_stage_id. Vamos padronizar.
-  pipeline_stage_id?: string; // Adicionado para compatibilidade
-  order_index?: number; // Adicionado
-  meeting_date?: string; // Adicionado
+  stage_id: string;
+  pipeline_stage_id?: string; // Mantido para compatibilidade
+  order_index?: number;
+  meeting_date?: string;
   lead_id?: string;
   product_id?: string;
   description?: string;
+  priority?: "Low" | "Medium" | "High"; // Adicionado
+
+  // Relacionamentos (Opcionais, pois dependem do join no supabase)
+  lead?: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+  } | null;
+
+  product?: {
+    id: string;
+    name: string;
+    price: number;
+  } | null;
 }
 
 export interface PipelineStage {
@@ -28,4 +43,10 @@ export interface Pipeline {
   name: string;
   created_at: string;
   active: boolean;
+}
+
+export interface FormSubmission {
+  id: string;
+  created_at: string;
+  form_data: Record<string, any>;
 }

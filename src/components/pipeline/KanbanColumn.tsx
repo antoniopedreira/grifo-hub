@@ -1,69 +1,46 @@
-import { Droppable } from "@hello-pangea/dnd";
-import { cn } from "@/lib/utils";
+import { Droppable, Draggable } from "@hello-pangea/dnd";
+import { formatCurrency } from "@/lib/utils";
 import { DealCard } from "./DealCard";
-import type { KanbanColumn as KanbanColumnType, Deal } from "./types";
+import type { Deal, PipelineStage } from "./types";
+import { Badge } from "@/components/ui/badge";
 
 interface KanbanColumnProps {
-  column: KanbanColumnType;
-  onDealClick: (deal: Deal) => void;
+  stage: PipelineStage;
+  deals: Deal[];
+  totalValue: number;
 }
 
-export function KanbanColumn({ column, onDealClick }: KanbanColumnProps) {
-  const isWonColumn = column.stage.name.toLowerCase() === "ganho" || 
-                      column.stage.name.toLowerCase() === "won";
-  
+export function KanbanColumn({ stage, deals, totalValue }: KanbanColumnProps) {
   return (
-    <div className="flex flex-col min-w-[300px] max-w-[300px]">
-      {/* Column Header */}
-      <div
-        className={cn(
-          "flex items-center justify-between rounded-t-xl px-4 py-3",
-          isWonColumn 
-            ? "bg-secondary/10 border-b-2 border-secondary" 
-            : "bg-card border-b border-border"
-        )}
-      >
+    <div className="flex flex-col w-80 shrink-0">
+      {/* Header da Coluna */}
+      <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
-          {isWonColumn && (
-            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-          )}
-          <h3 className={cn(
-            "font-semibold text-sm",
-            isWonColumn ? "text-secondary" : "text-foreground"
-          )}>
-            {column.stage.name}
-          </h3>
+          <h3 className="font-semibold text-sm text-foreground/80 uppercase tracking-wide">{stage.name}</h3>
+          <Badge variant="secondary" className="text-[10px] px-1.5 h-5">
+            {deals.length}
+          </Badge>
         </div>
-        <span className={cn(
-          "flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-semibold min-w-[24px]",
-          isWonColumn 
-            ? "bg-secondary text-secondary-foreground" 
-            : "bg-muted text-muted-foreground"
-        )}>
-          {column.deals.length}
-        </span>
+        {totalValue > 0 && (
+          <span className="text-xs font-medium text-muted-foreground">
+            {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(totalValue)}
+          </span>
+        )}
       </div>
 
-      {/* Droppable Area */}
-      <Droppable droppableId={column.stage.id}>
+      {/* Área de Drop */}
+      <Droppable droppableId={stage.id}>
         {(provided, snapshot) => (
           <div
-            ref={provided.innerRef}
             {...provided.droppableProps}
-            className={cn(
-              "flex-1 rounded-b-xl border border-t-0 p-3 space-y-3 min-h-[450px] transition-all duration-200",
-              snapshot.isDraggingOver 
-                ? "bg-secondary/5 border-secondary/30 ring-2 ring-secondary/20" 
-                : "bg-grifo-kanban-column border-border"
-            )}
+            ref={provided.innerRef}
+            className={`
+              flex-1 min-h-[150px] rounded-lg p-2 transition-colors
+              ${snapshot.isDraggingOver ? "bg-accent/50 ring-2 ring-primary/20" : "bg-muted/30"}
+            `}
           >
-            {column.deals.map((deal, index) => (
-              <DealCard
-                key={deal.id}
-                deal={deal}
-                index={index}
-                onClick={() => onDealClick(deal)}
-              />
+            {deals.map((deal, index) => (
+              <DealCard key={deal.id} deal={deal} index={index} />
             ))}
             {provided.placeholder}
           </div>
