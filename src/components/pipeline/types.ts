@@ -7,18 +7,16 @@ export interface Deal {
   created_at: string;
   pipeline_id?: string;
   stage_id: string;
-  pipeline_stage_id?: string; // Mantido para compatibilidade
   order_index?: number;
   meeting_date?: string;
   lead_id?: string;
   product_id?: string;
   description?: string;
-  priority?: "Low" | "Medium" | "High"; // Adicionado
+  priority?: "Low" | "Medium" | "High";
 
-  // Relacionamentos (Opcionais, pois dependem do join no supabase)
   lead?: {
     id: string;
-    name: string;
+    full_name: string;
     email?: string;
     phone?: string;
   } | null;

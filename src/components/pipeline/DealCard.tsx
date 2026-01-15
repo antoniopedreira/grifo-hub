@@ -42,7 +42,7 @@ export function DealCard({ deal, index, onClick }: DealCardProps) {
           <div className="space-y-3">
             {/* Lead Name */}
             <p className="font-semibold text-foreground truncate text-sm">
-              {deal.lead?.name || "Lead desconhecido"}
+              {deal.lead?.full_name || "Lead desconhecido"}
             </p>
 
             {/* Product Name */}
