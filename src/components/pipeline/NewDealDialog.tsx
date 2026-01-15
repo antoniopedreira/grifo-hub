@@ -41,7 +41,6 @@ export function NewDealDialog({
   const [leadTab, setLeadTab] = useState<"existing" | "new">("existing");
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
-  const [estimatedValue, setEstimatedValue] = useState("");
   const [priority, setPriority] = useState("Medium");
 
   // New lead fields
@@ -101,11 +100,9 @@ export function NewDealDialog({
         leadId = newLead.id;
       }
 
-      // Get product price as default value if not set
+      // Usar o preço do produto como valor do deal
       const product = products?.find((p) => p.id === selectedProductId);
-      const value = estimatedValue
-        ? parseFloat(estimatedValue.replace(",", "."))
-        : product?.price || null;
+      const value = product?.price || null;
 
       const { error } = await supabase.from("deals").insert({
         lead_id: leadId,
@@ -142,7 +139,6 @@ export function NewDealDialog({
     setLeadTab("existing");
     setSelectedLeadId("");
     setSelectedProductId("");
-    setEstimatedValue("");
     setPriority("Medium");
     setNewLeadName("");
     setNewLeadEmail("");
@@ -239,17 +235,6 @@ export function NewDealDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Estimated Value */}
-          <div className="space-y-2">
-            <Label className="text-primary font-medium">Valor Estimado (R$)</Label>
-            <Input
-              type="text"
-              placeholder="0,00"
-              value={estimatedValue}
-              onChange={(e) => setEstimatedValue(e.target.value)}
-            />
           </div>
 
           {/* Priority */}
