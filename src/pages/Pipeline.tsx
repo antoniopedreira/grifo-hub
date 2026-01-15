@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
-import { Plus, LayoutGrid, Search } from "lucide-react";
+import { Plus, Search, GitBranch, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { CloseSaleDialog } from "@/components/pipeline/CloseSaleDialog";
 import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { toast } from "sonner";
 import type { Deal, Pipeline as PipelineType, PipelineStage } from "@/components/pipeline/types";
-import { GitBranch } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function Pipeline() {
   const queryClient = useQueryClient();
@@ -42,7 +42,7 @@ export default function Pipeline() {
   });
 
   // 1. Busca Pipelines (apenas não arquivados)
-  const { data: pipelines = [] } = useQuery({
+  const { data: pipelines = [], isLoading: isLoadingPipelines } = useQuery({
     queryKey: ["pipelines"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -77,13 +77,20 @@ export default function Pipeline() {
     enabled: !!selectedPipelineId,
   });
 
-  // 3. Busca Deals
+  // 3. Busca Deals com joins para lead e product
   const { data: deals = [] } = useQuery({
     queryKey: ["deals", selectedPipelineId],
     queryFn: async () => {
       if (!selectedPipelineId) return [];
 
-      const { data, error } = await supabase.from("deals").select("*").order("order_index");
+      const { data, error } = await supabase
+        .from("deals")
+        .select(`
+          *,
+          lead:leads(id, full_name, email, phone),
+          product:products(id, name, price)
+        `)
+        .order("order_index");
 
       if (error) throw error;
 
@@ -109,7 +116,7 @@ export default function Pipeline() {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       toast.success("Card movido!");
     },
-    onError: () => toast.error("Erro ao mover card"), // CORRIGIDO: Removido ponto e vírgula
+    onError: () => toast.error("Erro ao mover card"),
   });
 
   const handleDragEnd = (result: DropResult) => {
@@ -166,31 +173,28 @@ export default function Pipeline() {
     setCloseDialog({ open: false, deal: null, targetStageId: null });
   };
 
-  const filteredDeals = deals.filter((deal) => deal.title?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredDeals = deals.filter((deal) => {
+    const leadName = deal.lead?.full_name?.toLowerCase() || "";
+    const productName = deal.product?.name?.toLowerCase() || "";
+    const search = searchTerm.toLowerCase();
+    return leadName.includes(search) || productName.includes(search);
+  });
+
+  const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
 
   return (
     <div className="h-[calc(100vh-2rem)] flex flex-col p-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-2">
-          <GitBranch className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold tracking-tight text-primary">Pipeline de Vendas</h2>
+        <div className="flex items-center gap-3">
+          <GitBranch className="h-7 w-7 text-secondary" />
+          <h1 className="text-2xl font-bold tracking-tight text-primary">Pipeline de Vendas</h1>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar oportunidade..."
-              className="pl-9"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
           <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Selecione o funil" />
+            <SelectTrigger className="w-[180px] bg-white">
+              <SelectValue placeholder="Selecionar pipeline" />
             </SelectTrigger>
             <SelectContent className="min-w-[--radix-select-trigger-width]">
               {pipelines.map((p) => (
@@ -201,37 +205,107 @@ export default function Pipeline() {
             </SelectContent>
           </Select>
 
-          <Button 
+          <Button
             onClick={() => setIsNewDealOpen(true)}
-            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+            disabled={!selectedPipelineId}
+            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground gap-2"
           >
-            <Plus className="mr-2 h-4 w-4" /> Novo Deal
+            <Plus className="h-4 w-4" />
+            Novo Negócio
           </Button>
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex gap-4 h-full pb-4">
-            {stages.map((stage) => {
-              const stageDeals = filteredDeals
-                .filter((d) => d.stage_id === stage.id)
-                .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      {/* Empty State - No pipelines */}
+      {!isLoadingPipelines && pipelines.length === 0 && (
+        <Card className="flex-1">
+          <CardContent className="flex flex-col items-center justify-center h-full py-20">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <GitBranch className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-primary mb-2">Nenhum pipeline encontrado</h3>
+            <p className="text-muted-foreground text-center max-w-md mb-4">
+              Crie seu primeiro pipeline de vendas em Configurações → Pipelines para começar a gerenciar suas oportunidades.
+            </p>
+            <Button variant="outline" onClick={() => window.location.href = '/configuracoes'}>
+              Ir para Configurações
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-              return (
-                <KanbanColumn
-                  key={stage.id}
-                  stage={stage}
-                  deals={stageDeals}
-                  totalValue={stageDeals.reduce((acc, curr) => acc + Number(curr.value), 0)}
-                  onDealClick={(deal) => setDetailSheet({ open: true, deal })}
-                />
-              );
-            })}
+      {/* Empty State - No pipeline selected */}
+      {!isLoadingPipelines && pipelines.length > 0 && !selectedPipelineId && (
+        <Card className="flex-1">
+          <CardContent className="flex flex-col items-center justify-center h-full py-20">
+            <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4 animate-pulse">
+              <AlertCircle className="h-8 w-8 text-secondary" />
+            </div>
+            <h3 className="text-lg font-semibold text-primary mb-2">Selecione um pipeline</h3>
+            <p className="text-muted-foreground text-center max-w-md">
+              Escolha um pipeline no seletor acima para visualizar e gerenciar suas oportunidades de venda.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Kanban Board */}
+      {selectedPipelineId && stages.length > 0 && (
+        <>
+          {/* Search Bar */}
+          <div className="mb-4">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por lead ou produto..."
+                className="pl-9 bg-white"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
-        </div>
-      </DragDropContext>
+
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="flex-1 overflow-x-auto pb-4">
+              <div className="flex gap-4 h-full">
+                {stages.map((stage) => {
+                  const stageDeals = filteredDeals
+                    .filter((d) => d.stage_id === stage.id)
+                    .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+
+                  return (
+                    <KanbanColumn
+                      key={stage.id}
+                      stage={stage}
+                      deals={stageDeals}
+                      totalValue={stageDeals.reduce((acc, curr) => acc + Number(curr.value), 0)}
+                      onDealClick={(deal) => setDetailSheet({ open: true, deal })}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </DragDropContext>
+        </>
+      )}
+
+      {/* Empty State - No stages */}
+      {selectedPipelineId && stages.length === 0 && (
+        <Card className="flex-1">
+          <CardContent className="flex flex-col items-center justify-center h-full py-20">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <GitBranch className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-primary mb-2">Pipeline sem etapas</h3>
+            <p className="text-muted-foreground text-center max-w-md mb-4">
+              O pipeline "{selectedPipeline?.name}" não possui etapas configuradas. Configure as etapas em Configurações → Pipelines.
+            </p>
+            <Button variant="outline" onClick={() => window.location.href = '/configuracoes'}>
+              Configurar Etapas
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <NewDealDialog
         open={isNewDealOpen}

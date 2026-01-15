@@ -1,7 +1,6 @@
 import { Droppable } from "@hello-pangea/dnd";
 import { DealCard } from "./DealCard";
 import type { Deal, PipelineStage } from "./types";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface KanbanColumnProps {
@@ -11,35 +10,91 @@ interface KanbanColumnProps {
   onDealClick: (deal: Deal) => void;
 }
 
-const stageTypeConfig: Record<string, { bgClass: string; dotClass: string }> = {
-  won: { bgClass: "bg-amber-50", dotClass: "bg-secondary" },
-  lost: { bgClass: "bg-red-50", dotClass: "bg-red-500" },
-  meeting: { bgClass: "bg-blue-50", dotClass: "bg-blue-500" },
-  default: { bgClass: "bg-muted/30", dotClass: "" },
+const stageTypeStyles: Record<string, {
+  headerBg: string;
+  headerText: string;
+  dotColor: string;
+  badgeBg: string;
+  badgeText: string;
+  dropBg: string;
+  animation?: string;
+}> = {
+  won: {
+    headerBg: "bg-emerald-50 border-emerald-200",
+    headerText: "text-emerald-700",
+    dotColor: "bg-emerald-500",
+    badgeBg: "bg-emerald-600",
+    badgeText: "text-white",
+    dropBg: "bg-emerald-50/50",
+    animation: "animate-pulse",
+  },
+  lost: {
+    headerBg: "bg-red-50 border-red-200",
+    headerText: "text-red-700",
+    dotColor: "bg-red-500",
+    badgeBg: "bg-red-600",
+    badgeText: "text-white",
+    dropBg: "bg-red-50/50",
+    animation: "animate-pulse",
+  },
+  meeting: {
+    headerBg: "bg-blue-50 border-blue-200",
+    headerText: "text-blue-700",
+    dotColor: "bg-blue-500",
+    badgeBg: "bg-blue-600",
+    badgeText: "text-white",
+    dropBg: "bg-blue-50/30",
+    animation: "",
+  },
+  default: {
+    headerBg: "bg-white border-border",
+    headerText: "text-foreground",
+    dotColor: "",
+    badgeBg: "bg-secondary",
+    badgeText: "text-secondary-foreground",
+    dropBg: "bg-muted/30",
+    animation: "",
+  },
 };
 
 export function KanbanColumn({ stage, deals, totalValue, onDealClick }: KanbanColumnProps) {
-  const config = stageTypeConfig[stage.type || "default"] || stageTypeConfig.default;
-  const hasSpecialType = stage.type && stage.type !== "default";
+  const stageType = stage.type || "default";
+  const styles = stageTypeStyles[stageType] || stageTypeStyles.default;
+  const hasSpecialType = stageType !== "default";
 
   return (
-    <div className="flex flex-col w-80 shrink-0">
+    <div className="flex flex-col w-[320px] shrink-0 animate-fade-in">
       {/* Header da Coluna */}
-      <div className={cn(
-        "flex items-center justify-between mb-2 px-3 py-2 rounded-lg",
-        hasSpecialType ? config.bgClass : "bg-transparent"
-      )}>
+      <div
+        className={cn(
+          "flex items-center justify-between px-4 py-3 rounded-xl border mb-3 transition-all duration-300",
+          styles.headerBg,
+          hasSpecialType && styles.animation
+        )}
+      >
         <div className="flex items-center gap-2">
           {hasSpecialType && (
-            <span className={cn("w-2 h-2 rounded-full", config.dotClass)} />
+            <span className={cn(
+              "w-2.5 h-2.5 rounded-full transition-all",
+              styles.dotColor
+            )} />
           )}
-          <h3 className="font-semibold text-sm text-foreground uppercase tracking-wide">
+          <h3 className={cn(
+            "font-semibold text-sm tracking-wide",
+            styles.headerText
+          )}>
             {stage.name}
           </h3>
-          <Badge variant="secondary" className="text-xs px-2 h-5 rounded-full bg-secondary text-secondary-foreground">
-            {deals.length}
-          </Badge>
         </div>
+        <span
+          className={cn(
+            "flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full text-xs font-bold transition-all",
+            styles.badgeBg,
+            styles.badgeText
+          )}
+        >
+          {deals.length}
+        </span>
       </div>
 
       {/* Área de Drop */}
@@ -49,12 +104,17 @@ export function KanbanColumn({ stage, deals, totalValue, onDealClick }: KanbanCo
             {...provided.droppableProps}
             ref={provided.innerRef}
             className={cn(
-              "flex-1 min-h-[400px] rounded-xl p-3 transition-all space-y-3",
+              "flex-1 min-h-[500px] rounded-xl p-3 transition-all duration-200 space-y-3",
               snapshot.isDraggingOver
-                ? "bg-secondary/10 ring-2 ring-secondary/30"
-                : "bg-muted/40"
+                ? "bg-secondary/10 ring-2 ring-secondary/40 scale-[1.01]"
+                : styles.dropBg
             )}
           >
+            {deals.length === 0 && !snapshot.isDraggingOver && (
+              <div className="flex items-center justify-center h-24 border-2 border-dashed border-muted-foreground/20 rounded-lg">
+                <p className="text-xs text-muted-foreground">Arraste deals aqui</p>
+              </div>
+            )}
             {deals.map((deal, index) => (
               <DealCard key={deal.id} deal={deal} index={index} onClick={() => onDealClick(deal)} />
             ))}
