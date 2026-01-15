@@ -306,6 +306,7 @@ export type Database = {
           funnel_type: Database["public"]["Enums"]["product_funnel_type"] | null
           id: string
           name: string
+          pipeline_id: string | null
           price: number | null
           slug: string | null
           template_id: string | null
@@ -322,6 +323,7 @@ export type Database = {
             | null
           id?: string
           name: string
+          pipeline_id?: string | null
           price?: number | null
           slug?: string | null
           template_id?: string | null
@@ -338,6 +340,7 @@ export type Database = {
             | null
           id?: string
           name?: string
+          pipeline_id?: string | null
           price?: number | null
           slug?: string | null
           template_id?: string | null
@@ -348,6 +351,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
             referencedColumns: ["id"]
           },
           {

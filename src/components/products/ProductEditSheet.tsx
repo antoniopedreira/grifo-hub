@@ -42,6 +42,7 @@ interface ProductForm {
   create_deal: boolean;
   active: boolean;
   external_id: string;
+  pipeline_id: string;
 }
 
 export function ProductEditSheet({ product, open, onOpenChange }: ProductEditSheetProps) {
@@ -56,6 +57,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
     create_deal: false,
     active: true,
     external_id: "",
+    pipeline_id: "",
   });
   
   const queryClient = useQueryClient();
@@ -74,6 +76,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         create_deal: product.create_deal || false,
         active: product.active ?? true,
         external_id: product.external_id || "",
+        pipeline_id: (product as any).pipeline_id || "",
       });
     }
   }, [product]);
@@ -84,6 +87,21 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
       const { data, error } = await supabase
         .from("product_categories")
         .select("*")
+        .order("name");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch pipelines for the pipeline selector
+  const { data: pipelines } = useQuery({
+    queryKey: ["pipelines"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pipelines")
+        .select("*")
+        .eq("archived", false)
         .order("name");
       
       if (error) throw error;
@@ -134,6 +152,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         create_deal: form.create_deal,
         active: form.active,
         external_id: form.external_id || null,
+        pipeline_id: form.create_deal && form.pipeline_id ? form.pipeline_id : null,
       };
 
       const { data, error } = await supabase
@@ -342,7 +361,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
               <Switch
                 id="create_deal"
                 checked={form.create_deal}
-                onCheckedChange={(checked) => setForm({ ...form, create_deal: checked })}
+                onCheckedChange={(checked) => setForm({ ...form, create_deal: checked, pipeline_id: checked ? form.pipeline_id : "" })}
               />
               <div className="space-y-1">
                 <Label htmlFor="create_deal" className="font-medium cursor-pointer">
@@ -355,6 +374,32 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
                 </p>
               </div>
             </div>
+
+            {/* Pipeline Selector - Only visible when create_deal is enabled */}
+            {form.create_deal && (
+              <div className="space-y-2 pl-4 border-l-2 border-secondary/50">
+                <Label htmlFor="pipeline_id">Funil de Destino Automático</Label>
+                <Select
+                  value={form.pipeline_id}
+                  onValueChange={(value) => setForm({ ...form, pipeline_id: value === "none" ? "" : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um funil..." />
+                  </SelectTrigger>
+                  <SelectContent className="min-w-[--radix-select-trigger-width]">
+                    <SelectItem value="none">Sem funil padrão</SelectItem>
+                    {pipelines?.map((pipeline) => (
+                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                        {pipeline.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Ao ocorrer uma venda deste produto, o sistema enviará o card automaticamente para este funil.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Slug */}
