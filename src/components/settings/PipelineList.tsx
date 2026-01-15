@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Settings2, Trash2, Pencil, GitBranch } from "lucide-react";
+import { Plus, Settings2, Trash2, Pencil, GitBranch, Archive, ArchiveRestore } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -30,9 +31,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import type { Tables } from "@/integrations/supabase/types";
+import { cn } from "@/lib/utils";
 
-type Pipeline = Tables<"pipelines">;
+interface Pipeline {
+  id: string;
+  name: string;
+  archived?: boolean;
+}
 
 interface PipelineListProps {
   onSelectPipeline: (pipeline: Pipeline) => void;
@@ -46,6 +51,7 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
   const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
   const [deletingPipelineId, setDeletingPipelineId] = useState<string | null>(null);
   const [pipelineName, setPipelineName] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   // Fetch pipelines
   const { data: pipelines, isLoading } = useQuery({
@@ -99,6 +105,29 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
     },
   });
 
+  // Archive/Unarchive pipeline mutation
+  const toggleArchivePipeline = useMutation({
+    mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
+      const { error } = await supabase
+        .from("pipelines")
+        .update({ archived })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["pipelines"] });
+      toast({ 
+        title: variables.archived ? "Pipeline arquivado!" : "Pipeline restaurado!",
+        description: variables.archived 
+          ? "O pipeline não aparecerá mais no seletor."
+          : "O pipeline está disponível novamente."
+      });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível atualizar.", variant: "destructive" });
+    },
+  });
+
   // Delete pipeline mutation
   const deletePipeline = useMutation({
     mutationFn: async (id: string) => {
@@ -117,7 +146,7 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
           .limit(1);
         
         if (linkedDeals && linkedDeals.length > 0) {
-          throw new Error("Este pipeline possui deals vinculados. Mova ou exclua os deals antes de excluir o pipeline.");
+          throw new Error("Este pipeline possui deals vinculados. Arquive-o ou mova os deals antes de excluir.");
         }
       }
 
@@ -152,6 +181,9 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
     setEditingPipeline(pipeline);
   };
 
+  const activePipelines = pipelines?.filter(p => !p.archived) || [];
+  const archivedPipelines = pipelines?.filter(p => p.archived) || [];
+
   return (
     <>
       <Card>
@@ -179,47 +211,110 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
               Nenhum pipeline criado. Crie seu primeiro funil de vendas!
             </p>
           ) : (
-            <div className="space-y-2">
-              {pipelines.map((pipeline) => (
-                <div
-                  key={pipeline.id}
-                  className="flex items-center justify-between rounded-lg border border-border bg-white p-4 hover:border-secondary/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <GitBranch className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium text-primary">{pipeline.name}</span>
+            <div className="space-y-4">
+              {/* Active Pipelines */}
+              <div className="space-y-2">
+                {activePipelines.map((pipeline) => (
+                  <div
+                    key={pipeline.id}
+                    className="flex items-center justify-between rounded-lg border border-border bg-white p-4 hover:border-secondary/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <GitBranch className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-medium text-primary">{pipeline.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onSelectPipeline(pipeline)}
+                        className="h-8 w-8 hover:text-secondary"
+                        title="Configurar Estágios"
+                      >
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleOpenEdit(pipeline)}
+                        className="h-8 w-8 hover:text-secondary"
+                        title="Renomear"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => toggleArchivePipeline.mutate({ id: pipeline.id, archived: true })}
+                        className="h-8 w-8 hover:text-amber-600"
+                        title="Arquivar"
+                      >
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeletingPipelineId(pipeline.id)}
+                        className="h-8 w-8 hover:text-destructive"
+                        title="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onSelectPipeline(pipeline)}
-                      className="h-8 w-8 hover:text-secondary"
-                      title="Configurar Estágios"
-                    >
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleOpenEdit(pipeline)}
-                      className="h-8 w-8 hover:text-secondary"
-                      title="Renomear"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeletingPipelineId(pipeline.id)}
-                      className="h-8 w-8 hover:text-destructive"
-                      title="Excluir"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                ))}
+              </div>
+
+              {/* Archived Section */}
+              {archivedPipelines.length > 0 && (
+                <div className="pt-4 border-t border-border">
+                  <button
+                    onClick={() => setShowArchived(!showArchived)}
+                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+                  >
+                    <Archive className="h-4 w-4" />
+                    <span>Arquivados ({archivedPipelines.length})</span>
+                    <span className={cn("transition-transform", showArchived && "rotate-180")}>▼</span>
+                  </button>
+                  
+                  {showArchived && (
+                    <div className="space-y-2">
+                      {archivedPipelines.map((pipeline) => (
+                        <div
+                          key={pipeline.id}
+                          className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4 opacity-70 hover:opacity-100 transition-opacity"
+                        >
+                          <div className="flex items-center gap-3">
+                            <GitBranch className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-medium text-muted-foreground">{pipeline.name}</span>
+                            <Badge variant="secondary" className="text-xs">Arquivado</Badge>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => toggleArchivePipeline.mutate({ id: pipeline.id, archived: false })}
+                              className="h-8 w-8 hover:text-green-600"
+                              title="Restaurar"
+                            >
+                              <ArchiveRestore className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeletingPipelineId(pipeline.id)}
+                              className="h-8 w-8 hover:text-destructive"
+                              title="Excluir permanentemente"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
+              )}
             </div>
           )}
         </CardContent>
@@ -298,7 +393,7 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-primary">Excluir Pipeline</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação excluirá o pipeline e todos os estágios associados. Os deals existentes ficarão órfãos.
+              Esta ação excluirá o pipeline e todos os estágios associados permanentemente. Considere arquivar se quiser manter o histórico.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

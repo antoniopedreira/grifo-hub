@@ -5,9 +5,12 @@ import { PipelineList } from "@/components/settings/PipelineList";
 import { PipelineStageEditor } from "@/components/settings/PipelineStageEditor";
 import { TeamMembersList } from "@/components/settings/TeamMembersList";
 import { GeneralSettings } from "@/components/settings/GeneralSettings";
-import type { Tables } from "@/integrations/supabase/types";
 
-type Pipeline = Tables<"pipelines">;
+interface Pipeline {
+  id: string;
+  name: string;
+  archived?: boolean;
+}
 
 export default function Configuracoes() {
   const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
