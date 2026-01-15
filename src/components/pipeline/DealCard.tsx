@@ -33,8 +33,15 @@ export function DealCard({ deal, index, onClick }: DealCardProps) {
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           onClick={onClick}
+          style={{
+            ...provided.draggableProps.style,
+            // Remove transition during drag to prevent jerky movement
+            transition: snapshot.isDragging 
+              ? undefined 
+              : 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease',
+          }}
           className={cn(
-            "rounded-xl border border-border bg-card p-4 shadow-card transition-all duration-200 cursor-pointer",
+            "rounded-xl border border-border bg-card p-4 shadow-card cursor-pointer",
             "hover:border-secondary/50 hover:shadow-card-hover",
             snapshot.isDragging && "shadow-soft-lg ring-2 ring-secondary/40 rotate-1 scale-[1.02]"
           )}
