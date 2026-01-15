@@ -10,6 +10,7 @@ import { KanbanColumn } from "@/components/pipeline/KanbanColumn";
 import { NewDealDialog } from "@/components/pipeline/NewDealDialog";
 import { ScheduleMeetingDialog } from "@/components/pipeline/ScheduleMeetingDialog";
 import { CloseSaleDialog } from "@/components/pipeline/CloseSaleDialog";
+import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { toast } from "sonner";
 import type { Deal, Pipeline as PipelineType, PipelineStage } from "@/components/pipeline/types";
 
@@ -33,6 +34,10 @@ export default function Pipeline() {
     open: false,
     deal: null,
     targetStageId: null,
+  });
+  const [detailSheet, setDetailSheet] = useState<{ open: boolean; deal: Deal | null }>({
+    open: false,
+    deal: null,
   });
 
   // 1. Busca Pipelines
@@ -210,6 +215,7 @@ export default function Pipeline() {
                   stage={stage}
                   deals={stageDeals}
                   totalValue={stageDeals.reduce((acc, curr) => acc + Number(curr.value), 0)}
+                  onDealClick={(deal) => setDetailSheet({ open: true, deal })}
                 />
               );
             })}
@@ -245,6 +251,12 @@ export default function Pipeline() {
           onSuccess={handleCloseSuccess}
         />
       )}
+
+      <DealDetailSheet
+        deal={detailSheet.deal}
+        open={detailSheet.open}
+        onOpenChange={(open) => setDetailSheet((prev) => ({ ...prev, open }))}
+      />
     </div>
   );
 }

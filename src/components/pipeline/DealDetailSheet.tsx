@@ -10,7 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import type { Deal, FormSubmission } from "./types";
+import type { Deal } from "./types";
 
 interface DealDetailSheetProps {
   deal: Deal | null;
@@ -32,7 +32,7 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
         .maybeSingle();
       
       if (error) throw error;
-      return data as FormSubmission | null;
+      return data;
     },
     enabled: open && !!deal?.lead_id,
   });
@@ -86,7 +86,7 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
         <SheetHeader>
           <SheetTitle className="text-primary flex items-center gap-2">
             <User className="h-5 w-5" />
-            {lead?.full_name || "Lead desconhecido"}
+            {lead?.name || "Lead desconhecido"}
           </SheetTitle>
         </SheetHeader>
 
