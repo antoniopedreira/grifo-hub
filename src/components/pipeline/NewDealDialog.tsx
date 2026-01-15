@@ -337,7 +337,7 @@ export function NewDealDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-primary flex items-center gap-2">
             <Plus className="h-5 w-5" />
@@ -348,7 +348,6 @@ export function NewDealDialog({
         <Tabs
           value={mainTab}
           onValueChange={(v) => setMainTab(v as "new" | "import")}
-          className="flex-1 flex flex-col overflow-hidden"
         >
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="new" className="gap-2">
@@ -362,7 +361,7 @@ export function NewDealDialog({
           </TabsList>
 
           {/* ===== NEW LEAD TAB ===== */}
-          <TabsContent value="new" className="flex-1 overflow-auto mt-4">
+          <TabsContent value="new" className="mt-4">
             <div className="space-y-6 py-2">
               {/* Lead Selection */}
               <div className="space-y-3">
@@ -472,8 +471,7 @@ export function NewDealDialog({
           </TabsContent>
 
           {/* ===== IMPORT TAB ===== */}
-          <TabsContent value="import" className="mt-4 flex-1 overflow-hidden flex flex-col">
-            <ScrollArea className="flex-1 pr-2">
+          <TabsContent value="import" className="mt-4 space-y-4">
               <div className="space-y-3">
                 {/* Filters Section - Compact */}
                 <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
@@ -625,9 +623,9 @@ export function NewDealDialog({
                     </div>
                   )}
                 </div>
-
+              </div>
                 {/* Import Product Selection */}
-                <div className="space-y-1.5 pt-2 border-t">
+                <div className="space-y-1.5 pt-3 border-t">
                   <Label className="text-primary font-medium flex items-center gap-2 text-sm">
                     <Package className="h-4 w-4" />
                     Produto para os Deals (opcional)
@@ -650,34 +648,32 @@ export function NewDealDialog({
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-            </ScrollArea>
 
-            {/* Fixed Footer */}
-            <DialogFooter className="pt-4 border-t mt-3 shrink-0">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => importDeals.mutate()}
-                disabled={selectedLeadIds.size === 0 || importDeals.isPending}
-                className="bg-secondary hover:bg-secondary/90 text-secondary-foreground gap-2"
-              >
-                {importDeals.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Importando...
-                  </>
-                ) : (
-                  <>
-                    <Users className="h-4 w-4" />
-                    {selectedLeadIds.size > 0
-                      ? `Importar ${selectedLeadIds.size} Lead(s)`
-                      : "Selecione leads"}
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
+                {/* Footer */}
+                <DialogFooter className="pt-4">
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={() => importDeals.mutate()}
+                    disabled={selectedLeadIds.size === 0 || importDeals.isPending}
+                    className="bg-secondary hover:bg-secondary/90 text-secondary-foreground gap-2"
+                  >
+                    {importDeals.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Importando...
+                      </>
+                    ) : (
+                      <>
+                        <Users className="h-4 w-4" />
+                        {selectedLeadIds.size > 0
+                          ? `Importar ${selectedLeadIds.size} Lead(s)`
+                          : "Selecione leads"}
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
           </TabsContent>
         </Tabs>
       </DialogContent>
