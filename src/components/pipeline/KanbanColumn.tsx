@@ -26,7 +26,7 @@ const stageTypeStyles: Record<string, {
     badgeBg: "bg-emerald-600",
     badgeText: "text-white",
     dropBg: "bg-emerald-50/50",
-    animation: "animate-pulse",
+    animation: "animate-pulse-slow",
   },
   lost: {
     headerBg: "bg-red-50 border-red-200",
@@ -35,7 +35,7 @@ const stageTypeStyles: Record<string, {
     badgeBg: "bg-red-600",
     badgeText: "text-white",
     dropBg: "bg-red-50/50",
-    animation: "animate-pulse",
+    animation: "animate-pulse-slow",
   },
   meeting: {
     headerBg: "bg-blue-50 border-blue-200",
