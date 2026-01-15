@@ -358,7 +358,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
               icon={<Wallet className="text-[#A47428]" size={32} />}
               number={8}
               question="Investimento Necessário"
-              subtext="O investimento para adquirir e participar dos nossos produtos é de R$2.000,00 a R$25.000,00. Pra agilizar a analise da sua aplicação, preencha os dados abaixo:"
+              subtext="O investimento para adquirir e participar dos nossos produtos é de R$2.000,00 a R$25.000,00. Para agilizar a análise da sua aplicação, preencha os dados abaixo:"
             >
               <div className="mb-6 text-xl md:text-2xl font-bold text-white leading-relaxed">
                 Você tem interesse em continuar com o processo seletivo?
