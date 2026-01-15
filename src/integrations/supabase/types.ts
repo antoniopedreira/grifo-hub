@@ -217,18 +217,21 @@ export type Database = {
           name: string
           order_index: number
           pipeline_id: string | null
+          type: string | null
         }
         Insert: {
           id?: string
           name: string
           order_index: number
           pipeline_id?: string | null
+          type?: string | null
         }
         Update: {
           id?: string
           name?: string
           order_index?: number
           pipeline_id?: string | null
+          type?: string | null
         }
         Relationships: [
           {
@@ -574,7 +577,7 @@ export type Database = {
           }
     }
     Enums: {
-      deal_status: "open" | "won" | "lost" | "abandoned"
+      deal_status: "open" | "won" | "lost" | "abandoned" | "archived"
       mission_status:
         | "Pendente"
         | "Em Andamento"
@@ -711,7 +714,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      deal_status: ["open", "won", "lost", "abandoned"],
+      deal_status: ["open", "won", "lost", "abandoned", "archived"],
       mission_status: [
         "Pendente",
         "Em Andamento",
