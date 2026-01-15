@@ -9,14 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { KanbanColumn } from "@/components/pipeline/KanbanColumn";
 import { NewDealDialog } from "@/components/pipeline/NewDealDialog";
 import { ScheduleMeetingDialog } from "@/components/pipeline/ScheduleMeetingDialog";
-import { CloseSaleDialog } from "@/components/pipeline/CloseSaleDialog"; // Certifique-se que este arquivo existe
+import { CloseSaleDialog } from "@/components/pipeline/CloseSaleDialog";
 import { toast } from "sonner";
 import type { Deal, Pipeline as PipelineType, PipelineStage } from "@/components/pipeline/types";
-
-// Extensão local do tipo Stage para incluir 'type' caso não esteja no types.ts
-interface ExtendedStage extends PipelineStage {
-  type?: "default" | "meeting" | "won" | "lost";
-}
 
 export default function Pipeline() {
   const queryClient = useQueryClient();
@@ -24,7 +19,6 @@ export default function Pipeline() {
   const [isNewDealOpen, setIsNewDealOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Estados para os Modais de Ação
   const [meetingDialog, setMeetingDialog] = useState<{
     open: boolean;
     deal: Deal | null;
@@ -50,14 +44,13 @@ export default function Pipeline() {
     },
   });
 
-  // Seleciona o primeiro pipeline por padrão
   useEffect(() => {
     if (pipelines.length > 0 && !selectedPipelineId) {
       setSelectedPipelineId(pipelines[0].id);
     }
   }, [pipelines, selectedPipelineId]);
 
-  // 2. Busca Etapas (Stages) com o TIPO
+  // 2. Busca Etapas
   const { data: stages = [] } = useQuery({
     queryKey: ["pipeline_stages", selectedPipelineId],
     queryFn: async () => {
@@ -66,30 +59,33 @@ export default function Pipeline() {
         .from("pipeline_stages")
         .select("*")
         .eq("pipeline_id", selectedPipelineId)
-        .order("order_index"); // Garante a ordem correta
+        .order("order_index");
       if (error) throw error;
-      return data as ExtendedStage[];
+      return data as PipelineStage[];
     },
     enabled: !!selectedPipelineId,
   });
 
-  // 3. Busca Deals (Negócios)
+  // 3. Busca Deals
   const { data: deals = [] } = useQuery({
     queryKey: ["deals", selectedPipelineId],
     queryFn: async () => {
       if (!selectedPipelineId) return [];
-      const { data, error } = await supabase
-        .from("deals")
-        .select("*, pipeline_stage_id") // Importante trazer o stage_id
-        .order("order_index");
+
+      // Busca todos os deals que pertencem a este pipeline (indiretamente via stage)
+      // Precisamos garantir que estamos pegando apenas deals desse pipeline
+      const { data, error } = await supabase.from("deals").select("*").order("order_index");
+
       if (error) throw error;
 
-      // Filtro local do pipeline (caso o backend não filtre)
-      // Idealmente filtraríamos no .eq do supabase, mas precisaria de join
-      // Vamos filtrar no JS por segurança se o deal não tiver pipeline_id direto
-      return data as Deal[];
+      // Hack de Frontend: Filtra os deals cujos stage_id estão na lista de stages carregada
+      // O ideal seria um join no backend, mas isso resolve rápido.
+      const validStageIds = stages.map((s) => s.id);
+      const filteredDeals = (data as any[]).filter((d) => validStageIds.includes(d.stage_id));
+
+      return filteredDeals as Deal[];
     },
-    enabled: !!selectedPipelineId,
+    enabled: !!selectedPipelineId && stages.length > 0,
   });
 
   // Mutation para mover o card
@@ -97,7 +93,7 @@ export default function Pipeline() {
     mutationFn: async ({ dealId, stageId, orderIndex }: { dealId: string; stageId: string; orderIndex: number }) => {
       const { error } = await supabase
         .from("deals")
-        .update({ pipeline_stage_id: stageId, order_index: orderIndex })
+        .update({ stage_id: stageId, order_index: orderIndex }) // CORRIGIDO: stage_id
         .eq("id", dealId);
       if (error) throw error;
     },
@@ -108,7 +104,6 @@ export default function Pipeline() {
     onError: () => toast.error("Erro ao mover card"),
   });
 
-  // O Cérebro do Drag and Drop 🧠
   const handleDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
@@ -121,20 +116,17 @@ export default function Pipeline() {
     const targetStageId = destination.droppableId;
     const targetStage = stages.find((s) => s.id === targetStageId);
 
-    // Lógica de Interceptação baseada no Tipo da Etapa
+    // Lógica de Interceptação
     if (targetStage?.type === "meeting" && source.droppableId !== targetStageId) {
-      // Se soltou na coluna de Agendamento -> Abre Modal
       setMeetingDialog({ open: true, deal, targetStageId });
-      return; // NÃO move o card ainda
+      return;
     }
 
     if (targetStage?.type === "won" && source.droppableId !== targetStageId) {
-      // Se soltou na coluna de Ganho -> Abre Modal
       setCloseDialog({ open: true, deal, targetStageId });
-      return; // NÃO move o card ainda
+      return;
     }
 
-    // Se for "default" ou reordenação na mesma coluna -> Move direto
     moveDealMutation.mutate({
       dealId: draggableId,
       stageId: targetStageId,
@@ -142,19 +134,17 @@ export default function Pipeline() {
     });
   };
 
-  // Callback de Sucesso do Modal de Reunião
   const handleMeetingSuccess = () => {
     if (meetingDialog.deal && meetingDialog.targetStageId) {
       moveDealMutation.mutate({
         dealId: meetingDialog.deal.id,
         stageId: meetingDialog.targetStageId,
-        orderIndex: 0, // Coloca no topo da lista
+        orderIndex: 0,
       });
     }
     setMeetingDialog({ open: false, deal: null, targetStageId: null });
   };
 
-  // Callback de Sucesso do Modal de Fechamento
   const handleCloseSuccess = () => {
     if (closeDialog.deal && closeDialog.targetStageId) {
       moveDealMutation.mutate({
@@ -162,17 +152,14 @@ export default function Pipeline() {
         stageId: closeDialog.targetStageId,
         orderIndex: 0,
       });
-      // Aqui poderíamos também mudar o status do deal para 'won' no banco
     }
     setCloseDialog({ open: false, deal: null, targetStageId: null });
   };
 
-  // Filtro de pesquisa visual
-  const filteredDeals = deals.filter((deal) => deal.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredDeals = deals.filter((deal) => deal.title?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="h-[calc(100vh-2rem)] flex flex-col space-y-4 p-8 pt-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <LayoutGrid className="h-6 w-6 text-primary" />
@@ -209,13 +196,12 @@ export default function Pipeline() {
         </div>
       </div>
 
-      {/* Kanban Board */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex-1 overflow-x-auto pb-4">
           <div className="flex h-full gap-4 min-w-max">
             {stages.map((stage) => {
               const stageDeals = filteredDeals
-                .filter((d) => d.pipeline_stage_id === stage.id)
+                .filter((d) => d.stage_id === stage.id) // CORRIGIDO: stage_id
                 .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
               return (
@@ -231,15 +217,14 @@ export default function Pipeline() {
         </div>
       </DragDropContext>
 
-      {/* Dialogs */}
       <NewDealDialog
         open={isNewDealOpen}
         onOpenChange={setIsNewDealOpen}
         pipelineId={selectedPipelineId}
-        defaultStageId={stages[0]?.id}
+        // Removido defaultStageId se o componente não suportar, ou passar o ID da primeira etapa:
+        // defaultStageId={stages[0]?.id}
       />
 
-      {/* Modal de Agendamento (Abre ao soltar na coluna 'meeting') */}
       {meetingDialog.deal && (
         <ScheduleMeetingDialog
           open={meetingDialog.open}
@@ -251,12 +236,12 @@ export default function Pipeline() {
         />
       )}
 
-      {/* Modal de Fechamento (Abre ao soltar na coluna 'won') */}
       {closeDialog.deal && (
         <CloseSaleDialog
           open={closeDialog.open}
           onOpenChange={(open) => !open && setCloseDialog((prev) => ({ ...prev, open: false }))}
           deal={closeDialog.deal}
+          // targetStageId={closeDialog.targetStageId} // Se o componente precisar
           onSuccess={handleCloseSuccess}
         />
       )}
