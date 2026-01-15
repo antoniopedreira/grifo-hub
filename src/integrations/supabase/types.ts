@@ -19,6 +19,7 @@ export type Database = {
           created_at: string | null
           id: string
           lead_id: string | null
+          meeting_date: string | null
           pipeline_id: string | null
           priority: string | null
           product_id: string | null
@@ -30,6 +31,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           lead_id?: string | null
+          meeting_date?: string | null
           pipeline_id?: string | null
           priority?: string | null
           product_id?: string | null
@@ -41,6 +43,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           lead_id?: string | null
+          meeting_date?: string | null
           pipeline_id?: string | null
           priority?: string | null
           product_id?: string | null
