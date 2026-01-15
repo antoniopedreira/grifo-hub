@@ -15,6 +15,7 @@ interface FormBasicProps {
     id: string;
     name: string;
     create_deal?: boolean;
+    pipeline_id?: string | null;
   };
 }
 
@@ -100,35 +101,25 @@ export default function FormBasic({ product }: FormBasicProps) {
 
       if (submissionError) throw submissionError;
 
-      // Conditional: Create deal only if product.create_deal is true
-      if (product.create_deal) {
-        // Get first pipeline and its first stage
-        const { data: pipelines } = await supabase
-          .from("pipelines")
+      // Conditional: Create deal only if product.create_deal is true and pipeline is configured
+      if (product.create_deal && product.pipeline_id) {
+        // Get first stage of the configured pipeline (lowest order_index)
+        const { data: stages } = await supabase
+          .from("pipeline_stages")
           .select("id")
+          .eq("pipeline_id", product.pipeline_id)
+          .order("order_index", { ascending: true })
           .limit(1);
 
-        if (pipelines && pipelines.length > 0) {
-          const pipelineId = pipelines[0].id;
-          
-          // Get first stage (lowest order_index)
-          const { data: stages } = await supabase
-            .from("pipeline_stages")
-            .select("id")
-            .eq("pipeline_id", pipelineId)
-            .order("order_index", { ascending: true })
-            .limit(1);
-
-          if (stages && stages.length > 0) {
-            await supabase.from("deals").insert({
-              lead_id: leadId,
-              product_id: product.id,
-              pipeline_id: pipelineId,
-              stage_id: stages[0].id,
-              status: "open",
-              priority: "Medium",
-            });
-          }
+        if (stages && stages.length > 0) {
+          await supabase.from("deals").insert({
+            lead_id: leadId,
+            product_id: product.id,
+            pipeline_id: product.pipeline_id,
+            stage_id: stages[0].id,
+            status: "open",
+            priority: "Medium",
+          });
         }
       }
 
