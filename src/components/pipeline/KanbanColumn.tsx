@@ -116,7 +116,13 @@ export function KanbanColumn({ stage, deals, totalValue, onDealClick }: KanbanCo
               </div>
             )}
             {deals.map((deal, index) => (
-              <DealCard key={deal.id} deal={deal} index={index} onClick={() => onDealClick(deal)} />
+              <DealCard 
+                key={deal.id} 
+                deal={deal} 
+                index={index} 
+                stageType={stageType}
+                onClick={() => onDealClick(deal)} 
+              />
             ))}
             {provided.placeholder}
           </div>

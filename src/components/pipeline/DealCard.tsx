@@ -8,6 +8,7 @@ import type { Deal } from "./types";
 interface DealCardProps {
   deal: Deal;
   index: number;
+  stageType?: string;
   onClick: () => void;
 }
 
@@ -17,9 +18,10 @@ const priorityConfig: Record<string, { label: string; className: string }> = {
   Low: { label: "Baixa", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
 };
 
-export function DealCard({ deal, index, onClick }: DealCardProps) {
+export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
   const priority = deal.priority || "Medium";
   const config = priorityConfig[priority] || priorityConfig.Medium;
+  const isMeetingStage = stageType === "meeting";
 
   const formattedValue = deal.value
     ? new Intl.NumberFormat("pt-BR", {
@@ -74,8 +76,8 @@ export function DealCard({ deal, index, onClick }: DealCardProps) {
               {deal.product?.name || "Sem produto"}
             </p>
 
-            {/* Meeting Info Badges */}
-            {(meetingInfo || deal.meeting_owner) && (
+            {/* Meeting Info Badges - Only in meeting stage */}
+            {isMeetingStage && (meetingInfo || deal.meeting_owner) && (
               <div className="flex flex-wrap items-center gap-1.5">
                 {meetingInfo && (
                   <>
