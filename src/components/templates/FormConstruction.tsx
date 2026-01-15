@@ -1,6 +1,18 @@
 import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion"; // Se não tiver framer-motion, usaremos CSS simples, mas recomendo instalar. Fiz com CSS puro para garantir compatibilidade.
-import { ArrowRight, ArrowLeft, Check, Loader2, Building2, User, Phone, Mail, Briefcase, HardHat } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Loader2,
+  Building2,
+  User,
+  Phone,
+  Mail,
+  Briefcase,
+  HardHat,
+  DollarSign,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -22,7 +34,8 @@ type StepData = {
   company_name: string;
   role: string;
   niche: string;
-  challenge: string;
+  revenue: string;
+  investment: string;
 };
 
 const INITIAL_DATA: StepData = {
@@ -32,14 +45,14 @@ const INITIAL_DATA: StepData = {
   company_name: "",
   role: "",
   niche: "",
-  challenge: "",
+  revenue: "",
+  investment: "",
 };
 
 export function FormConstruction({ productId, onSubmitSuccess }: FormConstructionProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<StepData>(INITIAL_DATA);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [direction, setDirection] = useState(1); // 1 = forward, -1 = back
 
   // Elemento de input para focar automaticamente
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
@@ -51,17 +64,16 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     }, 300);
   }, [currentStep]);
 
-  const totalSteps = 7; // 0 a 6
+  // Total de passos agora é 8 (0 a 7)
+  const totalSteps = 8;
   const progress = ((currentStep + 1) / (totalSteps + 1)) * 100;
 
   const handleNext = () => {
     if (!validateStep()) return;
-    setDirection(1);
     setCurrentStep((prev) => prev + 1);
   };
 
   const handleBack = () => {
-    setDirection(-1);
     setCurrentStep((prev) => prev - 1);
   };
 
@@ -71,11 +83,18 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
   const handleSelectAndNext = (field: keyof StepData, value: string) => {
     handleChange(field, value);
-    setTimeout(() => handleNext(), 250); // Pequeno delay para feedback visual
+    // Pequeno delay para feedback visual antes de avançar
+    setTimeout(() => {
+      // Se for a última pergunta (investimento), submete
+      if (field === "investment") {
+        handleSubmit(value);
+      } else {
+        setCurrentStep((prev) => prev + 1);
+      }
+    }, 250);
   };
 
   const validateStep = () => {
-    const val = Object.values(formData)[currentStep];
     // Validação simples
     if (currentStep === 0 && formData.full_name.length < 3) {
       toast.error("Por favor, digite seu nome completo.");
@@ -96,16 +115,19 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     return true;
   };
 
-  const handleSubmit = async () => {
+  // Aceita value opcional para casos onde o state ainda não atualizou no closure
+  const handleSubmit = async (finalValue?: string) => {
     setIsSubmitting(true);
     try {
+      const finalData = { ...formData, investment: finalValue || formData.investment };
+
       // 1. Criar Lead
       const { data: lead, error: leadError } = await supabase
         .from("leads")
         .insert({
-          full_name: formData.full_name,
-          email: formData.email,
-          phone: formData.phone,
+          full_name: finalData.full_name,
+          email: finalData.email,
+          phone: finalData.phone,
           status: "Novo",
         })
         .select()
@@ -118,20 +140,21 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
         lead_id: lead.id,
         product_id: productId,
         answers: {
-          role: formData.role,
-          company: formData.company_name,
-          niche: formData.niche,
-          challenge: formData.challenge,
+          role: finalData.role,
+          company: finalData.company_name,
+          niche: finalData.niche,
+          revenue: finalData.revenue,
+          investment_commitment: finalData.investment,
         },
       });
 
       if (subError) throw subError;
 
-      toast.success("Aplicação enviada com sucesso! Entraremos em contato.");
+      toast.success("Aplicação enviada com sucesso!");
       if (onSubmitSuccess) onSubmitSuccess();
 
-      // Reiniciar ou Redirecionar
-      setCurrentStep(totalSteps + 1); // Tela de sucesso final
+      // Tela de sucesso final
+      setCurrentStep(totalSteps + 1);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao enviar. Tente novamente.");
@@ -142,8 +165,8 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      // Se não for textarea ou passo de seleção, avança
-      if (currentStep !== 6 && currentStep !== 4 && currentStep !== 5) {
+      // Avança com enter apenas nos passos de texto
+      if ([0, 1, 2, 3].includes(currentStep)) {
         handleNext();
       }
     }
@@ -160,11 +183,11 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
       <div className="w-full max-w-2xl z-10 flex flex-col items-center">
         {/* HEADER LOGO */}
-        <div className="mb-12 transition-opacity duration-500">
+        <div className="mb-8 md:mb-12 transition-opacity duration-500">
           <img
             src="https://naroalxhbrvmosbqzhrb.supabase.co/storage/v1/object/public/photos-wallpapers/LOGO_GRIFO_6-removebg-preview.png"
             alt="Grifo Logo"
-            className="h-20 md:h-24 w-auto object-contain drop-shadow-2xl"
+            className="h-16 md:h-24 w-auto object-contain drop-shadow-2xl"
           />
         </div>
 
@@ -226,13 +249,13 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 3: NOME DA EMPRESA */}
+          {/* STEP 3: NOME DA EMPRESA (Texto Alterado) */}
           {currentStep === 3 && (
             <QuestionCard
               icon={<Building2 className="text-[#A47428]" size={32} />}
               number={4}
-              question="Qual o nome da sua Construtora ou Engenharia?"
-              subtext="Identifique a empresa que você representa."
+              question="Qual nome da sua empresa?"
+              subtext="Identifique a organização que você representa."
             >
               <InputLine
                 ref={inputRef}
@@ -282,7 +305,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             >
               <div className="grid grid-cols-1 gap-3 mt-4">
                 {[
-                  "Incorporação Residencial (Prédios/Casas)",
+                  "Incorporação Residencial",
                   "Obras Comerciais e Corporativas",
                   "Galpões e Obras Industriais",
                   "Reformas de Alto Padrão",
@@ -300,36 +323,79 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 6: DESAFIO (FINAL) */}
+          {/* STEP 6: FATURAMENTO (NOVA PERGUNTA) */}
           {currentStep === 6 && (
             <QuestionCard
-              icon={<ArrowRight className="text-[#A47428]" size={32} />}
+              icon={<DollarSign className="text-[#A47428]" size={32} />}
               number={7}
-              question="Qual o maior desafio da construtora hoje?"
-              subtext="Descreva brevemente para prepararmos a reunião."
+              question="Qual o faturamento atual da empresa?"
+              subtext="Essa informação é confidencial e usada apenas para qualificação."
             >
-              <textarea
-                ref={inputRef as any}
-                value={formData.challenge}
-                onChange={(e) => handleChange("challenge", e.target.value)}
-                placeholder="Ex: Controle de custos, prazo de entrega, gestão de compras..."
-                className="w-full bg-transparent border-b-2 border-[#E1D8CF]/20 text-[#E1D8CF] text-xl md:text-2xl py-4 focus:outline-none focus:border-[#A47428] transition-colors resize-none h-32 placeholder:text-[#E1D8CF]/30"
-              />
-              <div className="mt-8">
-                <ButtonPrimary onClick={handleSubmit} loading={isSubmitting}>
-                  Finalizar Aplicação
-                </ButtonPrimary>
+              <div className="grid grid-cols-1 gap-3 mt-4">
+                {[
+                  "Até R$ 500 mil",
+                  "Entre R$ 500 mil e R$ 1 mi",
+                  "Entre R$ 1 mi e R$ 5 mi",
+                  "Entre R$ 5 mi e R$ 10 mi",
+                  "Entre R$ 10 mi e R$ 50 mi",
+                  "Mais de R$ 50 mi",
+                ].map((rev) => (
+                  <OptionButton
+                    key={rev}
+                    label={rev}
+                    selected={formData.revenue === rev}
+                    onClick={() => handleSelectAndNext("revenue", rev)}
+                  />
+                ))}
               </div>
             </QuestionCard>
           )}
 
+          {/* STEP 7: INVESTIMENTO (ALTERADA) */}
+          {currentStep === 7 && (
+            <QuestionCard
+              icon={<Wallet className="text-[#A47428]" size={32} />}
+              number={8}
+              question="Investimento Necessário"
+              subtext="O investimento para adquirir e participar dos nossos produtos é de R$10.000,00 a R$150.000,00."
+            >
+              <div className="mb-6 text-xl md:text-2xl font-bold text-white leading-relaxed">
+                Você tem interesse em continuar com o processo seletivo?
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 mt-4">
+                <OptionButton
+                  label="Sim, estou ciente e quero continuar."
+                  selected={false}
+                  onClick={() => handleSelectAndNext("investment", "Sim, quero continuar")}
+                />
+                <OptionButton
+                  label="Tenho dúvidas sobre os valores."
+                  selected={false}
+                  onClick={() => handleSelectAndNext("investment", "Tenho dúvidas")}
+                />
+                <OptionButton
+                  label="Não tenho interesse no momento."
+                  selected={false}
+                  onClick={() => handleSelectAndNext("investment", "Não tenho interesse")}
+                />
+              </div>
+
+              {isSubmitting && (
+                <div className="mt-4 flex items-center justify-center text-[#A47428]">
+                  <Loader2 className="animate-spin mr-2" /> Enviando aplicação...
+                </div>
+              )}
+            </QuestionCard>
+          )}
+
           {/* TELA DE SUCESSO */}
-          {currentStep > 6 && (
-            <div className="flex flex-col items-center justify-center animate-in fade-in duration-700 text-center">
+          {currentStep > 7 && (
+            <div className="flex flex-col items-center justify-center animate-in fade-in duration-700 text-center mt-10">
               <div className="w-20 h-20 rounded-full bg-[#A47428] flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(164,116,40,0.4)]">
                 <Check className="text-white w-10 h-10" />
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Recebemos sua aplicação!</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Aplicação Recebida!</h2>
               <p className="text-[#E1D8CF]/80 text-lg max-w-md">
                 Nossa equipe de especialistas irá analisar o perfil da {formData.company_name} e entrará em contato via
                 WhatsApp em breve.
@@ -339,19 +405,20 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
         </div>
 
         {/* NAVIGATION CONTROLS */}
-        {currentStep <= 6 && (
+        {currentStep <= 7 && (
           <div className="fixed bottom-0 left-0 w-full p-6 bg-[#112232] md:bg-transparent md:static flex items-center justify-between max-w-2xl mt-8">
             {currentStep > 0 && (
               <button
                 onClick={handleBack}
-                className="flex items-center text-[#E1D8CF]/60 hover:text-[#A47428] transition-colors font-medium text-sm md:text-base"
+                disabled={isSubmitting}
+                className="flex items-center text-[#E1D8CF]/60 hover:text-[#A47428] transition-colors font-medium text-sm md:text-base disabled:opacity-50"
               >
                 <ArrowLeft className="mr-2 w-4 h-4" /> Voltar
               </button>
             )}
 
-            {/* O botão 'Continuar' só aparece nos passos de texto, nos de seleção é automático */}
-            {currentStep !== 4 && currentStep !== 5 && currentStep !== 6 && (
+            {/* Botão Continuar aparece apenas nos campos de texto */}
+            {[0, 1, 2, 3].includes(currentStep) && (
               <button
                 onClick={handleNext}
                 className="flex items-center bg-[#A47428] hover:bg-[#8a6120] text-white px-6 py-3 rounded-lg font-bold transition-all ml-auto shadow-lg shadow-[#A47428]/20"
@@ -375,7 +442,7 @@ function QuestionCard({ children, icon, number, question, subtext }: any) {
         <span className="text-[#A47428] font-bold text-sm tracking-widest uppercase">Questão {number}</span>
       </div>
 
-      <h2 className="text-2xl md:text-4xl font-bold text-white mb-3 leading-tight">{question}</h2>
+      <h2 className="text-2xl md:text-3xl font-bold text-white mb-3 leading-tight">{question}</h2>
 
       {subtext && <p className="text-[#E1D8CF]/60 text-lg mb-8">{subtext}</p>}
 
@@ -409,15 +476,5 @@ const OptionButton = ({ label, selected, onClick }: any) => (
     <span className="font-medium">{label}</span>
     {selected && <Check className="w-5 h-5" />}
     {!selected && <div className="w-5 h-5 rounded-full border border-[#E1D8CF]/40 group-hover:border-[#A47428]" />}
-  </button>
-);
-
-const ButtonPrimary = ({ children, onClick, loading }: any) => (
-  <button
-    onClick={onClick}
-    disabled={loading}
-    className="w-full bg-[#A47428] hover:bg-[#8a6120] text-white text-xl font-bold py-4 rounded-lg shadow-[0_4px_14px_0_rgba(164,116,40,0.39)] hover:shadow-[0_6px_20px_rgba(164,116,40,0.23)] transition-all flex items-center justify-center"
-  >
-    {loading ? <Loader2 className="animate-spin w-6 h-6" /> : children}
   </button>
 );
