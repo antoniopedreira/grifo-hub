@@ -67,12 +67,16 @@ export function ScheduleMeetingDialog({
     }
 
     setLoading(true);
-    const meetingDateTime = new Date(`${date}T${time}:00`).toISOString();
+    // Salva como timestamp literal SEM conversão UTC para preservar o horário local
+    const meetingDateTime = `${date}T${time}:00`;
 
     try {
       const { error: dealError } = await supabase
         .from("deals")
-        .update({ meeting_date: meetingDateTime })
+        .update({ 
+          meeting_date: meetingDateTime,
+          meeting_owner_id: selectedMember 
+        } as any)
         .eq("id", dealId);
 
       if (dealError) throw dealError;
