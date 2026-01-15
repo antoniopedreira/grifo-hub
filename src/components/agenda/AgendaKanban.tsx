@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { format, isBefore, isToday, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, AlertCircle } from "lucide-react";
+import { Clock, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { MissionSheet } from "./MissionSheet";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ import type { Tables, Enums } from "@/integrations/supabase/types";
 type Mission = Tables<"team_missions">;
 type TeamMember = Tables<"team_members">;
 type MissionStatus = Enums<"mission_status">;
+type SortOrder = "manual" | "newest" | "oldest";
 
 const columns: { id: MissionStatus; title: string; color: string }[] = [
   { id: "Pendente", title: "Pendente", color: "bg-yellow-500" },
@@ -36,9 +38,11 @@ const departmentColors: Record<string, string> = {
 interface AgendaKanbanProps {
   ownerFilter: string | null;
   searchTerm?: string;
+  sortOrder?: SortOrder;
+  onSortOrderChange?: (order: SortOrder) => void;
 }
 
-export function AgendaKanban({ ownerFilter, searchTerm = "" }: AgendaKanbanProps) {
+export function AgendaKanban({ ownerFilter, searchTerm = "", sortOrder = "manual", onSortOrderChange }: AgendaKanbanProps) {
   const queryClient = useQueryClient();
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -156,9 +160,25 @@ export function AgendaKanban({ ownerFilter, searchTerm = "" }: AgendaKanbanProps
   });
 
   const getMissionsByStatus = (status: MissionStatus) => {
-    return filteredMissions
-      .filter((m) => m.status === status)
-      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+    const statusMissions = filteredMissions.filter((m) => m.status === status);
+    
+    switch (sortOrder) {
+      case "newest":
+        return statusMissions.sort((a, b) => {
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return dateB - dateA;
+        });
+      case "oldest":
+        return statusMissions.sort((a, b) => {
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return dateA - dateB;
+        });
+      case "manual":
+      default:
+        return statusMissions.sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+    }
   };
 
   const handleDragEnd = (result: DropResult) => {
