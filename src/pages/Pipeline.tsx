@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
-import { Plus, Search, GitBranch, AlertCircle } from "lucide-react";
+import { Plus, Search, GitBranch, AlertCircle, MoreHorizontal, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,22 @@ import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { toast } from "sonner";
 import type { Deal, Pipeline as PipelineType, PipelineStage } from "@/components/pipeline/types";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Pipeline() {
   const queryClient = useQueryClient();
@@ -40,6 +56,7 @@ export default function Pipeline() {
     open: false,
     deal: null,
   });
+  const [deleteAllDealsDialogOpen, setDeleteAllDealsDialogOpen] = useState(false);
 
   // 1. Busca Pipelines (apenas não arquivados)
   const { data: pipelines = [], isLoading: isLoadingPipelines } = useQuery({
@@ -145,6 +162,29 @@ export default function Pipeline() {
     },
   });
 
+  // Mutation para excluir todos os deals da pipeline
+  const deleteAllDealsMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedPipelineId || stages.length === 0) return;
+      
+      const stageIds = stages.map((s) => s.id);
+      const { error } = await supabase
+        .from("deals")
+        .delete()
+        .in("stage_id", stageIds);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals", selectedPipelineId] });
+      toast.success("Todos os negócios foram excluídos");
+      setDeleteAllDealsDialogOpen(false);
+    },
+    onError: () => {
+      toast.error("Erro ao excluir negócios");
+    },
+  });
+
   const handleDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
@@ -239,6 +279,25 @@ export default function Pipeline() {
             <Plus className="h-4 w-4" />
             Novo Negócio
           </Button>
+
+          {/* Menu discreto de ações */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => setDeleteAllDealsDialogOpen(true)}
+                disabled={!selectedPipelineId || deals.length === 0}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir todos os negócios
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -367,6 +426,28 @@ export default function Pipeline() {
         open={detailSheet.open}
         onOpenChange={(open) => setDetailSheet((prev) => ({ ...prev, open }))}
       />
+
+      {/* Dialog de confirmação para excluir todos os deals */}
+      <AlertDialog open={deleteAllDealsDialogOpen} onOpenChange={setDeleteAllDealsDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir todos os negócios?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá remover permanentemente <strong>{deals.length} negócio(s)</strong> da pipeline "{selectedPipeline?.name}". 
+              Os leads e vendas históricas serão preservados. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteAllDealsMutation.mutate()}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteAllDealsMutation.isPending ? "Excluindo..." : "Excluir Todos"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
