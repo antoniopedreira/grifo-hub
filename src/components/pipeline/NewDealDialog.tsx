@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, User, Package, Search, Users, Filter } from "lucide-react";
+import { Plus, User, Package, Search, Users, Filter, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -472,45 +472,50 @@ export function NewDealDialog({
           </TabsContent>
 
           {/* ===== IMPORT TAB ===== */}
-          <TabsContent value="import" className="flex-1 flex flex-col overflow-hidden mt-4">
+          <TabsContent value="import" className="mt-4 space-y-4">
             {/* Filters Section */}
-            <div className="space-y-4 pb-4 border-b">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary">
                 <Filter className="h-4 w-4" />
                 Filtros de Busca
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 {/* LTV Range */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">LTV Mínimo (R$)</Label>
                   <Input
                     type="number"
                     placeholder="0"
                     value={ltvMin}
                     onChange={(e) => setLtvMin(e.target.value)}
+                    className="h-9"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">LTV Máximo (R$)</Label>
                   <Input
                     type="number"
                     placeholder="999999"
                     value={ltvMax}
                     onChange={(e) => setLtvMax(e.target.value)}
+                    className="h-9"
                   />
                 </div>
               </div>
 
               {/* Product Filter */}
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Produtos Adquiridos</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Produtos Adquiridos (opcional)</Label>
                 <div className="flex flex-wrap gap-2">
+                  {products?.length === 0 && (
+                    <span className="text-xs text-muted-foreground">Nenhum produto cadastrado</span>
+                  )}
                   {products?.map((product) => (
                     <Badge
                       key={product.id}
                       variant={selectedProductFilters.includes(product.id) ? "default" : "outline"}
-                      className="cursor-pointer hover:bg-secondary/80"
+                      className="cursor-pointer hover:bg-secondary/80 transition-colors"
                       onClick={() => toggleProductFilter(product.id)}
                     >
                       {product.name}
@@ -522,20 +527,37 @@ export function NewDealDialog({
               <Button
                 onClick={handleSearch}
                 disabled={isSearching}
-                className="w-full gap-2"
-                variant="outline"
+                className="w-full gap-2 bg-primary hover:bg-primary/90"
               >
-                <Search className="h-4 w-4" />
-                {isSearching ? "Buscando..." : "Buscar Leads"}
+                {isSearching ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Buscando...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4" />
+                    Buscar Leads
+                  </>
+                )}
               </Button>
             </div>
 
             {/* Results Section */}
-            <div className="flex-1 overflow-hidden flex flex-col mt-4">
-              {hasSearched && (
+            <div className="space-y-2">
+              {/* Loading State */}
+              {isSearching && (
+                <div className="h-[200px] flex flex-col items-center justify-center border rounded-lg bg-muted/20">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                  <p className="text-sm text-muted-foreground">Carregando leads...</p>
+                </div>
+              )}
+
+              {/* Results List */}
+              {!isSearching && hasSearched && (
                 <>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">
                       {searchResults.length} lead(s) encontrado(s)
                     </span>
                     {searchResults.length > 0 && (
@@ -543,7 +565,7 @@ export function NewDealDialog({
                         variant="ghost"
                         size="sm"
                         onClick={toggleSelectAll}
-                        className="text-xs"
+                        className="text-xs h-7"
                       >
                         {selectedLeadIds.size === searchResults.length
                           ? "Desmarcar todos"
@@ -552,93 +574,109 @@ export function NewDealDialog({
                     )}
                   </div>
 
-                  <ScrollArea className="flex-1 border rounded-md">
+                  <div className="border rounded-lg overflow-hidden">
                     {searchResults.length === 0 ? (
-                      <div className="p-8 text-center text-muted-foreground">
-                        Nenhum lead encontrado com os filtros aplicados.
+                      <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground bg-muted/20">
+                        <Users className="h-8 w-8 mb-2 opacity-50" />
+                        <p className="text-sm">Nenhum lead encontrado</p>
+                        <p className="text-xs">Tente ajustar os filtros</p>
                       </div>
                     ) : (
-                      <div className="divide-y">
-                        {searchResults.map((lead) => (
-                          <div
-                            key={lead.id}
-                            className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer"
-                            onClick={() => toggleLeadSelection(lead.id)}
-                          >
-                            <Checkbox
-                              checked={selectedLeadIds.has(lead.id)}
-                              onCheckedChange={() => toggleLeadSelection(lead.id)}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">
-                                {lead.full_name || "Sem nome"}
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {lead.email || "Sem email"}
-                              </p>
+                      <ScrollArea className="h-[200px]">
+                        <div className="divide-y">
+                          {searchResults.map((lead) => (
+                            <div
+                              key={lead.id}
+                              className={`flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer transition-colors ${
+                                selectedLeadIds.has(lead.id) ? "bg-secondary/10" : ""
+                              }`}
+                              onClick={() => toggleLeadSelection(lead.id)}
+                            >
+                              <Checkbox
+                                checked={selectedLeadIds.has(lead.id)}
+                                onCheckedChange={() => toggleLeadSelection(lead.id)}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">
+                                  {lead.full_name || "Sem nome"}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {lead.email || "Sem email"}
+                                </p>
+                              </div>
+                              <Badge variant="secondary" className="shrink-0 text-xs">
+                                {formatCurrency(lead.ltv)}
+                              </Badge>
                             </div>
-                            <Badge variant="secondary" className="shrink-0">
-                              LTV: {formatCurrency(lead.ltv)}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
                     )}
-                  </ScrollArea>
+                  </div>
                 </>
               )}
 
-              {!hasSearched && (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-                  Use os filtros acima e clique em "Buscar Leads"
+              {/* Initial State */}
+              {!isSearching && !hasSearched && (
+                <div className="h-[200px] flex flex-col items-center justify-center border rounded-lg bg-muted/20 text-muted-foreground">
+                  <Search className="h-8 w-8 mb-2 opacity-50" />
+                  <p className="text-sm">Use os filtros acima</p>
+                  <p className="text-xs">e clique em "Buscar Leads"</p>
                 </div>
               )}
             </div>
 
             {/* Import Product & Action */}
-            {selectedLeadIds.size > 0 && (
-              <div className="border-t pt-4 mt-4 space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-primary font-medium flex items-center gap-2">
-                    <Package className="h-4 w-4" />
-                    Produto para os Deals (opcional)
-                  </Label>
-                  <Select value={importProductId} onValueChange={setImportProductId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um produto..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products?.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name}{" "}
-                          {product.price && (
-                            <span className="text-muted-foreground">
-                              ({formatCurrency(product.price)})
-                            </span>
-                          )}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => onOpenChange(false)}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={() => importDeals.mutate()}
-                    disabled={!canImport || importDeals.isPending}
-                    className="bg-secondary hover:bg-secondary/90 text-secondary-foreground gap-2"
-                  >
-                    <Users className="h-4 w-4" />
-                    {importDeals.isPending
-                      ? "Importando..."
-                      : `Importar ${selectedLeadIds.size} Lead(s)`}
-                  </Button>
-                </DialogFooter>
+            <div className="space-y-4 pt-2 border-t">
+              <div className="space-y-1.5">
+                <Label className="text-primary font-medium flex items-center gap-2 text-sm">
+                  <Package className="h-4 w-4" />
+                  Produto para os Deals (opcional)
+                </Label>
+                <Select value={importProductId} onValueChange={setImportProductId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um produto..." />
+                  </SelectTrigger>
+                  <SelectContent className="min-w-[--radix-select-trigger-width]">
+                    {products?.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}{" "}
+                        {product.price && (
+                          <span className="text-muted-foreground">
+                            ({formatCurrency(product.price)})
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={() => importDeals.mutate()}
+                  disabled={selectedLeadIds.size === 0 || importDeals.isPending}
+                  className="bg-secondary hover:bg-secondary/90 text-secondary-foreground gap-2"
+                >
+                  {importDeals.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Importando...
+                    </>
+                  ) : (
+                    <>
+                      <Users className="h-4 w-4" />
+                      {selectedLeadIds.size > 0
+                        ? `Importar ${selectedLeadIds.size} Lead(s)`
+                        : "Selecione leads para importar"}
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>
