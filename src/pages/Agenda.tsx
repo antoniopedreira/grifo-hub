@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, LayoutGrid, Plus, User, Search, ArrowUpDown } from "lucide-react";
+import { CalendarDays, LayoutGrid, Plus, User, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -13,14 +13,12 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type ViewMode = "calendar" | "kanban";
 type TeamMember = Tables<"team_members">;
-type SortOrder = "manual" | "newest" | "oldest";
 
 export default function Agenda() {
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("manual");
 
   const { data: members = [] } = useQuery({
     queryKey: ["team_members"],
@@ -68,21 +66,6 @@ export default function Agenda() {
             </SelectContent>
           </Select>
 
-          {/* Sort Order - Only visible in Kanban view */}
-          {viewMode === "kanban" && (
-            <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as SortOrder)}>
-              <SelectTrigger className="w-[140px] bg-background">
-                <ArrowUpDown className="h-4 w-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="Ordenar" />
-              </SelectTrigger>
-              <SelectContent className="min-w-[--radix-select-trigger-width]">
-                <SelectItem value="manual">Manual</SelectItem>
-                <SelectItem value="newest">Mais Recente</SelectItem>
-                <SelectItem value="oldest">Mais Antiga</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-
           <ToggleGroup
             type="single"
             value={viewMode}
@@ -113,12 +96,7 @@ export default function Agenda() {
       {viewMode === "calendar" ? (
         <AgendaCalendar ownerFilter={ownerFilter === "all" ? null : ownerFilter} />
       ) : (
-        <AgendaKanban 
-          ownerFilter={ownerFilter === "all" ? null : ownerFilter} 
-          searchTerm={searchTerm}
-          sortOrder={sortOrder}
-          onSortOrderChange={setSortOrder}
-        />
+        <AgendaKanban ownerFilter={ownerFilter === "all" ? null : ownerFilter} searchTerm={searchTerm} />
       )}
 
       {/* Mission Sheet */}
