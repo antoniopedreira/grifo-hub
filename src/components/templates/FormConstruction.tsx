@@ -55,7 +55,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Elemento de input para focar automaticamente
-  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Foca no input sempre que mudar o passo
@@ -85,8 +85,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     handleChange(field, value);
     // Pequeno delay para feedback visual antes de avançar
     setTimeout(() => {
-      // Se for a última pergunta (investimento) e for uma resposta positiva, submete
-      // Se for negativa, também submete mas registra o desinteresse
+      // Se for a última pergunta (investimento), submete
       if (field === "investment") {
         handleSubmit(value);
       } else {
@@ -453,30 +452,43 @@ function QuestionCard({ children, icon, number, question, subtext }: any) {
 }
 
 const InputLine = ({ value, onChange, placeholder, type = "text", onKeyDown, ref }: any) => (
-  <div className="relative w-full">
-    {/* CSS Hack para remover fundo branco do Autocomplete do navegador */}
+  <div className="relative w-full group">
+    {/* CSS Hack para remover fundo branco do Autocomplete e Highlight de toque */}
     <style>
       {`
         input:-webkit-autofill,
         input:-webkit-autofill:hover, 
         input:-webkit-autofill:focus, 
-        input:-webkit-autofill:active{
+        input:-webkit-autofill:active {
             -webkit-box-shadow: 0 0 0 30px #112232 inset !important;
             -webkit-text-fill-color: #E1D8CF !important;
             transition: background-color 5000s ease-in-out 0s;
+        }
+        /* Remove o highlight azul de toque em mobile */
+        input, textarea {
+          -webkit-tap-highlight-color: transparent;
         }
       `}
     </style>
     <input
       ref={ref}
       type={type}
-      value={value}
+      // O '|| ""' garante que nunca apareça 'null' escrito se o estado inicial for nulo
+      value={value || ""}
       onChange={onChange}
       onKeyDown={onKeyDown}
       placeholder={placeholder}
       spellCheck="false"
       autoComplete="off"
-      className="w-full bg-transparent border-0 border-b-2 border-[#E1D8CF]/20 text-[#E1D8CF] text-2xl md:text-3xl py-4 focus:ring-0 focus:outline-none focus:border-[#A47428] transition-all placeholder:text-[#E1D8CF]/30 appearance-none rounded-none"
+      // Classes para remover qualquer estilo padrão de borda/sombra
+      className="w-full bg-transparent border-0 border-b-2 border-[#E1D8CF]/20 text-[#E1D8CF] text-2xl md:text-3xl py-4 
+                 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:shadow-none focus:border-[#A47428] 
+                 transition-all placeholder:text-[#E1D8CF]/30 appearance-none rounded-none shadow-none outline-none ring-0"
+      style={{
+        boxShadow: "none",
+        outline: "none",
+        backgroundColor: "transparent",
+      }}
     />
   </div>
 );
