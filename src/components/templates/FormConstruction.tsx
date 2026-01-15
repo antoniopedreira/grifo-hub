@@ -54,17 +54,40 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
   const [formData, setFormData] = useState<StepData>(INITIAL_DATA);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Estado para armazenar configs do produto (para saber onde criar o deal)
+  const [productConfig, setProductConfig] = useState<{
+    create_deal: boolean;
+    pipeline_id: string | null;
+    name: string;
+    price: number | null;
+  } | null>(null);
+
+  // Busca configurações do produto ao carregar
+  useEffect(() => {
+    async function loadProductConfig() {
+      if (!productId) return;
+      const { data, error } = await supabase
+        .from("products")
+        .select("create_deal, pipeline_id, name, price")
+        .eq("id", productId)
+        .single();
+
+      if (!error && data) {
+        setProductConfig(data);
+      }
+    }
+    loadProductConfig();
+  }, [productId]);
+
   // Elemento de input para focar automaticamente
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Foca no input sempre que mudar o passo
     setTimeout(() => {
       if (inputRef.current) inputRef.current.focus();
     }, 300);
   }, [currentStep]);
 
-  // Total de passos agora é 8 (0 a 7)
   const totalSteps = 8;
   const progress = ((currentStep + 1) / (totalSteps + 1)) * 100;
 
@@ -83,9 +106,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
   const handleSelectAndNext = (field: keyof StepData, value: string) => {
     handleChange(field, value);
-    // Pequeno delay para feedback visual antes de avançar
     setTimeout(() => {
-      // Se for a última pergunta (investimento), submete
       if (field === "investment") {
         handleSubmit(value);
       } else {
@@ -95,7 +116,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
   };
 
   const validateStep = () => {
-    // Validação simples
     if (currentStep === 0 && formData.full_name.length < 3) {
       toast.error("Por favor, digite seu nome completo.");
       return false;
@@ -115,13 +135,12 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     return true;
   };
 
-  // Aceita value opcional para casos onde o state ainda não atualizou no closure
   const handleSubmit = async (finalValue?: string) => {
     setIsSubmitting(true);
     try {
       const finalData = { ...formData, investment: finalValue || formData.investment };
 
-      // 1. Criar Lead
+      // 1. Criar Lead (ou atualizar se já existir - aqui cria novo simplificado)
       const { data: lead, error: leadError } = await supabase
         .from("leads")
         .insert({
@@ -129,6 +148,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           email: finalData.email,
           phone: finalData.phone,
           status: "Novo",
+          // Podemos salvar metadados extras se tiver coluna JSONB no futuro
         })
         .select()
         .single();
@@ -150,10 +170,42 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
       if (subError) throw subError;
 
+      // 3. [NOVO] Criar Deal no Pipeline (Se configurado no Produto)
+      if (productConfig?.create_deal && productConfig?.pipeline_id) {
+        try {
+          // A. Descobrir a primeira etapa do funil de destino
+          const { data: stageData } = await supabase
+            .from("pipeline_stages")
+            .select("id")
+            .eq("pipeline_id", productConfig.pipeline_id)
+            .order("order_index", { ascending: true })
+            .limit(1)
+            .single();
+
+          if (stageData) {
+            // B. Criar o Card
+            await supabase.from("deals").insert({
+              title: finalData.company_name || finalData.full_name, // Título: Nome da Empresa
+              pipeline_id: productConfig.pipeline_id,
+              stage_id: stageData.id,
+              lead_id: lead.id,
+              status: "open",
+              value: productConfig.price || 0,
+              product_id: productId,
+            });
+            console.log("Deal criado com sucesso no pipeline!");
+          } else {
+            console.warn("Pipeline configurado não possui etapas.");
+          }
+        } catch (dealErr) {
+          console.error("Erro ao criar deal automático:", dealErr);
+          // Não lançamos erro aqui para não travar a tela de sucesso do usuário
+        }
+      }
+
       toast.success("Aplicação enviada com sucesso!");
       if (onSubmitSuccess) onSubmitSuccess();
 
-      // Tela de sucesso final
       setCurrentStep(totalSteps + 1);
     } catch (error) {
       console.error(error);
@@ -165,24 +217,21 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      // Avança com enter apenas nos passos de texto (0, 1, 2, 3)
       if ([0, 1, 2, 3].includes(currentStep)) {
         handleNext();
       }
     }
   };
 
-  // --- COMPONENTES DE UI ---
-
+  // --- UI DO FORMULÁRIO (Mantido igual) ---
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#112232] text-[#E1D8CF] font-sans relative overflow-hidden p-4">
-      {/* BACKGROUND DECORATION */}
+      {/* Barra de Progresso */}
       <div className="absolute top-0 left-0 w-full h-2 bg-[#112232] z-50">
         <div className="h-full bg-[#A47428] transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
       </div>
 
       <div className="w-full max-w-2xl z-10 flex flex-col items-center">
-        {/* HEADER LOGO */}
         <div className="mb-8 md:mb-12 transition-opacity duration-500">
           <img
             src="https://naroalxhbrvmosbqzhrb.supabase.co/storage/v1/object/public/photos-wallpapers/LOGO_GRIFO_6-removebg-preview.png"
@@ -191,12 +240,10 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           />
         </div>
 
-        {/* CONTENT AREA */}
         <div className="w-full relative min-h-[400px]">
           {/* STEP 0: NOME */}
           {currentStep === 0 && (
             <QuestionCard
-              icon={<User className="text-[#A47428]" size={32} />}
               number={1}
               question="Para começarmos, qual é o seu nome completo?"
               subtext="Queremos saber quem está falando conosco."
@@ -214,7 +261,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           {/* STEP 1: WHATSAPP */}
           {currentStep === 1 && (
             <QuestionCard
-              icon={<Phone className="text-[#A47428]" size={32} />}
               number={2}
               question="Qual seu WhatsApp para contato?"
               subtext="Nossos especialistas entrarão em contato por aqui."
@@ -233,7 +279,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           {/* STEP 2: EMAIL */}
           {currentStep === 2 && (
             <QuestionCard
-              icon={<Mail className="text-[#A47428]" size={32} />}
               number={3}
               question="E o seu melhor e-mail corporativo?"
               subtext="Para envio de materiais e propostas oficiais."
@@ -252,7 +297,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           {/* STEP 3: NOME DA EMPRESA */}
           {currentStep === 3 && (
             <QuestionCard
-              icon={<Building2 className="text-[#A47428]" size={32} />}
               number={4}
               question="Qual nome da sua empresa?"
               subtext="Identifique a organização que você representa."
@@ -270,7 +314,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           {/* STEP 4: CARGO */}
           {currentStep === 4 && (
             <QuestionCard
-              icon={<Briefcase className="text-[#A47428]" size={32} />}
               number={5}
               question="Qual seu cargo atual na empresa?"
               subtext="Selecione a opção que melhor se adequa."
@@ -298,7 +341,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           {/* STEP 5: NICHO */}
           {currentStep === 5 && (
             <QuestionCard
-              icon={<HardHat className="text-[#A47428]" size={32} />}
               number={6}
               question="Qual a principal área de atuação?"
               subtext="Entender seu nicho nos ajuda a ser mais assertivos."
@@ -326,7 +368,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           {/* STEP 6: FATURAMENTO */}
           {currentStep === 6 && (
             <QuestionCard
-              icon={<DollarSign className="text-[#A47428]" size={32} />}
               number={7}
               question="Qual o faturamento atual da empresa?"
               subtext="Essa informação é confidencial e usada apenas para qualificação."
@@ -354,7 +395,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           {/* STEP 7: INVESTIMENTO */}
           {currentStep === 7 && (
             <QuestionCard
-              icon={<Wallet className="text-[#A47428]" size={32} />}
               number={8}
               question="Investimento Necessário"
               subtext="O investimento para adquirir e participar dos nossos produtos é de R$10.000,00 a R$150.000,00."
@@ -404,7 +444,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           )}
         </div>
 
-        {/* NAVIGATION CONTROLS */}
+        {/* CONTROLES DE NAVEGAÇÃO */}
         {currentStep <= 7 && (
           <div className="fixed bottom-0 left-0 w-full p-6 bg-[#112232] md:bg-transparent md:static flex items-center justify-between max-w-2xl mt-8">
             {currentStep > 0 && (
@@ -417,7 +457,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
               </button>
             )}
 
-            {/* Botão Continuar aparece apenas nos campos de texto */}
             {[0, 1, 2, 3].includes(currentStep) && (
               <button
                 onClick={handleNext}
@@ -433,19 +472,16 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
   );
 }
 
-// --- SUB-COMPONENTES ---
+// --- SUB-COMPONENTES (Estilizados e Protegidos) ---
 
-function QuestionCard({ children, icon, number, question, subtext }: any) {
+function QuestionCard({ children, number, question, subtext }: any) {
   return (
     <div className="flex flex-col items-start w-full animate-in slide-in-from-right-8 duration-500 fade-in">
       <div className="flex items-center gap-3 mb-6">
         <span className="text-[#A47428] font-bold text-sm tracking-widest uppercase">Questão {number}</span>
       </div>
-
       <h2 className="text-2xl md:text-3xl font-bold text-white mb-3 leading-tight">{question}</h2>
-
       {subtext && <p className="text-[#E1D8CF]/60 text-lg mb-8">{subtext}</p>}
-
       <div className="w-full">{children}</div>
     </div>
   );
@@ -453,42 +489,27 @@ function QuestionCard({ children, icon, number, question, subtext }: any) {
 
 const InputLine = ({ value, onChange, placeholder, type = "text", onKeyDown, ref }: any) => (
   <div className="relative w-full group">
-    {/* CSS Hack para remover fundo branco do Autocomplete e Highlight de toque */}
     <style>
       {`
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
-        input:-webkit-autofill:focus, 
-        input:-webkit-autofill:active {
+        input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {
             -webkit-box-shadow: 0 0 0 30px #112232 inset !important;
             -webkit-text-fill-color: #E1D8CF !important;
             transition: background-color 5000s ease-in-out 0s;
         }
-        /* Remove o highlight azul de toque em mobile */
-        input, textarea {
-          -webkit-tap-highlight-color: transparent;
-        }
+        input, textarea { -webkit-tap-highlight-color: transparent; }
       `}
     </style>
     <input
       ref={ref}
       type={type}
-      // O '|| ""' garante que nunca apareça 'null' escrito se o estado inicial for nulo
       value={value || ""}
       onChange={onChange}
       onKeyDown={onKeyDown}
       placeholder={placeholder}
       spellCheck="false"
       autoComplete="off"
-      // Classes para remover qualquer estilo padrão de borda/sombra
-      className="w-full bg-transparent border-0 border-b-2 border-[#E1D8CF]/20 text-[#E1D8CF] text-2xl md:text-3xl py-4 
-                 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:shadow-none focus:border-[#A47428] 
-                 transition-all placeholder:text-[#E1D8CF]/30 appearance-none rounded-none shadow-none outline-none ring-0"
-      style={{
-        boxShadow: "none",
-        outline: "none",
-        backgroundColor: "transparent",
-      }}
+      className="w-full bg-transparent border-0 border-b-2 border-[#E1D8CF]/20 text-[#E1D8CF] text-2xl md:text-3xl py-4 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:shadow-none focus:border-[#A47428] transition-all placeholder:text-[#E1D8CF]/30 appearance-none rounded-none shadow-none outline-none ring-0"
+      style={{ boxShadow: "none", outline: "none", backgroundColor: "transparent" }}
     />
   </div>
 );
