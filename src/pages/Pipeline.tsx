@@ -405,6 +405,7 @@ export default function Pipeline() {
           onOpenChange={(open) => !open && setMeetingDialog((prev) => ({ ...prev, open: false }))}
           dealId={meetingDialog.deal.id}
           dealTitle={meetingDialog.deal.title}
+          leadName={meetingDialog.deal.lead?.full_name || undefined}
           currentDate={null}
           onSuccess={handleMeetingSuccess}
         />

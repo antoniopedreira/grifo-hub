@@ -22,6 +22,7 @@ interface ScheduleMeetingDialogProps {
   onOpenChange: (open: boolean) => void;
   dealId: string;
   dealTitle: string;
+  leadName?: string;
   currentDate?: string | null;
   onSuccess: () => void;
 }
@@ -31,6 +32,7 @@ export function ScheduleMeetingDialog({
   onOpenChange,
   dealId,
   dealTitle,
+  leadName,
   currentDate,
   onSuccess,
 }: ScheduleMeetingDialogProps) {
@@ -84,12 +86,16 @@ export function ScheduleMeetingDialog({
 
       if (dealError) throw dealError;
 
+      // Cria missão na Agenda com o nome do lead e horário
+      const displayName = leadName || dealTitle;
+      const missionTitle = `Reunião com ${displayName} - ${time}`;
+
       const { error: missionError } = await supabase.from("team_missions").insert({
-        mission: `Qualificação: ${dealTitle}`,
+        mission: missionTitle,
         department: "Comercial",
         target_goal: "Reunião de Qualificação",
         owner_id: selectedMember,
-        deadline: date,
+        deadline: date, // Apenas a data, sem timestamp
         status: "Pendente",
       });
 
