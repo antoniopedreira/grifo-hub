@@ -47,26 +47,55 @@ export function PipelineStageEditor({ pipeline, onBack }: PipelineStageEditorPro
 
   const saveMutation = useMutation({
     mutationFn: async (stagesToSave: Stage[]) => {
-      // Delete existing stages
-      const { error: deleteError } = await supabase
-        .from("pipeline_stages")
-        .delete()
-        .eq("pipeline_id", pipeline.id);
-      if (deleteError) throw deleteError;
+      // Get current stage IDs
+      const currentStageIds = stagesToSave.filter(s => s.id).map(s => s.id);
+      
+      // Delete stages that are no longer in the list (only those without deals)
+      if (fetchedStages && fetchedStages.length > 0) {
+        const stagesToDelete = fetchedStages
+          .filter(s => !currentStageIds.includes(s.id))
+          .map(s => s.id);
+        
+        if (stagesToDelete.length > 0) {
+          const { error: deleteError } = await supabase
+            .from("pipeline_stages")
+            .delete()
+            .in("id", stagesToDelete);
+          
+          // Ignore FK constraint errors - stage has deals attached
+          if (deleteError && deleteError.code !== "23503") {
+            throw deleteError;
+          }
+        }
+      }
 
-      // Insert new stages
-      if (stagesToSave.length > 0) {
-        const { error: insertError } = await supabase
-          .from("pipeline_stages")
-          .insert(
-            stagesToSave.map((s, index) => ({
+      // Upsert stages (update existing, insert new)
+      for (let i = 0; i < stagesToSave.length; i++) {
+        const stage = stagesToSave[i];
+        
+        if (stage.id) {
+          // Update existing stage
+          const { error } = await supabase
+            .from("pipeline_stages")
+            .update({
+              name: stage.name,
+              order_index: i,
+              type: stage.type || "default",
+            })
+            .eq("id", stage.id);
+          if (error) throw error;
+        } else {
+          // Insert new stage
+          const { error } = await supabase
+            .from("pipeline_stages")
+            .insert({
               pipeline_id: pipeline.id,
-              name: s.name,
-              order_index: index,
-              type: s.type || "default",
-            }))
-          );
-        if (insertError) throw insertError;
+              name: stage.name,
+              order_index: i,
+              type: stage.type || "default",
+            });
+          if (error) throw error;
+        }
       }
     },
     onSuccess: () => {
