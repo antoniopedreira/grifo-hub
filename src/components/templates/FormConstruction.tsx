@@ -85,7 +85,8 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     handleChange(field, value);
     // Pequeno delay para feedback visual antes de avançar
     setTimeout(() => {
-      // Se for a última pergunta (investimento), submete
+      // Se for a última pergunta (investimento) e for uma resposta positiva, submete
+      // Se for negativa, também submete mas registra o desinteresse
       if (field === "investment") {
         handleSubmit(value);
       } else {
@@ -135,7 +136,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
       if (leadError) throw leadError;
 
-      // 2. Salvar Respostas
+      // 2. Salvar Respostas Completas
       const { error: subError } = await supabase.from("form_submissions").insert({
         lead_id: lead.id,
         product_id: productId,
@@ -165,7 +166,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      // Avança com enter apenas nos passos de texto
+      // Avança com enter apenas nos passos de texto (0, 1, 2, 3)
       if ([0, 1, 2, 3].includes(currentStep)) {
         handleNext();
       }
@@ -204,7 +205,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
               <InputLine
                 ref={inputRef}
                 value={formData.full_name}
-                onChange={(e) => handleChange("full_name", e.target.value)}
+                onChange={(e: any) => handleChange("full_name", e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Digite seu nome..."
               />
@@ -222,7 +223,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
               <InputLine
                 ref={inputRef}
                 value={formData.phone}
-                onChange={(e) => handleChange("phone", e.target.value)}
+                onChange={(e: any) => handleChange("phone", e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="(00) 00000-0000"
                 type="tel"
@@ -241,7 +242,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
               <InputLine
                 ref={inputRef}
                 value={formData.email}
-                onChange={(e) => handleChange("email", e.target.value)}
+                onChange={(e: any) => handleChange("email", e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="seu@empresa.com.br"
                 type="email"
@@ -249,7 +250,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 3: NOME DA EMPRESA (Texto Alterado) */}
+          {/* STEP 3: NOME DA EMPRESA */}
           {currentStep === 3 && (
             <QuestionCard
               icon={<Building2 className="text-[#A47428]" size={32} />}
@@ -260,7 +261,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
               <InputLine
                 ref={inputRef}
                 value={formData.company_name}
-                onChange={(e) => handleChange("company_name", e.target.value)}
+                onChange={(e: any) => handleChange("company_name", e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Nome da empresa"
               />
@@ -323,7 +324,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 6: FATURAMENTO (NOVA PERGUNTA) */}
+          {/* STEP 6: FATURAMENTO */}
           {currentStep === 6 && (
             <QuestionCard
               icon={<DollarSign className="text-[#A47428]" size={32} />}
@@ -351,7 +352,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 7: INVESTIMENTO (ALTERADA) */}
+          {/* STEP 7: INVESTIMENTO */}
           {currentStep === 7 && (
             <QuestionCard
               icon={<Wallet className="text-[#A47428]" size={32} />}
@@ -433,7 +434,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
   );
 }
 
-// --- SUB-COMPONENTES PARA ORGANIZAÇÃO ---
+// --- SUB-COMPONENTES ---
 
 function QuestionCard({ children, icon, number, question, subtext }: any) {
   return (
@@ -452,15 +453,32 @@ function QuestionCard({ children, icon, number, question, subtext }: any) {
 }
 
 const InputLine = ({ value, onChange, placeholder, type = "text", onKeyDown, ref }: any) => (
-  <input
-    ref={ref}
-    type={type}
-    value={value}
-    onChange={onChange}
-    onKeyDown={onKeyDown}
-    placeholder={placeholder}
-    className="w-full bg-transparent border-b-2 border-[#E1D8CF]/20 text-[#E1D8CF] text-2xl md:text-3xl py-4 focus:outline-none focus:border-[#A47428] transition-all placeholder:text-[#E1D8CF]/30"
-  />
+  <div className="relative w-full">
+    {/* CSS Hack para remover fundo branco do Autocomplete do navegador */}
+    <style>
+      {`
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active{
+            -webkit-box-shadow: 0 0 0 30px #112232 inset !important;
+            -webkit-text-fill-color: #E1D8CF !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+      `}
+    </style>
+    <input
+      ref={ref}
+      type={type}
+      value={value}
+      onChange={onChange}
+      onKeyDown={onKeyDown}
+      placeholder={placeholder}
+      spellCheck="false"
+      autoComplete="off"
+      className="w-full bg-transparent border-0 border-b-2 border-[#E1D8CF]/20 text-[#E1D8CF] text-2xl md:text-3xl py-4 focus:ring-0 focus:outline-none focus:border-[#A47428] transition-all placeholder:text-[#E1D8CF]/30 appearance-none rounded-none"
+    />
+  </div>
 );
 
 const OptionButton = ({ label, selected, onClick }: any) => (
