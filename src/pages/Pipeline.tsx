@@ -89,7 +89,7 @@ export default function Pipeline() {
           *,
           lead:leads(id, full_name, email, phone),
           product:products(id, name, price),
-          meeting_owner:team_members!deals_meeting_owner_id_fkey(id, name)
+          meeting_owner:team_members(id, name)
         `)
         .order("order_index");
 
