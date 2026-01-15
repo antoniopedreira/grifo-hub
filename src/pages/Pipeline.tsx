@@ -103,7 +103,7 @@ export default function Pipeline() {
     enabled: !!selectedPipelineId && stages.length > 0,
   });
 
-  // Mutation para mover o card
+  // Mutation para mover o card com Optimistic Updates
   const moveDealMutation = useMutation({
     mutationFn: async ({ dealId, stageId, orderIndex }: { dealId: string; stageId: string; orderIndex: number }) => {
       const { error } = await supabase
@@ -112,11 +112,36 @@ export default function Pipeline() {
         .eq("id", dealId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
-      toast.success("Card movido!");
+    onMutate: async ({ dealId, stageId, orderIndex }) => {
+      // Cancela queries em andamento para evitar sobrescrita
+      await queryClient.cancelQueries({ queryKey: ["deals", selectedPipelineId] });
+
+      // Snapshot do estado anterior (para rollback em caso de erro)
+      const previousDeals = queryClient.getQueryData<Deal[]>(["deals", selectedPipelineId]);
+
+      // Atualiza o cache imediatamente (otimista)
+      queryClient.setQueryData<Deal[]>(["deals", selectedPipelineId], (oldDeals) => {
+        if (!oldDeals) return oldDeals;
+        return oldDeals.map((deal) =>
+          deal.id === dealId
+            ? { ...deal, stage_id: stageId, order_index: orderIndex }
+            : deal
+        );
+      });
+
+      return { previousDeals };
     },
-    onError: () => toast.error("Erro ao mover card"),
+    onError: (_error, _variables, context) => {
+      // Rollback para o estado anterior em caso de erro
+      if (context?.previousDeals) {
+        queryClient.setQueryData(["deals", selectedPipelineId], context.previousDeals);
+      }
+      toast.error("Erro ao mover card");
+    },
+    onSettled: () => {
+      // Revalida silenciosamente para garantir consistência
+      queryClient.invalidateQueries({ queryKey: ["deals", selectedPipelineId] });
+    },
   });
 
   const handleDragEnd = (result: DropResult) => {
