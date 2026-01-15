@@ -1,113 +1,106 @@
 import { useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
-// Esquema de validação
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
+import type { Tables } from "@/integrations/supabase/types";
+
+type TeamMember = Tables<"team_members">;
+
 const formSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-  email: z.string().email("Email inválido"),
-  phone: z.string().min(14, "Telefone inválido").optional().or(z.literal("")),
-  role: z.string().min(1, "Selecione um cargo"),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
+  phone: z.string().optional(),
+  active: z.boolean(),
 });
+
+type FormData = z.infer<typeof formSchema>;
 
 interface TeamMemberDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
-  memberToEdit?: any;
-  onSuccess: () => void;
+  onOpenChange: () => void;
+  member: TeamMember | null;
 }
 
-// Função auxiliar de máscara de telefone
-const formatPhone = (value: string) => {
-  if (!value) return "";
+export function TeamMemberDialog({ open, onOpenChange, member }: TeamMemberDialogProps) {
+  const queryClient = useQueryClient();
+  const isEditing = !!member;
 
-  // Remove tudo que não é número
-  const numbers = value.replace(/\D/g, "");
-
-  // Aplica a máscara (XX) XXXXX-XXXX
-  if (numbers.length <= 2) return `(${numbers}`;
-  if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-  return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
-};
-
-export function TeamMemberDialog({ open, onOpenChange, memberToEdit, onSuccess }: TeamMemberDialogProps) {
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       email: "",
       phone: "",
-      role: "Sales",
+      active: true,
     },
   });
 
-  // Carrega dados se for edição
   useEffect(() => {
-    if (memberToEdit) {
+    if (member) {
       form.reset({
-        name: memberToEdit.name,
-        email: memberToEdit.email || "",
-        phone: formatPhone(memberToEdit.phone || ""), // Aplica máscara ao carregar
-        role: memberToEdit.role || "Sales",
+        name: member.name,
+        email: member.email || "",
+        phone: member.phone || "",
+        active: member.active ?? true,
       });
     } else {
       form.reset({
         name: "",
         email: "",
         phone: "",
-        role: "Sales",
+        active: true,
       });
     }
-  }, [memberToEdit, form, open]);
+  }, [member, form]);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    try {
-      // Remove a máscara antes de salvar no banco (opcional, mas recomendado)
-      // Se preferir salvar com máscara, remova esta linha:
-      // const cleanPhone = values.phone?.replace(/\D/g, "") || null;
-      // Vou manter como está no formulário para consistência visual ou salvar limpo:
-
+  const mutation = useMutation({
+    mutationFn: async (data: FormData) => {
       const payload = {
-        name: values.name,
-        email: values.email,
-        phone: values.phone, // Salvando com máscara para exibir formatado
-        role: values.role,
+        name: data.name,
+        email: data.email || null,
+        phone: data.phone || null,
+        active: data.active,
       };
 
-      if (memberToEdit) {
-        const { error } = await supabase.from("team_members").update(payload).eq("id", memberToEdit.id);
-
+      if (isEditing) {
+        const { error } = await supabase.from("team_members").update(payload).eq("id", member.id);
         if (error) throw error;
-        toast.success("Membro atualizado com sucesso!");
       } else {
-        const { error } = await supabase.from("team_members").insert([payload]);
-
+        const { error } = await supabase.from("team_members").insert(payload);
         if (error) throw error;
-        toast.success("Membro adicionado com sucesso!");
       }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team_members"] });
+      toast.success(isEditing ? "Membro atualizado!" : "Membro adicionado!");
+      onOpenChange();
+    },
+    onError: () => {
+      toast.error("Erro ao salvar membro.");
+    },
+  });
 
-      onSuccess();
-      onOpenChange(false);
-    } catch (error: any) {
-      console.error(error);
-      toast.error("Erro ao salvar: " + error.message);
-    }
+  const onSubmit = (data: FormData) => {
+    mutation.mutate(data);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{memberToEdit ? "Editar Membro" : "Novo Membro da Equipe"}</DialogTitle>
+          <DialogTitle className="text-primary">{isEditing ? "Editar Membro" : "Novo Membro"}</DialogTitle>
+          <DialogDescription>
+            {isEditing ? "Atualize os dados do membro da equipe." : "Adicione um novo membro à equipe."}
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -117,9 +110,9 @@ export function TeamMemberDialog({ open, onOpenChange, memberToEdit, onSuccess }
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome Completo</FormLabel>
+                  <FormLabel>Nome Completo *</FormLabel>
                   <FormControl>
-                    <Input placeholder="João Silva" {...field} />
+                    <Input placeholder="Ex: João Silva" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -133,7 +126,7 @@ export function TeamMemberDialog({ open, onOpenChange, memberToEdit, onSuccess }
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="joao@empresa.com" {...field} />
+                    <Input type="email" placeholder="email@exemplo.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -145,21 +138,9 @@ export function TeamMemberDialog({ open, onOpenChange, memberToEdit, onSuccess }
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>WhatsApp / Telefone</FormLabel>
+                  <FormLabel>Telefone</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="(11) 99999-9999"
-                      {...field}
-                      onChange={(e) => {
-                        // Aplica a máscara enquanto digita
-                        const formatted = formatPhone(e.target.value);
-                        // Limita o tamanho máximo (15 caracteres para "(11) 99999-9999")
-                        if (formatted.length <= 15) {
-                          field.onChange(formatted);
-                        }
-                      }}
-                      value={field.value || ""}
-                    />
+                    <Input placeholder="(11) 99999-9999" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -168,36 +149,32 @@ export function TeamMemberDialog({ open, onOpenChange, memberToEdit, onSuccess }
 
             <FormField
               control={form.control}
-              name="role"
+              name="active"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cargo / Função</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o cargo" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Admin">Administrador</SelectItem>
-                      <SelectItem value="Sales">Comercial / Vendas</SelectItem>
-                      <SelectItem value="Marketing">Marketing</SelectItem>
-                      <SelectItem value="Support">Suporte</SelectItem>
-                      <SelectItem value="Closer">Closer</SelectItem>
-                      <SelectItem value="SDR">SDR</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
+                <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel>Membro Ativo</FormLabel>
+                    <p className="text-sm text-muted-foreground">Membros inativos não aparecem nos seletores</p>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
                 </FormItem>
               )}
             />
 
-            <DialogFooter className="pt-4">
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={onOpenChange}>
+                Cancelar
               </Button>
-            </DialogFooter>
+              <Button
+                type="submit"
+                disabled={mutation.isPending}
+                className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+              >
+                {mutation.isPending ? "Salvando..." : isEditing ? "Salvar" : "Adicionar"}
+              </Button>
+            </div>
           </form>
         </Form>
       </DialogContent>
