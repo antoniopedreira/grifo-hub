@@ -14,6 +14,8 @@ export interface Deal {
   description?: string;
   priority?: "Low" | "Medium" | "High";
 
+  meeting_owner_id?: string | null;
+
   lead?: {
     id: string;
     full_name: string;
@@ -25,6 +27,11 @@ export interface Deal {
     id: string;
     name: string;
     price: number;
+  } | null;
+
+  meeting_owner?: {
+    id: string;
+    name: string;
   } | null;
 }
 

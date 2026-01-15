@@ -1,5 +1,8 @@
 import { Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { CalendarDays, Clock, User } from "lucide-react";
 import type { Deal } from "./types";
 
 interface DealCardProps {
@@ -24,6 +27,20 @@ export function DealCard({ deal, index, onClick }: DealCardProps) {
         currency: "BRL",
       }).format(deal.value)
     : "—";
+
+  // Parse meeting date preservando horário local
+  const meetingInfo = deal.meeting_date
+    ? (() => {
+        const dateStr = deal.meeting_date.includes("T") 
+          ? deal.meeting_date 
+          : `${deal.meeting_date}T00:00:00`;
+        const date = parseISO(dateStr);
+        return {
+          date: format(date, "dd/MM", { locale: ptBR }),
+          time: format(date, "HH:mm"),
+        };
+      })()
+    : null;
 
   return (
     <Draggable draggableId={deal.id} index={index}>
@@ -56,6 +73,30 @@ export function DealCard({ deal, index, onClick }: DealCardProps) {
             <p className="text-sm text-muted-foreground truncate">
               {deal.product?.name || "Sem produto"}
             </p>
+
+            {/* Meeting Info Badges */}
+            {(meetingInfo || deal.meeting_owner) && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {meetingInfo && (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-xs font-medium text-blue-700">
+                      <CalendarDays className="h-3 w-3" />
+                      {meetingInfo.date}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-xs font-medium text-blue-700">
+                      <Clock className="h-3 w-3" />
+                      {meetingInfo.time}
+                    </span>
+                  </>
+                )}
+                {deal.meeting_owner && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-purple-50 border border-purple-200 px-1.5 py-0.5 text-xs font-medium text-purple-700">
+                    <User className="h-3 w-3" />
+                    {deal.meeting_owner.name.split(" ")[0]}
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Value and Priority */}
             <div className="flex items-center justify-between gap-2 pt-1">

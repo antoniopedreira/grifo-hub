@@ -88,7 +88,8 @@ export default function Pipeline() {
         .select(`
           *,
           lead:leads(id, full_name, email, phone),
-          product:products(id, name, price)
+          product:products(id, name, price),
+          meeting_owner:team_members!deals_meeting_owner_id_fkey(id, name)
         `)
         .order("order_index");
 

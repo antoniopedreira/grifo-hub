@@ -20,6 +20,7 @@ export type Database = {
           id: string
           lead_id: string | null
           meeting_date: string | null
+          meeting_owner_id: string | null
           order_index: number | null
           pipeline_id: string | null
           priority: string | null
@@ -33,6 +34,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           meeting_date?: string | null
+          meeting_owner_id?: string | null
           order_index?: number | null
           pipeline_id?: string | null
           priority?: string | null
@@ -46,6 +48,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           meeting_date?: string | null
+          meeting_owner_id?: string | null
           order_index?: number | null
           pipeline_id?: string | null
           priority?: string | null
@@ -60,6 +63,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_meeting_owner_id_fkey"
+            columns: ["meeting_owner_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
           {
