@@ -71,12 +71,15 @@ export function ScheduleMeetingDialog({
     const meetingDateTime = `${date}T${time}:00`;
 
     try {
+      // Atualiza o deal com meeting_date e meeting_owner_id
+      const updatePayload = { 
+        meeting_date: meetingDateTime,
+        meeting_owner_id: selectedMember 
+      };
+      
       const { error: dealError } = await supabase
         .from("deals")
-        .update({ 
-          meeting_date: meetingDateTime,
-          meeting_owner_id: selectedMember 
-        } as any)
+        .update(updatePayload)
         .eq("id", dealId);
 
       if (dealError) throw dealError;
