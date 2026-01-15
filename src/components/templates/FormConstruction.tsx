@@ -184,8 +184,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
           if (stageData) {
             // B. Criar o Card
-            await supabase.from("deals").insert({
-              title: finalData.company_name || finalData.full_name, // Título: Nome da Empresa
+            const { error: dealError } = await supabase.from("deals").insert({
               pipeline_id: productConfig.pipeline_id,
               stage_id: stageData.id,
               lead_id: lead.id,
@@ -193,7 +192,11 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
               value: productConfig.price || 0,
               product_id: productId,
             });
-            console.log("Deal criado com sucesso no pipeline!");
+            if (dealError) {
+              console.error("Erro ao criar deal:", dealError);
+            } else {
+              console.log("Deal criado com sucesso no pipeline!");
+            }
           } else {
             console.warn("Pipeline configurado não possui etapas.");
           }
