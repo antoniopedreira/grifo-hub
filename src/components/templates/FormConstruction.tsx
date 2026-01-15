@@ -151,6 +151,37 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
       if (subError) throw subError;
 
+      // 3. Criar Deal se configurado no produto
+      if (productId) {
+        const { data: productConfig } = await supabase
+          .from("products")
+          .select("create_deal, pipeline_id, price")
+          .eq("id", productId)
+          .single();
+
+        if (productConfig?.create_deal && productConfig?.pipeline_id) {
+          // Busca primeira etapa do pipeline configurado
+          const { data: stages } = await supabase
+            .from("pipeline_stages")
+            .select("id")
+            .eq("pipeline_id", productConfig.pipeline_id)
+            .order("order_index", { ascending: true })
+            .limit(1);
+
+          if (stages && stages.length > 0) {
+            await supabase.from("deals").insert({
+              lead_id: lead.id,
+              product_id: productId,
+              pipeline_id: productConfig.pipeline_id,
+              stage_id: stages[0].id,
+              status: "open",
+              value: productConfig.price || 0,
+              priority: "Medium",
+            });
+          }
+        }
+      }
+
       toast.success("Aplicação enviada com sucesso!");
       if (onSubmitSuccess) onSubmitSuccess();
 
