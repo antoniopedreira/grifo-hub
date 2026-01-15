@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, User, Package } from "lucide-react";
+import { Plus, User, Package, Search, Users, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -20,6 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
 interface NewDealDialogProps {
@@ -27,6 +30,13 @@ interface NewDealDialogProps {
   onOpenChange: (open: boolean) => void;
   pipelineId: string;
   firstStageId: string;
+}
+
+interface LeadResult {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  ltv: number | null;
 }
 
 export function NewDealDialog({
@@ -38,6 +48,10 @@ export function NewDealDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Main tab state
+  const [mainTab, setMainTab] = useState<"new" | "import">("new");
+
+  // ===== NEW LEAD TAB STATE =====
   const [leadTab, setLeadTab] = useState<"existing" | "new">("existing");
   const [selectedLeadId, setSelectedLeadId] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -48,7 +62,17 @@ export function NewDealDialog({
   const [newLeadEmail, setNewLeadEmail] = useState("");
   const [newLeadPhone, setNewLeadPhone] = useState("");
 
-  // Fetch leads
+  // ===== IMPORT TAB STATE =====
+  const [ltvMin, setLtvMin] = useState("");
+  const [ltvMax, setLtvMax] = useState("");
+  const [selectedProductFilters, setSelectedProductFilters] = useState<string[]>([]);
+  const [searchResults, setSearchResults] = useState<LeadResult[]>([]);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [importProductId, setImportProductId] = useState("");
+
+  // Fetch leads for existing lead selector
   const { data: leads } = useQuery({
     queryKey: ["leads-list"],
     queryFn: async () => {
@@ -77,7 +101,103 @@ export function NewDealDialog({
     enabled: open,
   });
 
-  // Create deal mutation
+  // Search leads for import
+  const handleSearch = async () => {
+    setIsSearching(true);
+    setHasSearched(true);
+    setSelectedLeadIds(new Set());
+
+    try {
+      let query = supabase
+        .from("leads")
+        .select("id, full_name, email, ltv")
+        .order("full_name");
+
+      // LTV filters
+      if (ltvMin) {
+        query = query.gte("ltv", parseFloat(ltvMin));
+      }
+      if (ltvMax) {
+        query = query.lte("ltv", parseFloat(ltvMax));
+      }
+
+      const { data: leadsData, error: leadsError } = await query;
+      if (leadsError) throw leadsError;
+
+      let filteredLeads = leadsData || [];
+
+      // Product filter - need to check form_submissions and sales
+      if (selectedProductFilters.length > 0) {
+        // Get leads that have form_submissions with selected products
+        const { data: formSubmissions } = await supabase
+          .from("form_submissions")
+          .select("lead_id")
+          .in("product_id", selectedProductFilters);
+
+        // Get leads that have sales with selected products (using product_name match)
+        const selectedProductNames = products
+          ?.filter((p) => selectedProductFilters.includes(p.id))
+          .map((p) => p.name) || [];
+
+        const { data: salesData } = await supabase
+          .from("sales")
+          .select("lead_id")
+          .in("product_name", selectedProductNames);
+
+        const leadIdsFromForms = new Set(formSubmissions?.map((f) => f.lead_id) || []);
+        const leadIdsFromSales = new Set(salesData?.map((s) => s.lead_id) || []);
+
+        // Merge both sets
+        const validLeadIds = new Set([...leadIdsFromForms, ...leadIdsFromSales]);
+
+        filteredLeads = filteredLeads.filter((lead) => validLeadIds.has(lead.id));
+      }
+
+      setSearchResults(filteredLeads);
+    } catch (error) {
+      console.error("Erro na busca:", error);
+      toast({
+        title: "Erro na busca",
+        description: "Não foi possível buscar os leads.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Toggle product filter selection
+  const toggleProductFilter = (productId: string) => {
+    setSelectedProductFilters((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  // Toggle lead selection
+  const toggleLeadSelection = (leadId: string) => {
+    setSelectedLeadIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(leadId)) {
+        newSet.delete(leadId);
+      } else {
+        newSet.add(leadId);
+      }
+      return newSet;
+    });
+  };
+
+  // Select/Deselect all
+  const toggleSelectAll = () => {
+    if (selectedLeadIds.size === searchResults.length) {
+      setSelectedLeadIds(new Set());
+    } else {
+      setSelectedLeadIds(new Set(searchResults.map((l) => l.id)));
+    }
+  };
+
+  // Create single deal mutation
   const createDeal = useMutation({
     mutationFn: async () => {
       let leadId = selectedLeadId;
@@ -135,7 +255,54 @@ export function NewDealDialog({
     },
   });
 
+  // Import multiple deals mutation
+  const importDeals = useMutation({
+    mutationFn: async () => {
+      const selectedProduct = products?.find((p) => p.id === importProductId);
+      const productName = selectedProduct?.name || "Oportunidade de Upsell";
+      const productPrice = selectedProduct?.price || null;
+
+      const dealsToInsert = Array.from(selectedLeadIds).map((leadId) => {
+        const lead = searchResults.find((l) => l.id === leadId);
+        const leadName = lead?.full_name || lead?.email || "Lead";
+
+        return {
+          lead_id: leadId,
+          product_id: importProductId || null,
+          pipeline_id: pipelineId,
+          stage_id: firstStageId,
+          value: productPrice,
+          status: "open" as const,
+          priority: "Medium",
+        };
+      });
+
+      const { error } = await supabase.from("deals").insert(dealsToInsert);
+      if (error) throw error;
+
+      return dealsToInsert.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      toast({
+        title: "Importação concluída!",
+        description: `${count} negócio(s) foram criados no pipeline.`,
+      });
+      resetForm();
+      onOpenChange(false);
+    },
+    onError: () => {
+      toast({
+        title: "Erro na importação",
+        description: "Não foi possível importar os leads.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
+    // New lead tab
+    setMainTab("new");
     setLeadTab("existing");
     setSelectedLeadId("");
     setSelectedProductId("");
@@ -143,128 +310,337 @@ export function NewDealDialog({
     setNewLeadName("");
     setNewLeadEmail("");
     setNewLeadPhone("");
+
+    // Import tab
+    setLtvMin("");
+    setLtvMax("");
+    setSelectedProductFilters([]);
+    setSearchResults([]);
+    setSelectedLeadIds(new Set());
+    setHasSearched(false);
+    setImportProductId("");
   };
 
-  const canSubmit =
+  const canSubmitNewDeal =
     (leadTab === "existing" && selectedLeadId) ||
     (leadTab === "new" && newLeadName.trim());
 
+  const canImport = selectedLeadIds.size > 0;
+
+  const formatCurrency = (value: number | null) => {
+    if (value === null || value === undefined) return "R$ 0,00";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-primary flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            Novo Negócio
+            Adicionar ao Pipeline
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Lead Selection */}
-          <div className="space-y-3">
-            <Label className="text-primary font-medium flex items-center gap-2">
+        <Tabs
+          value={mainTab}
+          onValueChange={(v) => setMainTab(v as "new" | "import")}
+          className="flex-1 flex flex-col overflow-hidden"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="new" className="gap-2">
               <User className="h-4 w-4" />
-              Lead
-            </Label>
+              Novo Lead
+            </TabsTrigger>
+            <TabsTrigger value="import" className="gap-2">
+              <Users className="h-4 w-4" />
+              Leads da Base
+            </TabsTrigger>
+          </TabsList>
 
-            <Tabs
-              value={leadTab}
-              onValueChange={(v) => setLeadTab(v as "existing" | "new")}
-            >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="existing">Lead Existente</TabsTrigger>
-                <TabsTrigger value="new">Criar Novo</TabsTrigger>
-              </TabsList>
+          {/* ===== NEW LEAD TAB ===== */}
+          <TabsContent value="new" className="flex-1 overflow-auto mt-4">
+            <div className="space-y-6 py-2">
+              {/* Lead Selection */}
+              <div className="space-y-3">
+                <Label className="text-primary font-medium flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Lead
+                </Label>
 
-              <TabsContent value="existing" className="mt-3">
-                <Select value={selectedLeadId} onValueChange={setSelectedLeadId}>
+                <Tabs
+                  value={leadTab}
+                  onValueChange={(v) => setLeadTab(v as "existing" | "new")}
+                >
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="existing">Lead Existente</TabsTrigger>
+                    <TabsTrigger value="new">Criar Novo</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="existing" className="mt-3">
+                    <Select value={selectedLeadId} onValueChange={setSelectedLeadId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um lead..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {leads?.map((lead) => (
+                          <SelectItem key={lead.id} value={lead.id}>
+                            {lead.full_name || lead.email || "Lead sem nome"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TabsContent>
+
+                  <TabsContent value="new" className="mt-3 space-y-3">
+                    <Input
+                      placeholder="Nome completo *"
+                      value={newLeadName}
+                      onChange={(e) => setNewLeadName(e.target.value)}
+                    />
+                    <Input
+                      type="email"
+                      placeholder="Email"
+                      value={newLeadEmail}
+                      onChange={(e) => setNewLeadEmail(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Telefone"
+                      value={newLeadPhone}
+                      onChange={(e) => setNewLeadPhone(e.target.value)}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              {/* Product Selection */}
+              <div className="space-y-2">
+                <Label className="text-primary font-medium flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Produto
+                </Label>
+                <Select value={selectedProductId} onValueChange={setSelectedProductId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um lead..." />
+                    <SelectValue placeholder="Selecione um produto..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {leads?.map((lead) => (
-                      <SelectItem key={lead.id} value={lead.id}>
-                        {lead.full_name || lead.email || "Lead sem nome"}
+                    {products?.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}{" "}
+                        {product.price && (
+                          <span className="text-muted-foreground">
+                            ({formatCurrency(product.price)})
+                          </span>
+                        )}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </TabsContent>
+              </div>
 
-              <TabsContent value="new" className="mt-3 space-y-3">
-                <Input
-                  placeholder="Nome completo *"
-                  value={newLeadName}
-                  onChange={(e) => setNewLeadName(e.target.value)}
-                />
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={newLeadEmail}
-                  onChange={(e) => setNewLeadEmail(e.target.value)}
-                />
-                <Input
-                  placeholder="Telefone"
-                  value={newLeadPhone}
-                  onChange={(e) => setNewLeadPhone(e.target.value)}
-                />
-              </TabsContent>
-            </Tabs>
-          </div>
+              {/* Priority */}
+              <div className="space-y-2">
+                <Label className="text-primary font-medium">Prioridade</Label>
+                <Select value={priority} onValueChange={setPriority}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="High">Alta</SelectItem>
+                    <SelectItem value="Medium">Média</SelectItem>
+                    <SelectItem value="Low">Baixa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-          {/* Product Selection */}
-          <div className="space-y-2">
-            <Label className="text-primary font-medium flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Produto
-            </Label>
-            <Select value={selectedProductId} onValueChange={setSelectedProductId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um produto..." />
-              </SelectTrigger>
-              <SelectContent>
-                {products?.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    {product.name}{" "}
-                    {product.price && (
-                      <span className="text-muted-foreground">
-                        (R$ {product.price.toFixed(2)})
-                      </span>
+            <DialogFooter className="mt-6">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => createDeal.mutate()}
+                disabled={!canSubmitNewDeal || createDeal.isPending}
+                className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+              >
+                {createDeal.isPending ? "Criando..." : "Criar Negócio"}
+              </Button>
+            </DialogFooter>
+          </TabsContent>
+
+          {/* ===== IMPORT TAB ===== */}
+          <TabsContent value="import" className="flex-1 flex flex-col overflow-hidden mt-4">
+            {/* Filters Section */}
+            <div className="space-y-4 pb-4 border-b">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Filter className="h-4 w-4" />
+                Filtros de Busca
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* LTV Range */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">LTV Mínimo (R$)</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={ltvMin}
+                    onChange={(e) => setLtvMin(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">LTV Máximo (R$)</Label>
+                  <Input
+                    type="number"
+                    placeholder="999999"
+                    value={ltvMax}
+                    onChange={(e) => setLtvMax(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Product Filter */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Produtos Adquiridos</Label>
+                <div className="flex flex-wrap gap-2">
+                  {products?.map((product) => (
+                    <Badge
+                      key={product.id}
+                      variant={selectedProductFilters.includes(product.id) ? "default" : "outline"}
+                      className="cursor-pointer hover:bg-secondary/80"
+                      onClick={() => toggleProductFilter(product.id)}
+                    >
+                      {product.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSearch}
+                disabled={isSearching}
+                className="w-full gap-2"
+                variant="outline"
+              >
+                <Search className="h-4 w-4" />
+                {isSearching ? "Buscando..." : "Buscar Leads"}
+              </Button>
+            </div>
+
+            {/* Results Section */}
+            <div className="flex-1 overflow-hidden flex flex-col mt-4">
+              {hasSearched && (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">
+                      {searchResults.length} lead(s) encontrado(s)
+                    </span>
+                    {searchResults.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={toggleSelectAll}
+                        className="text-xs"
+                      >
+                        {selectedLeadIds.size === searchResults.length
+                          ? "Desmarcar todos"
+                          : "Selecionar todos"}
+                      </Button>
                     )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                  </div>
 
-          {/* Priority */}
-          <div className="space-y-2">
-            <Label className="text-primary font-medium">Prioridade</Label>
-            <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="High">Alta</SelectItem>
-                <SelectItem value="Medium">Média</SelectItem>
-                <SelectItem value="Low">Baixa</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+                  <ScrollArea className="flex-1 border rounded-md">
+                    {searchResults.length === 0 ? (
+                      <div className="p-8 text-center text-muted-foreground">
+                        Nenhum lead encontrado com os filtros aplicados.
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {searchResults.map((lead) => (
+                          <div
+                            key={lead.id}
+                            className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer"
+                            onClick={() => toggleLeadSelection(lead.id)}
+                          >
+                            <Checkbox
+                              checked={selectedLeadIds.has(lead.id)}
+                              onCheckedChange={() => toggleLeadSelection(lead.id)}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">
+                                {lead.full_name || "Sem nome"}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {lead.email || "Sem email"}
+                              </p>
+                            </div>
+                            <Badge variant="secondary" className="shrink-0">
+                              LTV: {formatCurrency(lead.ltv)}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </>
+              )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={() => createDeal.mutate()}
-            disabled={!canSubmit || createDeal.isPending}
-            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-          >
-            {createDeal.isPending ? "Criando..." : "Criar Negócio"}
-          </Button>
-        </DialogFooter>
+              {!hasSearched && (
+                <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+                  Use os filtros acima e clique em "Buscar Leads"
+                </div>
+              )}
+            </div>
+
+            {/* Import Product & Action */}
+            {selectedLeadIds.size > 0 && (
+              <div className="border-t pt-4 mt-4 space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-primary font-medium flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Produto para os Deals (opcional)
+                  </Label>
+                  <Select value={importProductId} onValueChange={setImportProductId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um produto..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products?.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name}{" "}
+                          {product.price && (
+                            <span className="text-muted-foreground">
+                              ({formatCurrency(product.price)})
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={() => importDeals.mutate()}
+                    disabled={!canImport || importDeals.isPending}
+                    className="bg-secondary hover:bg-secondary/90 text-secondary-foreground gap-2"
+                  >
+                    <Users className="h-4 w-4" />
+                    {importDeals.isPending
+                      ? "Importando..."
+                      : `Importar ${selectedLeadIds.size} Lead(s)`}
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
