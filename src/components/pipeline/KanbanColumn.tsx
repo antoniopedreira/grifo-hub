@@ -63,7 +63,7 @@ export function KanbanColumn({ stage, deals, totalValue, onDealClick }: KanbanCo
   const hasSpecialType = stageType !== "default";
 
   return (
-    <div className="flex flex-col w-[320px] shrink-0 animate-fade-in">
+    <div className="flex flex-col w-[320px] shrink-0">
       {/* Header da Coluna */}
       <div
         className={cn(
@@ -104,9 +104,9 @@ export function KanbanColumn({ stage, deals, totalValue, onDealClick }: KanbanCo
             {...provided.droppableProps}
             ref={provided.innerRef}
             className={cn(
-              "flex-1 min-h-[500px] rounded-xl p-3 transition-all duration-200 space-y-3",
+              "flex-1 min-h-[500px] rounded-xl p-3 transition-colors duration-200 space-y-3",
               snapshot.isDraggingOver
-                ? "bg-secondary/10 ring-2 ring-secondary/40 scale-[1.01]"
+                ? "bg-secondary/10 ring-2 ring-secondary/40"
                 : styles.dropBg
             )}
           >
