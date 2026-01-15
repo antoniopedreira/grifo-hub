@@ -1,5 +1,4 @@
-import { Droppable, Draggable } from "@hello-pangea/dnd";
-import { formatCurrency } from "@/lib/utils";
+import { Droppable } from "@hello-pangea/dnd";
 import { DealCard } from "./DealCard";
 import type { Deal, PipelineStage } from "./types";
 import { Badge } from "@/components/ui/badge";
@@ -8,9 +7,10 @@ interface KanbanColumnProps {
   stage: PipelineStage;
   deals: Deal[];
   totalValue: number;
+  onDealClick: (deal: Deal) => void;
 }
 
-export function KanbanColumn({ stage, deals, totalValue }: KanbanColumnProps) {
+export function KanbanColumn({ stage, deals, totalValue, onDealClick }: KanbanColumnProps) {
   return (
     <div className="flex flex-col w-80 shrink-0">
       {/* Header da Coluna */}
@@ -40,7 +40,7 @@ export function KanbanColumn({ stage, deals, totalValue }: KanbanColumnProps) {
             `}
           >
             {deals.map((deal, index) => (
-              <DealCard key={deal.id} deal={deal} index={index} />
+              <DealCard key={deal.id} deal={deal} index={index} onClick={() => onDealClick(deal)} />
             ))}
             {provided.placeholder}
           </div>
