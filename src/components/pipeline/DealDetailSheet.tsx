@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { MessageCircle, Mail, Phone, User, Package, DollarSign, FileText } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MessageCircle, Mail, Phone, User, Package, DollarSign, FileText, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sheet,
@@ -7,9 +7,21 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import type { Deal } from "./types";
 
 interface DealDetailSheetProps {
@@ -19,6 +31,9 @@ interface DealDetailSheetProps {
 }
 
 export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   // Fetch form submission for this lead/product
   const { data: formSubmission } = useQuery({
     queryKey: ["form-submission", deal?.lead_id, deal?.product_id],
@@ -35,6 +50,29 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
       return data;
     },
     enabled: open && !!deal?.lead_id,
+  });
+
+  // Delete deal mutation
+  const deleteDealMutation = useMutation({
+    mutationFn: async (dealId: string) => {
+      const { error } = await supabase.from("deals").delete().eq("id", dealId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Deal excluído",
+        description: "O deal foi removido com sucesso. Lead e vendas foram preservados.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      onOpenChange(false);
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir o deal. Tente novamente.",
+        variant: "destructive",
+      });
+    },
   });
 
   if (!deal) return null;
@@ -177,6 +215,39 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Delete Deal Button */}
+        <div className="mt-8 pt-6 border-t">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir Deal
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir este deal?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação removerá apenas o deal do pipeline. O lead e todas as vendas 
+                  associadas serão mantidos no sistema.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteDealMutation.mutate(deal.id)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </SheetContent>
     </Sheet>
   );
