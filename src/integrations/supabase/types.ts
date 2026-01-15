@@ -248,14 +248,17 @@ export type Database = {
       }
       pipelines: {
         Row: {
+          archived: boolean | null
           id: string
           name: string
         }
         Insert: {
+          archived?: boolean | null
           id?: string
           name: string
         }
         Update: {
+          archived?: boolean | null
           id?: string
           name?: string
         }

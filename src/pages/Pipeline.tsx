@@ -41,11 +41,15 @@ export default function Pipeline() {
     deal: null,
   });
 
-  // 1. Busca Pipelines
+  // 1. Busca Pipelines (apenas não arquivados)
   const { data: pipelines = [] } = useQuery({
     queryKey: ["pipelines"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("pipelines").select("*").order("name");
+      const { data, error } = await supabase
+        .from("pipelines")
+        .select("*")
+        .eq("archived", false)
+        .order("name");
       if (error) throw error;
       return data as PipelineType[];
     },

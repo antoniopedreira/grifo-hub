@@ -39,8 +39,8 @@ export interface PipelineStage {
 export interface Pipeline {
   id: string;
   name: string;
-  created_at: string;
-  active: boolean;
+  created_at?: string;
+  archived?: boolean;
 }
 
 export interface FormSubmission {
