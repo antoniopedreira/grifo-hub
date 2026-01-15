@@ -407,7 +407,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                       <span className="text-sm text-muted-foreground">LTV (Lifetime Value)</span>
                     </div>
                     <span className="text-lg font-bold text-green-600">
-                      R$ {(lead.ltv || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      R$ {(calculatedLtv || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
 
