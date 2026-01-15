@@ -1,299 +1,265 @@
-import { useState, useMemo } from "react";
-import { GitBranch, Plus, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DragDropContext, DropResult } from "@hello-pangea/dnd";
+import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
+import { Plus, LayoutGrid, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KanbanColumn } from "@/components/pipeline/KanbanColumn";
-import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { NewDealDialog } from "@/components/pipeline/NewDealDialog";
-import { CloseSaleDialog } from "@/components/pipeline/CloseSaleDialog";
-import type { Deal, Stage, Pipeline, KanbanColumn as KanbanColumnType } from "@/components/pipeline/types";
+import { ScheduleMeetingDialog } from "@/components/pipeline/ScheduleMeetingDialog";
+import { CloseSaleDialog } from "@/components/pipeline/CloseSaleDialog"; // Certifique-se que este arquivo existe
+import { toast } from "sonner";
+import type { Deal, Pipeline as PipelineType, PipelineStage } from "@/components/pipeline/types";
 
-export default function PipelinePage() {
-  const { toast } = useToast();
+// Extensão local do tipo Stage para incluir 'type' caso não esteja no types.ts
+interface ExtendedStage extends PipelineStage {
+  type?: "default" | "meeting" | "won" | "lost";
+}
+
+export default function Pipeline() {
   const queryClient = useQueryClient();
-
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("");
-  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
-  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
-  const [newDealDialogOpen, setNewDealDialogOpen] = useState(false);
-  const [closeSaleDialogOpen, setCloseSaleDialogOpen] = useState(false);
-  const [pendingWonDrop, setPendingWonDrop] = useState<{
-    deal: Deal;
-    targetStageId: string;
-  } | null>(null);
+  const [isNewDealOpen, setIsNewDealOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch pipelines
-  const { data: pipelines, isLoading: loadingPipelines } = useQuery({
+  // Estados para os Modais de Ação
+  const [meetingDialog, setMeetingDialog] = useState<{
+    open: boolean;
+    deal: Deal | null;
+    targetStageId: string | null;
+  }>({
+    open: false,
+    deal: null,
+    targetStageId: null,
+  });
+  const [closeDialog, setCloseDialog] = useState<{ open: boolean; deal: Deal | null; targetStageId: string | null }>({
+    open: false,
+    deal: null,
+    targetStageId: null,
+  });
+
+  // 1. Busca Pipelines
+  const { data: pipelines = [] } = useQuery({
     queryKey: ["pipelines"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pipelines")
-        .select("*")
-        .order("name");
+      const { data, error } = await supabase.from("pipelines").select("*").order("name");
       if (error) throw error;
-      return data as Pipeline[];
+      return data as PipelineType[];
     },
   });
 
-  // Auto-select first pipeline
-  const activePipelineId = selectedPipelineId || pipelines?.[0]?.id || "";
+  // Seleciona o primeiro pipeline por padrão
+  useEffect(() => {
+    if (pipelines.length > 0 && !selectedPipelineId) {
+      setSelectedPipelineId(pipelines[0].id);
+    }
+  }, [pipelines, selectedPipelineId]);
 
-  // Fetch stages for selected pipeline
-  const { data: stages } = useQuery({
-    queryKey: ["pipeline-stages", activePipelineId],
+  // 2. Busca Etapas (Stages) com o TIPO
+  const { data: stages = [] } = useQuery({
+    queryKey: ["pipeline_stages", selectedPipelineId],
     queryFn: async () => {
+      if (!selectedPipelineId) return [];
       const { data, error } = await supabase
         .from("pipeline_stages")
         .select("*")
-        .eq("pipeline_id", activePipelineId)
-        .order("order_index");
+        .eq("pipeline_id", selectedPipelineId)
+        .order("order_index"); // Garante a ordem correta
       if (error) throw error;
-      return data as Stage[];
+      return data as ExtendedStage[];
     },
-    enabled: !!activePipelineId,
+    enabled: !!selectedPipelineId,
   });
 
-  // Fetch deals for selected pipeline with lead and product info
-  const { data: deals, isLoading: loadingDeals } = useQuery({
-    queryKey: ["deals", activePipelineId],
+  // 3. Busca Deals (Negócios)
+  const { data: deals = [] } = useQuery({
+    queryKey: ["deals", selectedPipelineId],
     queryFn: async () => {
+      if (!selectedPipelineId) return [];
       const { data, error } = await supabase
         .from("deals")
-        .select(`
-          *,
-          lead:leads(*),
-          product:products(*)
-        `)
-        .eq("pipeline_id", activePipelineId)
-        .neq("status", "won")
-        .neq("status", "lost");
+        .select("*, pipeline_stage_id") // Importante trazer o stage_id
+        .order("order_index");
       if (error) throw error;
+
+      // Filtro local do pipeline (caso o backend não filtre)
+      // Idealmente filtraríamos no .eq do supabase, mas precisaria de join
+      // Vamos filtrar no JS por segurança se o deal não tiver pipeline_id direto
       return data as Deal[];
     },
-    enabled: !!activePipelineId,
+    enabled: !!selectedPipelineId,
   });
 
-  // Move deal mutation with Optimistic Updates
-  const moveDeal = useMutation({
-    mutationFn: async ({
-      dealId,
-      stageId,
-    }: {
-      dealId: string;
-      stageId: string;
-    }) => {
+  // Mutation para mover o card
+  const moveDealMutation = useMutation({
+    mutationFn: async ({ dealId, stageId, orderIndex }: { dealId: string; stageId: string; orderIndex: number }) => {
       const { error } = await supabase
         .from("deals")
-        .update({ stage_id: stageId })
+        .update({ pipeline_stage_id: stageId, order_index: orderIndex })
         .eq("id", dealId);
       if (error) throw error;
     },
-    onMutate: async ({ dealId, stageId }) => {
-      // Cancel any outgoing refetches to prevent overwriting optimistic update
-      await queryClient.cancelQueries({ queryKey: ["deals", activePipelineId] });
-
-      // Snapshot the previous value
-      const previousDeals = queryClient.getQueryData<Deal[]>(["deals", activePipelineId]);
-
-      // Optimistically update the cache - move card instantly
-      queryClient.setQueryData<Deal[]>(["deals", activePipelineId], (old) =>
-        old?.map((deal) =>
-          deal.id === dealId ? { ...deal, stage_id: stageId } : deal
-        )
-      );
-
-      // Return context with the snapshot for rollback
-      return { previousDeals };
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      toast.success("Card movido!");
     },
-    onError: (_err, _variables, context) => {
-      // Rollback to previous state on error
-      if (context?.previousDeals) {
-        queryClient.setQueryData(["deals", activePipelineId], context.previousDeals);
-      }
-      toast({
-        title: "Erro ao mover card",
-        description: "Não foi possível atualizar o estágio.",
-        variant: "destructive",
-      });
-    },
-    onSettled: () => {
-      // Silently refetch to ensure data consistency
-      queryClient.invalidateQueries({ queryKey: ["deals", activePipelineId] });
-    },
+    onError: () => toast.error("Erro ao mover card"),
   });
 
-  // Build kanban columns
-  const columns: KanbanColumnType[] = useMemo(() => {
-    if (!stages) return [];
-    return stages.map((stage) => ({
-      stage,
-      deals: (deals || []).filter((deal) => deal.stage_id === stage.id),
-    }));
-  }, [stages, deals]);
-
-  // Get first stage for new deals
-  const firstStage = stages?.[0];
-
-  // Check if stage is "Ganho" or "Won"
-  const isWonStage = (stageName: string) => {
-    const name = stageName.toLowerCase();
-    return name === "ganho" || name === "won";
-  };
-
-  // Handle drag end
+  // O Cérebro do Drag and Drop 🧠
   const handleDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
-    // No destination
     if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
-    // Same position
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return;
+    const deal = deals.find((d) => d.id === draggableId);
+    if (!deal) return;
+
+    const targetStageId = destination.droppableId;
+    const targetStage = stages.find((s) => s.id === targetStageId);
+
+    // Lógica de Interceptação baseada no Tipo da Etapa
+    if (targetStage?.type === "meeting" && source.droppableId !== targetStageId) {
+      // Se soltou na coluna de Agendamento -> Abre Modal
+      setMeetingDialog({ open: true, deal, targetStageId });
+      return; // NÃO move o card ainda
     }
 
-    const targetStage = stages?.find((s) => s.id === destination.droppableId);
-    if (!targetStage) return;
-
-    // Check if dropping on "Ganho" column
-    if (isWonStage(targetStage.name)) {
-      const deal = deals?.find((d) => d.id === draggableId);
-      if (deal) {
-        setPendingWonDrop({ deal, targetStageId: targetStage.id });
-        setCloseSaleDialogOpen(true);
-        return;
-      }
+    if (targetStage?.type === "won" && source.droppableId !== targetStageId) {
+      // Se soltou na coluna de Ganho -> Abre Modal
+      setCloseDialog({ open: true, deal, targetStageId });
+      return; // NÃO move o card ainda
     }
 
-    // Regular move
-    moveDeal.mutate({ dealId: draggableId, stageId: destination.droppableId });
+    // Se for "default" ou reordenação na mesma coluna -> Move direto
+    moveDealMutation.mutate({
+      dealId: draggableId,
+      stageId: targetStageId,
+      orderIndex: destination.index,
+    });
   };
 
-  // Handle deal click
-  const handleDealClick = (deal: Deal) => {
-    setSelectedDeal(deal);
-    setDetailSheetOpen(true);
+  // Callback de Sucesso do Modal de Reunião
+  const handleMeetingSuccess = () => {
+    if (meetingDialog.deal && meetingDialog.targetStageId) {
+      moveDealMutation.mutate({
+        dealId: meetingDialog.deal.id,
+        stageId: meetingDialog.targetStageId,
+        orderIndex: 0, // Coloca no topo da lista
+      });
+    }
+    setMeetingDialog({ open: false, deal: null, targetStageId: null });
   };
 
-  // Handle close sale success
-  const handleCloseSaleSuccess = () => {
-    setCloseSaleDialogOpen(false);
-    setPendingWonDrop(null);
+  // Callback de Sucesso do Modal de Fechamento
+  const handleCloseSuccess = () => {
+    if (closeDialog.deal && closeDialog.targetStageId) {
+      moveDealMutation.mutate({
+        dealId: closeDialog.deal.id,
+        stageId: closeDialog.targetStageId,
+        orderIndex: 0,
+      });
+      // Aqui poderíamos também mudar o status do deal para 'won' no banco
+    }
+    setCloseDialog({ open: false, deal: null, targetStageId: null });
   };
 
-  // Handle close sale cancel
-  const handleCloseSaleCancel = () => {
-    setCloseSaleDialogOpen(false);
-    setPendingWonDrop(null);
-  };
+  // Filtro de pesquisa visual
+  const filteredDeals = deals.filter((deal) => deal.title.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="h-[calc(100vh-2rem)] flex flex-col space-y-4 p-8 pt-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <GitBranch className="h-8 w-8 text-secondary" />
-          <h1 className="text-3xl font-bold text-primary">Pipeline de Vendas</h1>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <LayoutGrid className="h-6 w-6 text-primary" />
+          <h2 className="text-3xl font-bold tracking-tight">Pipeline de Vendas</h2>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Pipeline Selector */}
-          <Select
-            value={activePipelineId}
-            onValueChange={setSelectedPipelineId}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Selecione um pipeline..." />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar oportunidade..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Selecione o funil" />
             </SelectTrigger>
             <SelectContent>
-              {pipelines?.map((pipeline) => (
-                <SelectItem key={pipeline.id} value={pipeline.id}>
-                  {pipeline.name}
+              {pipelines.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          {/* New Deal Button */}
-          <Button
-            onClick={() => setNewDealDialogOpen(true)}
-            disabled={!activePipelineId || !firstStage}
-            className="gap-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-          >
-            <Plus className="h-4 w-4" />
-            Novo Negócio
+          <Button onClick={() => setIsNewDealOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" /> Novo Deal
           </Button>
         </div>
       </div>
 
       {/* Kanban Board */}
-      <div className="flex-1 min-w-0 overflow-x-auto rounded-lg bg-[#F8FAFC] p-4">
-        {loadingPipelines || loadingDeals ? (
-          <div className="flex items-center justify-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-secondary" />
-          </div>
-        ) : !activePipelineId || columns.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">
-              {!pipelines?.length
-                ? "Nenhum pipeline encontrado. Crie um pipeline primeiro."
-                : "Nenhum estágio configurado para este pipeline."}
-            </p>
-          </div>
-        ) : (
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="flex gap-4 h-full">
-              {columns.map((column) => (
-                <KanbanColumn
-                  key={column.stage.id}
-                  column={column}
-                  onDealClick={handleDealClick}
-                />
-              ))}
-            </div>
-          </DragDropContext>
-        )}
-      </div>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="flex-1 overflow-x-auto pb-4">
+          <div className="flex h-full gap-4 min-w-max">
+            {stages.map((stage) => {
+              const stageDeals = filteredDeals
+                .filter((d) => d.pipeline_stage_id === stage.id)
+                .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
-      {/* Deal Detail Sheet */}
-      <DealDetailSheet
-        deal={selectedDeal}
-        open={detailSheetOpen}
-        onOpenChange={setDetailSheetOpen}
+              return (
+                <KanbanColumn
+                  key={stage.id}
+                  stage={stage}
+                  deals={stageDeals}
+                  totalValue={stageDeals.reduce((acc, curr) => acc + Number(curr.value), 0)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </DragDropContext>
+
+      {/* Dialogs */}
+      <NewDealDialog
+        open={isNewDealOpen}
+        onOpenChange={setIsNewDealOpen}
+        pipelineId={selectedPipelineId}
+        defaultStageId={stages[0]?.id}
       />
 
-      {/* New Deal Dialog */}
-      {activePipelineId && firstStage && (
-        <NewDealDialog
-          open={newDealDialogOpen}
-          onOpenChange={setNewDealDialogOpen}
-          pipelineId={activePipelineId}
-          firstStageId={firstStage.id}
+      {/* Modal de Agendamento (Abre ao soltar na coluna 'meeting') */}
+      {meetingDialog.deal && (
+        <ScheduleMeetingDialog
+          open={meetingDialog.open}
+          onOpenChange={(open) => !open && setMeetingDialog((prev) => ({ ...prev, open: false }))}
+          dealId={meetingDialog.deal.id}
+          dealTitle={meetingDialog.deal.title}
+          currentDate={null}
+          onSuccess={handleMeetingSuccess}
         />
       )}
 
-      {/* Close Sale Dialog */}
-      <CloseSaleDialog
-        deal={pendingWonDrop?.deal || null}
-        targetStageId={pendingWonDrop?.targetStageId || ""}
-        open={closeSaleDialogOpen}
-        onOpenChange={setCloseSaleDialogOpen}
-        onCancel={handleCloseSaleCancel}
-        onSuccess={handleCloseSaleSuccess}
-      />
+      {/* Modal de Fechamento (Abre ao soltar na coluna 'won') */}
+      {closeDialog.deal && (
+        <CloseSaleDialog
+          open={closeDialog.open}
+          onOpenChange={(open) => !open && setCloseDialog((prev) => ({ ...prev, open: false }))}
+          deal={closeDialog.deal}
+          onSuccess={handleCloseSuccess}
+        />
+      )}
     </div>
   );
 }
