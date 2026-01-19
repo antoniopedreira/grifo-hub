@@ -104,7 +104,7 @@ export default function Pipeline() {
         .from("deals")
         .select(`
           *,
-          lead:leads(id, full_name, email, phone),
+          lead:leads(id, full_name, email, phone, ltv),
           product:products(id, name, price),
           meeting_owner:team_members(id, name)
         `)

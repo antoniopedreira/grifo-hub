@@ -2,7 +2,7 @@ import { Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarDays, Clock, User } from "lucide-react";
+import { CalendarDays, Clock, User, TrendingUp } from "lucide-react";
 import type { Deal } from "./types";
 
 interface DealCardProps {
@@ -29,6 +29,13 @@ export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
         currency: "BRL",
       }).format(deal.value)
     : "—";
+
+  const formattedLtv = deal.lead?.ltv
+    ? new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      }).format(deal.lead.ltv)
+    : null;
 
   // Parse meeting date preservando horário local
   const meetingInfo = deal.meeting_date
@@ -75,6 +82,16 @@ export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
             <p className="text-sm text-muted-foreground truncate">
               {deal.product?.name || "Sem produto"}
             </p>
+
+            {/* LTV Badge */}
+            {formattedLtv && (
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-md bg-green-50 border border-green-200 px-1.5 py-0.5 text-xs font-medium text-green-700">
+                  <TrendingUp className="h-3 w-3" />
+                  LTV: {formattedLtv}
+                </span>
+              </div>
+            )}
 
             {/* Meeting Info Badges - Only in meeting stage */}
             {isMeetingStage && (meetingInfo || deal.meeting_owner) && (
