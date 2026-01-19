@@ -8,6 +8,7 @@ import {
   FileText,
   Settings,
   CalendarDays,
+  UserCheck,
   LogOut,
 } from "lucide-react";
 import {
@@ -36,6 +37,7 @@ const menuItems = [
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Pipeline", url: "/pipeline", icon: GitBranch },
   { title: "Agenda", url: "/agenda", icon: CalendarDays },
+  { title: "CRM", url: "/crm", icon: UserCheck },
   { title: "Produtos", url: "/produtos", icon: Package },
   { title: "Marketing", url: "/marketing", icon: Megaphone },
   { title: "Templates", url: "/templates", icon: FileText },

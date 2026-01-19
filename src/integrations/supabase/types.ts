@@ -14,6 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
+      crm_checklist_items: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          due_date: string | null
+          file_url: string | null
+          id: string
+          journey_id: string | null
+          observations: string | null
+          order_index: number | null
+          quarter: Database["public"]["Enums"]["crm_quarter"]
+          status: string | null
+          title: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          file_url?: string | null
+          id?: string
+          journey_id?: string | null
+          observations?: string | null
+          order_index?: number | null
+          quarter: Database["public"]["Enums"]["crm_quarter"]
+          status?: string | null
+          title: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          file_url?: string | null
+          id?: string
+          journey_id?: string | null
+          observations?: string | null
+          order_index?: number | null
+          quarter?: Database["public"]["Enums"]["crm_quarter"]
+          status?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_checklist_items_journey_id_fkey"
+            columns: ["journey_id"]
+            isOneToOne: false
+            referencedRelation: "crm_journeys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_checklist_templates: {
+        Row: {
+          created_at: string | null
+          id: string
+          order_index: number
+          quarter: Database["public"]["Enums"]["crm_quarter"]
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          order_index?: number
+          quarter: Database["public"]["Enums"]["crm_quarter"]
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          order_index?: number
+          quarter?: Database["public"]["Enums"]["crm_quarter"]
+          title?: string
+        }
+        Relationships: []
+      }
+      crm_journeys: {
+        Row: {
+          created_at: string | null
+          current_quarter: Database["public"]["Enums"]["crm_quarter"] | null
+          cx_owner: string | null
+          general_notes: string | null
+          health_status: Database["public"]["Enums"]["crm_health"] | null
+          id: string
+          lead_id: string | null
+          start_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_quarter?: Database["public"]["Enums"]["crm_quarter"] | null
+          cx_owner?: string | null
+          general_notes?: string | null
+          health_status?: Database["public"]["Enums"]["crm_health"] | null
+          id?: string
+          lead_id?: string | null
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_quarter?: Database["public"]["Enums"]["crm_quarter"] | null
+          cx_owner?: string | null
+          general_notes?: string | null
+          health_status?: Database["public"]["Enums"]["crm_health"] | null
+          id?: string
+          lead_id?: string | null
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_journeys_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           created_at: string | null
@@ -308,6 +426,7 @@ export type Database = {
           external_id: string | null
           funnel_type: Database["public"]["Enums"]["product_funnel_type"] | null
           id: string
+          is_crm_trigger: boolean | null
           name: string
           pipeline_id: string | null
           price: number | null
@@ -325,6 +444,7 @@ export type Database = {
             | Database["public"]["Enums"]["product_funnel_type"]
             | null
           id?: string
+          is_crm_trigger?: boolean | null
           name: string
           pipeline_id?: string | null
           price?: number | null
@@ -342,6 +462,7 @@ export type Database = {
             | Database["public"]["Enums"]["product_funnel_type"]
             | null
           id?: string
+          is_crm_trigger?: boolean | null
           name?: string
           pipeline_id?: string | null
           price?: number | null
@@ -635,6 +756,8 @@ export type Database = {
           }
     }
     Enums: {
+      crm_health: "active" | "warning" | "risk"
+      crm_quarter: "Q1" | "Q2" | "Q3" | "Q4"
       deal_status: "open" | "won" | "lost" | "abandoned" | "archived"
       mission_status:
         | "Pendente"
@@ -772,6 +895,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      crm_health: ["active", "warning", "risk"],
+      crm_quarter: ["Q1", "Q2", "Q3", "Q4"],
       deal_status: ["open", "won", "lost", "abandoned", "archived"],
       mission_status: [
         "Pendente",
