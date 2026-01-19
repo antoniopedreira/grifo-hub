@@ -4,39 +4,45 @@ import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2, Loader2, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
-type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
+type Quarter = "Q1" | "Q2" | "Q3" | "Q4";
 
 interface ChecklistTemplate {
   id: string;
   quarter: Quarter;
   title: string;
+  created_at?: string;
 }
 
 const quarters: { id: Quarter; label: string }[] = [
-  { id: 'Q1', label: 'Q1: Onboarding' },
-  { id: 'Q2', label: 'Q2: Execução' },
-  { id: 'Q3', label: 'Q3: Consolidação' },
-  { id: 'Q4', label: 'Q4: Validação' },
+  { id: "Q1", label: "Q1: Onboarding" },
+  { id: "Q2", label: "Q2: Execução" },
+  { id: "Q3", label: "Q3: Consolidação" },
+  { id: "Q4", label: "Q4: Validação" },
 ];
 
 export function CrmSettings() {
   const queryClient = useQueryClient();
   const [newItems, setNewItems] = useState<Record<string, string>>({
-    Q1: "", Q2: "", Q3: "", Q4: ""
+    Q1: "",
+    Q2: "",
+    Q3: "",
+    Q4: "",
   });
 
   // Busca os templates atuais
   const { data: templates, isLoading } = useQuery({
     queryKey: ["crm-checklist-templates"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Uso de (supabase as any) para contornar o erro de tipagem
+      const { data, error } = await (supabase as any)
         .from("crm_checklist_templates")
         .select("*")
         .order("created_at", { ascending: true });
+
       if (error) throw error;
       return data as ChecklistTemplate[];
     },
@@ -45,9 +51,8 @@ export function CrmSettings() {
   // Adiciona novo item ao template
   const addItem = useMutation({
     mutationFn: async ({ quarter, title }: { quarter: Quarter; title: string }) => {
-      const { error } = await supabase
-        .from("crm_checklist_templates")
-        .insert({ quarter, title });
+      const { error } = await (supabase as any).from("crm_checklist_templates").insert({ quarter, title });
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -55,22 +60,21 @@ export function CrmSettings() {
       toast.success("Item adicionado ao modelo!");
       setNewItems({ Q1: "", Q2: "", Q3: "", Q4: "" }); // Limpa inputs
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error: any) => toast.error(error.message),
   });
 
   // Remove item do template
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("crm_checklist_templates")
-        .delete()
-        .eq("id", id);
+      const { error } = await (supabase as any).from("crm_checklist_templates").delete().eq("id", id);
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["crm-checklist-templates"] });
       toast.success("Item removido!");
     },
+    onError: (error: any) => toast.error(error.message),
   });
 
   const handleAddItem = (quarter: Quarter) => {
@@ -79,7 +83,11 @@ export function CrmSettings() {
   };
 
   if (isLoading) {
-    return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
+    return (
+      <div className="flex justify-center p-8">
+        <Loader2 className="animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -96,7 +104,7 @@ export function CrmSettings() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {quarters.map((q) => {
-          const items = templates?.filter(t => t.quarter === q.id) || [];
+          const items = templates?.filter((t) => t.quarter === q.id) || [];
 
           return (
             <Card key={q.id} className="border-l-4 border-l-primary/20">
@@ -110,7 +118,10 @@ export function CrmSettings() {
                 {/* Lista de Itens Existentes */}
                 <div className="space-y-2">
                   {items.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between group bg-muted/30 p-2 rounded-md border border-transparent hover:border-border hover:bg-muted/50 transition-all">
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between group bg-muted/30 p-2 rounded-md border border-transparent hover:border-border hover:bg-muted/50 transition-all"
+                    >
                       <span className="text-sm">{item.title}</span>
                       <Button
                         variant="ghost"
@@ -123,23 +134,21 @@ export function CrmSettings() {
                     </div>
                   ))}
                   {items.length === 0 && (
-                    <p className="text-xs text-muted-foreground italic text-center py-2">
-                      Nenhum item configurado.
-                    </p>
+                    <p className="text-xs text-muted-foreground italic text-center py-2">Nenhum item configurado.</p>
                   )}
                 </div>
 
                 {/* Input para adicionar novo */}
                 <div className="flex gap-2 mt-4 pt-2 border-t">
-                  <Input 
-                    placeholder="Novo item..." 
+                  <Input
+                    placeholder="Novo item..."
                     className="h-8 text-sm"
                     value={newItems[q.id]}
-                    onChange={(e) => setNewItems(prev => ({ ...prev, [q.id]: e.target.value }))}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddItem(q.id)}
+                    onChange={(e) => setNewItems((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddItem(q.id)}
                   />
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     className="h-8 w-8 p-0"
                     onClick={() => handleAddItem(q.id)}
                     disabled={addItem.isPending}
