@@ -5,20 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import type { Database, Tables } from "@/integrations/supabase/types";
@@ -43,6 +31,7 @@ interface ProductForm {
   active: boolean;
   external_id: string;
   pipeline_id: string;
+  is_crm_trigger: boolean; // ADICIONADO AQUI
 }
 
 export function ProductEditSheet({ product, open, onOpenChange }: ProductEditSheetProps) {
@@ -58,8 +47,9 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
     active: true,
     external_id: "",
     pipeline_id: "",
+    is_crm_trigger: false, // VALOR INICIAL
   });
-  
+
   const queryClient = useQueryClient();
 
   // Populate form when product changes
@@ -77,6 +67,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         active: product.active ?? true,
         external_id: product.external_id || "",
         pipeline_id: (product as any).pipeline_id || "",
+        is_crm_trigger: (product as any).is_crm_trigger ?? false, // CARREGA DO BANCO
       });
     }
   }, [product]);
@@ -84,11 +75,8 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
   const { data: categories } = useQuery({
     queryKey: ["product_categories"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_categories")
-        .select("*")
-        .order("name");
-      
+      const { data, error } = await supabase.from("product_categories").select("*").order("name");
+
       if (error) throw error;
       return data;
     },
@@ -98,12 +86,8 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
   const { data: pipelines } = useQuery({
     queryKey: ["pipelines"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pipelines")
-        .select("*")
-        .eq("archived", false)
-        .order("name");
-      
+      const { data, error } = await supabase.from("pipelines").select("*").eq("archived", false).order("name");
+
       if (error) throw error;
       return data;
     },
@@ -117,7 +101,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         .select("*")
         .eq("type", "landing_page")
         .order("name");
-      
+
       if (error) throw error;
       return data;
     },
@@ -131,7 +115,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         .select("*")
         .eq("type", "application_form")
         .order("name");
-      
+
       if (error) throw error;
       return data;
     },
@@ -153,6 +137,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         active: form.active,
         external_id: form.external_id || null,
         pipeline_id: form.create_deal && form.pipeline_id ? form.pipeline_id : null,
+        is_crm_trigger: form.is_crm_trigger, // ENVIA PARA O BANCO
       };
 
       const { data, error } = await supabase
@@ -161,7 +146,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         .eq("id", product.id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -202,16 +187,14 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
       <SheetContent className="sm:max-w-[500px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="text-primary">Editar Produto</SheetTitle>
-          <SheetDescription>
-            Altere as configurações do produto
-          </SheetDescription>
+          <SheetDescription>Altere as configurações do produto</SheetDescription>
         </SheetHeader>
 
         <div className="space-y-6 py-6">
           {/* Basic Info */}
           <div className="space-y-4">
             <h3 className="font-semibold text-primary text-sm">Informações Básicas</h3>
-            
+
             <div className="space-y-2">
               <Label htmlFor="name">Nome do Produto *</Label>
               <Input
@@ -221,7 +204,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="price">Preço (R$)</Label>
               <Input
@@ -246,13 +229,10 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
                 Cole aqui o ID do produto na Lastlink. Isso permitirá que o n8n identifique a venda automaticamente.
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="category">Categoria</Label>
-              <Select
-                value={form.category_id}
-                onValueChange={(value) => setForm({ ...form, category_id: value })}
-              >
+              <Select value={form.category_id} onValueChange={(value) => setForm({ ...form, category_id: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
@@ -273,10 +253,10 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
                 onCheckedChange={(checked) => setForm({ ...form, active: checked })}
               />
               <div>
-                <Label htmlFor="active" className="cursor-pointer">Produto Ativo</Label>
-                <p className="text-xs text-muted-foreground">
-                  Produtos inativos não aparecem na página pública
-                </p>
+                <Label htmlFor="active" className="cursor-pointer">
+                  Produto Ativo
+                </Label>
+                <p className="text-xs text-muted-foreground">Produtos inativos não aparecem na página pública</p>
               </div>
             </div>
           </div>
@@ -284,12 +264,14 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
           {/* Funnel Config */}
           <div className="space-y-4">
             <h3 className="font-semibold text-primary text-sm">Configuração do Funil</h3>
-            
+
             <div className="space-y-2">
               <Label htmlFor="funnel_type">Tipo de Página *</Label>
               <Select
                 value={form.funnel_type}
-                onValueChange={(value: FunnelType) => setForm({ ...form, funnel_type: value, template_id: "", checkout_url: "" })}
+                onValueChange={(value: FunnelType) =>
+                  setForm({ ...form, funnel_type: value, template_id: "", checkout_url: "" })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -300,15 +282,12 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
                 </SelectContent>
               </Select>
             </div>
-            
+
             {form.funnel_type === "external_link" && (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="template">Template Visual</Label>
-                  <Select
-                    value={form.template_id}
-                    onValueChange={(value) => setForm({ ...form, template_id: value })}
-                  >
+                  <Select value={form.template_id} onValueChange={(value) => setForm({ ...form, template_id: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione uma Landing Page" />
                     </SelectTrigger>
@@ -334,14 +313,11 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
                 </div>
               </>
             )}
-            
+
             {form.funnel_type === "internal_form" && (
               <div className="space-y-2">
                 <Label htmlFor="template">Template do Formulário</Label>
-                <Select
-                  value={form.template_id}
-                  onValueChange={(value) => setForm({ ...form, template_id: value })}
-                >
+                <Select value={form.template_id} onValueChange={(value) => setForm({ ...form, template_id: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um formulário" />
                   </SelectTrigger>
@@ -356,26 +332,28 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
               </div>
             )}
 
-            {/* Create Deal Switch - Always visible */}
+            {/* Create Deal Switch */}
             <div className="flex items-start gap-4 p-4 rounded-lg border border-border bg-muted/50">
               <Switch
                 id="create_deal"
                 checked={form.create_deal}
-                onCheckedChange={(checked) => setForm({ ...form, create_deal: checked, pipeline_id: checked ? form.pipeline_id : "" })}
+                onCheckedChange={(checked) =>
+                  setForm({ ...form, create_deal: checked, pipeline_id: checked ? form.pipeline_id : "" })
+                }
               />
               <div className="space-y-1">
                 <Label htmlFor="create_deal" className="font-medium cursor-pointer">
                   Gerar Card no Kanban de Vendas?
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  {form.funnel_type === "internal_form" 
-                    ? "Se ativado, cada resposta do formulário criará automaticamente um negócio na coluna \"Novo Lead\". Ideal para High-Ticket."
-                    : "Se ativado, futuras integrações (webhooks) criarão automaticamente um negócio no Kanban quando uma venda for registrada."}
+                  {form.funnel_type === "internal_form"
+                    ? 'Se ativado, cada resposta do formulário criará automaticamente um negócio na coluna "Novo Lead".'
+                    : "Se ativado, futuras integrações criarão automaticamente um negócio no Kanban quando uma venda for registrada."}
                 </p>
               </div>
             </div>
 
-            {/* Pipeline Selector - Only visible when create_deal is enabled */}
+            {/* Pipeline Selector */}
             {form.create_deal && (
               <div className="space-y-2 pl-4 border-l-2 border-secondary/50">
                 <Label htmlFor="pipeline_id">Funil de Destino Automático</Label>
@@ -400,12 +378,31 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
                 </p>
               </div>
             )}
+
+            {/* NOVO CAMPO: Ativa Onboarding (CRM) */}
+            <div className="flex items-start gap-4 p-4 rounded-lg border border-blue-200 bg-blue-50/50">
+              <Switch
+                id="is_crm_trigger"
+                checked={form.is_crm_trigger}
+                onCheckedChange={(checked) => setForm({ ...form, is_crm_trigger: checked })}
+                className="data-[state=checked]:bg-blue-600"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="is_crm_trigger" className="font-medium cursor-pointer text-blue-900">
+                  Ativa Onboarding (CRM)?
+                </Label>
+                <p className="text-xs text-blue-700/80">
+                  Se ativado, vendas deste produto criarão automaticamente um card na aba "CRM" (fase Q1) para
+                  acompanhamento da jornada do cliente.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Slug */}
           <div className="space-y-4">
             <h3 className="font-semibold text-primary text-sm">URL Amigável</h3>
-            
+
             <div className="space-y-2">
               <Label htmlFor="slug">Slug</Label>
               <div className="flex gap-2">
@@ -415,32 +412,21 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
                   value={form.slug}
                   onChange={(e) => setForm({ ...form, slug: e.target.value })}
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={generateSlug}
-                  className="shrink-0"
-                >
+                <Button type="button" variant="outline" onClick={generateSlug} className="shrink-0">
                   Gerar
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                URL final: /p/{form.slug || "slug-do-produto"}
-              </p>
+              <p className="text-xs text-muted-foreground">URL final: /p/{form.slug || "slug-do-produto"}</p>
             </div>
           </div>
         </div>
 
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          
+
           <Button
             type="button"
             onClick={handleSubmit}
