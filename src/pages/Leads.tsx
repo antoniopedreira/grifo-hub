@@ -28,6 +28,7 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
+  PaginationEllipsis, // Importado para mostrar os "..."
 } from "@/components/ui/pagination";
 import {
   AlertDialog,
@@ -60,7 +61,8 @@ interface Lead {
   }[];
 }
 
-const ITEMS_PER_PAGE = 10;
+// Alterado para 50 leads por página conforme solicitado
+const ITEMS_PER_PAGE = 50;
 
 const statusColors: Record<string, string> = {
   Novo: "bg-blue-100 text-blue-800",
@@ -159,6 +161,52 @@ export default function Leads() {
   // Paginação
   const totalPages = Math.ceil(filteredAndSortedLeads.length / ITEMS_PER_PAGE);
   const paginatedLeads = filteredAndSortedLeads.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  // Lógica para gerar os números das páginas com Ellipsis
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    // Se tiver poucas páginas (até 7), mostra todas
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Sempre mostra a primeira
+      pageNumbers.push(1);
+
+      // Define o intervalo ao redor da página atual
+      let startPage = Math.max(2, currentPage - 1);
+      let endPage = Math.min(totalPages - 1, currentPage + 1);
+
+      // Ajusta se estiver muito no começo
+      if (currentPage <= 3) {
+        endPage = 4;
+      }
+      // Ajusta se estiver muito no final
+      if (currentPage >= totalPages - 2) {
+        startPage = totalPages - 3;
+      }
+
+      // Adiciona ... se houver buraco entre a 1 e o começo do intervalo
+      if (startPage > 2) {
+        pageNumbers.push("ellipsis-start");
+      }
+
+      // Adiciona as páginas do intervalo
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+      }
+
+      // Adiciona ... se houver buraco entre o fim do intervalo e a última
+      if (endPage < totalPages - 1) {
+        pageNumbers.push("ellipsis-end");
+      }
+
+      // Sempre mostra a última
+      pageNumbers.push(totalPages);
+    }
+    return pageNumbers;
+  };
 
   // Export CSV
   const handleExportCSV = () => {
@@ -404,7 +452,7 @@ export default function Leads() {
               </TableBody>
             </Table>
 
-            {/* Pagination */}
+            {/* Pagination Atualizada */}
             {totalPages > 1 && (
               <div className="flex justify-center py-4 border-t">
                 <Pagination>
@@ -415,17 +463,29 @@ export default function Leads() {
                         className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <PaginationItem key={page}>
-                        <PaginationLink
-                          onClick={() => setCurrentPage(page)}
-                          isActive={currentPage === page}
-                          className="cursor-pointer"
-                        >
-                          {page}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ))}
+
+                    {getPageNumbers().map((page, index) => {
+                      if (page === "ellipsis-start" || page === "ellipsis-end") {
+                        return (
+                          <PaginationItem key={`ellipsis-${index}`}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        );
+                      }
+
+                      return (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page as number)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+
                     <PaginationItem>
                       <PaginationNext
                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
