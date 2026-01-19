@@ -116,25 +116,67 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     return true;
   };
 
+  // Map revenue string to numeric value for company_revenue
+  const mapRevenueToNumber = (revenue: string): number | null => {
+    if (!revenue) return null;
+    const mapping: Record<string, number> = {
+      "<500k": 0,
+      "500k-2M": 500000,
+      "2M-10M": 1000000,
+      "+10M": 10000000,
+    };
+    return mapping[revenue] ?? null;
+  };
+
   // Aceita value opcional para casos onde o state ainda não atualizou no closure
   const handleSubmit = async (finalValue?: string) => {
     setIsSubmitting(true);
     try {
       const finalData = { ...formData, investment: finalValue || formData.investment };
+      const companyRevenue = mapRevenueToNumber(finalData.revenue);
 
-      // 1. Criar Lead
-      const { data: lead, error: leadError } = await supabase
+      // 1. Criar ou atualizar Lead
+      const { data: existingLead } = await supabase
         .from("leads")
-        .insert({
+        .select("id")
+        .eq("email", finalData.email)
+        .single();
+
+      let lead: { id: string };
+
+      if (existingLead) {
+        // Update existing lead
+        const updateData: Record<string, unknown> = {
+          full_name: finalData.full_name,
+          phone: finalData.phone,
+        };
+        if (companyRevenue !== null) {
+          updateData.company_revenue = companyRevenue;
+        }
+        await supabase
+          .from("leads")
+          .update(updateData)
+          .eq("id", existingLead.id);
+        lead = existingLead;
+      } else {
+        // Create new lead
+        const insertData: Record<string, unknown> = {
           full_name: finalData.full_name,
           email: finalData.email,
           phone: finalData.phone,
           status: "Novo",
-        })
-        .select()
-        .single();
-
-      if (leadError) throw leadError;
+        };
+        if (companyRevenue !== null) {
+          insertData.company_revenue = companyRevenue;
+        }
+        const { data: newLead, error: leadError } = await supabase
+          .from("leads")
+          .insert(insertData)
+          .select()
+          .single();
+        if (leadError) throw leadError;
+        lead = newLead;
+      }
 
       // 2. Salvar Respostas Completas
       const { error: subError } = await supabase.from("form_submissions").insert({
@@ -365,18 +407,16 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             >
               <div className="grid grid-cols-1 gap-3 mt-4">
                 {[
-                  "Até R$ 500 mil",
-                  "Entre R$ 500 mil e R$ 1 mi",
-                  "Entre R$ 1 mi e R$ 5 mi",
-                  "Entre R$ 5 mi e R$ 10 mi",
-                  "Entre R$ 10 mi e R$ 50 mi",
-                  "Mais de R$ 50 mi",
-                ].map((rev) => (
+                  { value: "<500k", label: "Menos de R$ 500 mil" },
+                  { value: "500k-2M", label: "R$ 500 mil a R$ 2 milhões" },
+                  { value: "2M-10M", label: "R$ 2 milhões a R$ 10 milhões" },
+                  { value: "+10M", label: "Mais de R$ 10 milhões" },
+                ].map((option) => (
                   <OptionButton
-                    key={rev}
-                    label={rev}
-                    selected={formData.revenue === rev}
-                    onClick={() => handleSelectAndNext("revenue", rev)}
+                    key={option.value}
+                    label={option.label}
+                    selected={formData.revenue === option.value}
+                    onClick={() => handleSelectAndNext("revenue", option.value)}
                   />
                 ))}
               </div>

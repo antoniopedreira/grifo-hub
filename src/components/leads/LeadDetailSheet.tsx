@@ -114,6 +114,26 @@ const formatAnswerKey = (key: string): string => {
   return keyMap[key.toLowerCase()] || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ");
 };
 
+// Formata valores de respostas, especialmente faturamento
+const formatAnswerValue = (key: string, value: unknown): string => {
+  if (value === null || value === undefined || value === "") return "-";
+  
+  const strValue = String(value);
+  
+  // Formata faturamento/revenue
+  if (key.toLowerCase() === "faturamento" || key.toLowerCase() === "revenue") {
+    const revenueLabels: Record<string, string> = {
+      "<500k": "Menos de R$ 500 mil",
+      "500k-2M": "Entre R$ 500 mil e R$ 2 mi",
+      "2M-10M": "Entre R$ 2 mi e R$ 10 mi",
+      "+10M": "Mais de R$ 10 mi",
+    };
+    return revenueLabels[strValue] || strValue;
+  }
+  
+  return strValue;
+};
+
 // Função auxiliar para traduzir o valor numérico para texto da faixa
 const getRevenueLabel = (value: number | null) => {
   if (value === null || value === undefined) return "Não informado";
@@ -479,7 +499,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                         {Object.entries(submission.answers as Record<string, unknown>).map(([key, value]) => (
                           <div key={key} className="text-sm">
                             <span className="font-medium text-foreground">{formatAnswerKey(key)}:</span>{" "}
-                            <span className="text-muted-foreground">{String(value) || "-"}</span>
+                            <span className="text-muted-foreground">{formatAnswerValue(key, value)}</span>
                           </div>
                         ))}
                       </div>
