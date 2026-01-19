@@ -28,7 +28,7 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-  PaginationEllipsis, // Importado para mostrar os "..."
+  PaginationEllipsis,
 } from "@/components/ui/pagination";
 import {
   AlertDialog,
@@ -41,11 +41,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Componentes do Select
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NewLeadDialog } from "@/components/leads/NewLeadDialog";
 import { LeadDetailSheet } from "@/components/leads/LeadDetailSheet";
 
-// Interface atualizada para incluir as vendas e o company_revenue
 interface Lead {
   id: string;
   full_name: string | null;
@@ -54,7 +53,7 @@ interface Lead {
   status: string | null;
   origin: string | null;
   ltv: number | null;
-  company_revenue: number | null; // Adicionado para corrigir o erro de TS
+  company_revenue: number | null;
   created_at: string | null;
   sales?: {
     product_id: string | null;
@@ -62,7 +61,6 @@ interface Lead {
   }[];
 }
 
-// Alterado para 50 leads por página conforme solicitado
 const ITEMS_PER_PAGE = 50;
 
 const statusColors: Record<string, string> = {
@@ -73,12 +71,11 @@ const statusColors: Record<string, string> = {
 
 export default function Leads() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [productFilter, setProductFilter] = useState("all"); // Estado do filtro de produto
+  const [productFilter, setProductFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Estado de Ordenação (Padrão: Data de criação decrescente)
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Lead | "created_at";
     direction: "asc" | "desc";
@@ -86,20 +83,20 @@ export default function Leads() {
 
   const queryClient = useQueryClient();
 
-  // 1. Busca os Leads com as Vendas associadas
+  // 1. Busca os Leads
   const { data: leadsData, isLoading: isLoadingLeads } = useQuery({
     queryKey: ["leads"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leads")
-        .select("*, sales(product_id, product_name)") // Traz vendas para filtrar
+        .select("*, sales(product_id, product_name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Lead[];
     },
   });
 
-  // 2. Busca a lista de Produtos para o Dropdown
+  // 2. Busca a lista de Produtos
   const { data: productsData } = useQuery({
     queryKey: ["products-list"],
     queryFn: async () => {
@@ -123,7 +120,6 @@ export default function Leads() {
     },
   });
 
-  // Função para lidar com o clique na ordenação
   const handleSort = (key: keyof Lead) => {
     setSortConfig((current) => ({
       key,
@@ -131,16 +127,14 @@ export default function Leads() {
     }));
   };
 
-  // Lógica de Filtragem e Ordenação Combinada
+  // Lógica de Filtragem e Ordenação
   const filteredAndSortedLeads =
     leadsData
       ?.filter((lead) => {
-        // Filtro de Texto
         const query = searchQuery.toLowerCase();
         const matchesSearch =
           lead.full_name?.toLowerCase().includes(query) || lead.email?.toLowerCase().includes(query);
 
-        // Filtro de Produto
         const matchesProduct = productFilter === "all" || lead.sales?.some((sale) => sale.product_id === productFilter);
 
         return matchesSearch && matchesProduct;
@@ -153,7 +147,6 @@ export default function Leads() {
         if (aValue === null) return 1;
         if (bValue === null) return -1;
 
-        // Comparação simples para strings, números e datas
         if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
@@ -163,53 +156,41 @@ export default function Leads() {
   const totalPages = Math.ceil(filteredAndSortedLeads.length / ITEMS_PER_PAGE);
   const paginatedLeads = filteredAndSortedLeads.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  // Lógica para gerar os números das páginas com Ellipsis
   const getPageNumbers = () => {
     const pageNumbers = [];
-    // Se tiver poucas páginas (até 7), mostra todas
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) {
         pageNumbers.push(i);
       }
     } else {
-      // Sempre mostra a primeira
       pageNumbers.push(1);
-
-      // Define o intervalo ao redor da página atual
       let startPage = Math.max(2, currentPage - 1);
       let endPage = Math.min(totalPages - 1, currentPage + 1);
 
-      // Ajusta se estiver muito no começo
       if (currentPage <= 3) {
         endPage = 4;
       }
-      // Ajusta se estiver muito no final
       if (currentPage >= totalPages - 2) {
         startPage = totalPages - 3;
       }
 
-      // Adiciona ... se houver buraco entre a 1 e o começo do intervalo
       if (startPage > 2) {
         pageNumbers.push("ellipsis-start");
       }
 
-      // Adiciona as páginas do intervalo
       for (let i = startPage; i <= endPage; i++) {
         pageNumbers.push(i);
       }
 
-      // Adiciona ... se houver buraco entre o fim do intervalo e a última
       if (endPage < totalPages - 1) {
         pageNumbers.push("ellipsis-end");
       }
 
-      // Sempre mostra a última
       pageNumbers.push(totalPages);
     }
     return pageNumbers;
   };
 
-  // Export CSV
   const handleExportCSV = () => {
     if (!filteredAndSortedLeads.length) {
       toast.error("Nenhum lead para exportar");
@@ -250,12 +231,15 @@ export default function Leads() {
         <div className="flex items-center gap-3">
           <Users className="h-8 w-8 text-secondary" />
           <h1 className="text-3xl font-bold text-primary">Base de Leads</h1>
+          {/* Badge com Contagem de Leads */}
+          <Badge variant="secondary" className="ml-2 text-sm px-2 py-0.5 rounded-full border border-secondary/30">
+            {filteredAndSortedLeads.length}
+          </Badge>
         </div>
       </div>
 
       {/* Actions Bar */}
       <div className="flex flex-col md:flex-row gap-4">
-        {/* Barra de Busca */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -269,7 +253,6 @@ export default function Leads() {
           />
         </div>
 
-        {/* Filtro de Produto */}
         <div className="w-full md:w-[250px]">
           <Select
             value={productFilter}
@@ -329,7 +312,6 @@ export default function Leads() {
                   <TableHead>Email</TableHead>
                   <TableHead>Telefone</TableHead>
 
-                  {/* Cabeçalho LTV com Ordenação */}
                   <TableHead
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => handleSort("ltv")}
@@ -344,7 +326,6 @@ export default function Leads() {
 
                   <TableHead>Status</TableHead>
 
-                  {/* Cabeçalho Data com Ordenação (ALTERADO AQUI) */}
                   <TableHead
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => handleSort("created_at")}
@@ -386,7 +367,6 @@ export default function Leads() {
                       )}
                     </TableCell>
 
-                    {/* Valor do LTV */}
                     <TableCell className="font-medium text-slate-700">
                       {new Intl.NumberFormat("pt-BR", {
                         style: "currency",
@@ -453,7 +433,6 @@ export default function Leads() {
               </TableBody>
             </Table>
 
-            {/* Pagination Atualizada */}
             {totalPages > 1 && (
               <div className="flex justify-center py-4 border-t">
                 <Pagination>
@@ -501,7 +480,6 @@ export default function Leads() {
         )}
       </div>
 
-      {/* Lead Detail Sheet */}
       <LeadDetailSheet lead={selectedLead} open={sheetOpen} onOpenChange={setSheetOpen} />
     </div>
   );
