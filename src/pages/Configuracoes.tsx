@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Settings, GitBranch, Users, Sliders } from "lucide-react";
+import { Settings, GitBranch, Users, Sliders, ListTodo } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PipelineList } from "@/components/settings/PipelineList";
 import { PipelineStageEditor } from "@/components/settings/PipelineStageEditor";
 import { TeamMembersList } from "@/components/settings/TeamMembersList";
 import { GeneralSettings } from "@/components/settings/GeneralSettings";
+import { CrmSettings } from "@/components/settings/CrmSettings"; // Importação do componente CRM
 
 interface Pipeline {
   id: string;
@@ -25,7 +26,8 @@ export default function Configuracoes() {
 
       {/* Tabs */}
       <Tabs defaultValue="geral" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        {/* Ajustado grid-cols para 4 para acomodar a nova aba */}
+        <TabsList className="grid w-full max-w-2xl grid-cols-4">
           <TabsTrigger value="geral" className="gap-2">
             <Sliders className="h-4 w-4" />
             Geral
@@ -37,6 +39,10 @@ export default function Configuracoes() {
           <TabsTrigger value="equipe" className="gap-2">
             <Users className="h-4 w-4" />
             Equipe
+          </TabsTrigger>
+          <TabsTrigger value="crm" className="gap-2">
+            <ListTodo className="h-4 w-4" />
+            Checklists CRM
           </TabsTrigger>
         </TabsList>
 
@@ -57,6 +63,11 @@ export default function Configuracoes() {
         {/* Tab: Equipe */}
         <TabsContent value="equipe">
           <TeamMembersList />
+        </TabsContent>
+
+        {/* Tab: CRM (Nova aba) */}
+        <TabsContent value="crm">
+          <CrmSettings />
         </TabsContent>
       </Tabs>
     </div>
