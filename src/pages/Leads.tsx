@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -13,6 +13,7 @@ import {
   Trash2,
   Loader2,
   UserX,
+  Package,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { NewLeadDialog } from "@/components/leads/NewLeadDialog";
 import { LeadDetailSheet } from "@/components/leads/LeadDetailSheet";
 
@@ -72,6 +80,7 @@ export default function Leads() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [productFilter, setProductFilter] = useState<string>("all");
 
   const queryClient = useQueryClient();
 
@@ -87,6 +96,45 @@ export default function Leads() {
     },
   });
 
+  // Fetch products for filter
+  const { data: products } = useQuery({
+    queryKey: ["products-filter"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch sales to know which leads bought which products
+  const { data: salesData } = useQuery({
+    queryKey: ["sales-by-lead"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales")
+        .select("lead_id, product_id");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Create a map of lead_id -> product_ids they bought
+  const leadProductsMap = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    salesData?.forEach((sale) => {
+      if (sale.lead_id && sale.product_id) {
+        if (!map.has(sale.lead_id)) {
+          map.set(sale.lead_id, new Set());
+        }
+        map.get(sale.lead_id)!.add(sale.product_id);
+      }
+    });
+    return map;
+  }, [salesData]);
+
   const deleteLead = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("leads").delete().eq("id", id);
@@ -101,14 +149,20 @@ export default function Leads() {
     },
   });
 
-  // Filter leads by search query
+  // Filter leads by search query and product
   const filteredLeads =
     leadsData?.filter((lead) => {
       const query = searchQuery.toLowerCase();
-      return (
+      const matchesSearch =
         lead.full_name?.toLowerCase().includes(query) ||
-        lead.email?.toLowerCase().includes(query)
-      );
+        lead.email?.toLowerCase().includes(query);
+      
+      // Product filter: check if lead bought the selected product
+      const matchesProduct =
+        productFilter === "all" ||
+        leadProductsMap.get(lead.id)?.has(productFilter);
+
+      return matchesSearch && matchesProduct;
     }) || [];
 
   // Pagination
@@ -178,6 +232,26 @@ export default function Leads() {
           />
         </div>
         <div className="flex gap-2">
+          <Select
+            value={productFilter}
+            onValueChange={(value) => {
+              setProductFilter(value);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[180px] bg-background">
+              <Package className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Produto" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os produtos</SelectItem>
+              {products?.map((product) => (
+                <SelectItem key={product.id} value={product.id}>
+                  {product.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="outline" onClick={handleExportCSV}>
             <Download className="h-4 w-4 mr-2" />
             Exportar CSV
