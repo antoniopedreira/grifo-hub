@@ -62,14 +62,16 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
   };
 
   // Map faturamento string to numeric value for company_revenue
-  const mapFaturamentoToNumber = (faturamento: string): number => {
+  // Returns null if not answered, so we don't overwrite with default value
+  const mapFaturamentoToNumber = (faturamento: string): number | null => {
+    if (!faturamento) return null;
     const mapping: Record<string, number> = {
       "<500k": 0,
       "500k-2M": 500000,
       "2M-10M": 1000000,
       "+10M": 10000000,
     };
-    return mapping[faturamento] ?? 0;
+    return mapping[faturamento] ?? null;
   };
 
   const submitMutation = useMutation({
@@ -86,27 +88,33 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
 
       if (existingLead) {
         leadId = existingLead.id;
-        // Update lead info including company_revenue
+        // Update lead info - only include company_revenue if answered
+        const updateData: Record<string, unknown> = {
+          full_name: formData.nome,
+          phone: formData.whatsapp,
+        };
+        if (companyRevenue !== null) {
+          updateData.company_revenue = companyRevenue;
+        }
         await supabase
           .from("leads")
-          .update({
-            full_name: formData.nome,
-            phone: formData.whatsapp,
-            company_revenue: companyRevenue,
-          })
+          .update(updateData)
           .eq("id", leadId);
       } else {
-        // Create new lead with company_revenue
+        // Create new lead - only include company_revenue if answered
+        const insertData: Record<string, unknown> = {
+          email: formData.email,
+          full_name: formData.nome,
+          phone: formData.whatsapp,
+          origin: product.name,
+          status: "Novo",
+        };
+        if (companyRevenue !== null) {
+          insertData.company_revenue = companyRevenue;
+        }
         const { data: newLead, error: leadError } = await supabase
           .from("leads")
-          .insert({
-            email: formData.email,
-            full_name: formData.nome,
-            phone: formData.whatsapp,
-            origin: product.name,
-            status: "Novo",
-            company_revenue: companyRevenue,
-          })
+          .insert(insertData)
           .select()
           .single();
 
