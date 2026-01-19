@@ -491,10 +491,14 @@ export type Database = {
           deadline: string | null
           department: string | null
           id: string
+          is_recurring: boolean | null
           mission: string
           notes: string | null
           order_index: number | null
           owner_id: string | null
+          parent_mission_id: string | null
+          recurrence_day: number | null
+          recurrence_type: string | null
           status: Database["public"]["Enums"]["mission_status"] | null
           support_id: string | null
           support_ids: string[] | null
@@ -505,10 +509,14 @@ export type Database = {
           deadline?: string | null
           department?: string | null
           id?: string
+          is_recurring?: boolean | null
           mission: string
           notes?: string | null
           order_index?: number | null
           owner_id?: string | null
+          parent_mission_id?: string | null
+          recurrence_day?: number | null
+          recurrence_type?: string | null
           status?: Database["public"]["Enums"]["mission_status"] | null
           support_id?: string | null
           support_ids?: string[] | null
@@ -519,10 +527,14 @@ export type Database = {
           deadline?: string | null
           department?: string | null
           id?: string
+          is_recurring?: boolean | null
           mission?: string
           notes?: string | null
           order_index?: number | null
           owner_id?: string | null
+          parent_mission_id?: string | null
+          recurrence_day?: number | null
+          recurrence_type?: string | null
           status?: Database["public"]["Enums"]["mission_status"] | null
           support_id?: string | null
           support_ids?: string[] | null
@@ -534,6 +546,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_missions_parent_mission_id_fkey"
+            columns: ["parent_mission_id"]
+            isOneToOne: false
+            referencedRelation: "team_missions"
             referencedColumns: ["id"]
           },
           {

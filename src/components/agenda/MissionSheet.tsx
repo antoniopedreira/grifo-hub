@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Target, X, Pencil, User, Clock, Building2, Crosshair, FileText, Users } from "lucide-react";
+import { CalendarIcon, Target, X, Pencil, User, Clock, Building2, Crosshair, FileText, Users, Trash2, Repeat } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -17,8 +17,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useRecurringMissions } from "@/hooks/useRecurringMissions";
 import type { Tables, Enums } from "@/integrations/supabase/types";
 
 type Mission = Tables<"team_missions">;
@@ -35,6 +38,13 @@ const statusColors: Record<MissionStatus, string> = {
   "Stand-by": "bg-gray-100 text-gray-800 border-gray-200",
 };
 
+const recurrenceOptions = [
+  { value: "daily", label: "Diária" },
+  { value: "weekly", label: "Semanal" },
+  { value: "monthly", label: "Mensal" },
+  { value: "specific_day", label: "Dia específico do mês" },
+];
+
 const formSchema = z.object({
   mission: z.string().min(3, "Missão deve ter pelo menos 3 caracteres"),
   department: z.string().optional(),
@@ -44,6 +54,9 @@ const formSchema = z.object({
   deadline: z.date().optional(),
   status: z.enum(["Pendente", "Em Andamento", "Em Revisão", "Concluído", "Stand-by"]),
   notes: z.string().optional(),
+  is_recurring: z.boolean().optional(),
+  recurrence_type: z.string().optional(),
+  recurrence_day: z.number().min(1).max(31).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -58,6 +71,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
   const queryClient = useQueryClient();
   const isExistingMission = !!mission;
   const [isEditMode, setIsEditMode] = useState(false);
+  const { createNextRecurrence } = useRecurringMissions();
 
   const { data: members = [] } = useQuery({
     queryKey: ["team_members", "active"],
@@ -83,8 +97,14 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
       deadline: undefined,
       status: "Pendente",
       notes: "",
+      is_recurring: false,
+      recurrence_type: "",
+      recurrence_day: undefined,
     },
   });
+
+  const watchIsRecurring = form.watch("is_recurring");
+  const watchRecurrenceType = form.watch("recurrence_type");
 
   useEffect(() => {
     if (mission) {
@@ -98,6 +118,9 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
         deadline: mission.deadline ? new Date(mission.deadline) : undefined,
         status: mission.status || "Pendente",
         notes: mission.notes || "",
+        is_recurring: missionData.is_recurring || false,
+        recurrence_type: missionData.recurrence_type || "",
+        recurrence_day: missionData.recurrence_day || undefined,
       });
     } else {
       form.reset({
@@ -109,6 +132,9 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
         deadline: undefined,
         status: "Pendente",
         notes: "",
+        is_recurring: false,
+        recurrence_type: "",
+        recurrence_day: undefined,
       });
     }
   }, [mission, form, open]);
@@ -135,9 +161,12 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
         target_goal: data.target_goal || null,
         owner_id: data.owner_id || null,
         support_ids: data.support_ids || [],
-        deadline: data.deadline ? data.deadline.toISOString() : null,
+        deadline: data.deadline ? data.deadline.toISOString().split("T")[0] : null,
         status: data.status,
         notes: data.notes || null,
+        is_recurring: data.is_recurring || false,
+        recurrence_type: data.is_recurring ? data.recurrence_type || null : null,
+        recurrence_day: data.is_recurring && data.recurrence_type === "specific_day" ? data.recurrence_day : null,
       };
 
       if (isExistingMission) {
@@ -145,11 +174,23 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
         if (mission.order_index !== null && mission.order_index !== undefined) {
           payload.order_index = mission.order_index;
         }
+
+        // Check if completing a recurring mission
+        const wasNotCompleted = mission.status !== "Concluído";
+        const isNowCompleted = data.status === "Concluído";
+        const missionData = mission as any;
+        const shouldCreateNext = wasNotCompleted && isNowCompleted && missionData.is_recurring;
+
         const { error } = await supabase
           .from("team_missions")
           .update(payload)
           .eq("id", mission.id);
         if (error) throw error;
+
+        // Create next recurrence if completing a recurring mission
+        if (shouldCreateNext) {
+          await createNextRecurrence.mutateAsync({ mission: { ...mission, ...payload } as Mission });
+        }
       } else {
         const { error } = await supabase.from("team_missions").insert(payload as any);
         if (error) throw error;
@@ -162,6 +203,22 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
     },
     onError: () => {
       toast.error("Erro ao salvar missão.");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!mission) return;
+      const { error } = await supabase.from("team_missions").delete().eq("id", mission.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["team_missions"] });
+      toast.success("Missão excluída!");
+      onOpenChange(false);
+    },
+    onError: () => {
+      toast.error("Erro ao excluir missão.");
     },
   });
 
@@ -180,6 +237,11 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
     return supportIds.map((id) => getMemberName(id));
   };
 
+  const getRecurrenceLabel = (type: string | null) => {
+    if (!type) return null;
+    return recurrenceOptions.find((r) => r.value === type)?.label || type;
+  };
+
   // Detail View Component
   const DetailView = () => {
     if (!mission) return null;
@@ -190,9 +252,17 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
       <div className="space-y-6 mt-6">
         {/* Mission Title */}
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-primary leading-tight">
-            {mission.mission}
-          </h3>
+          <div className="flex items-start gap-2">
+            <h3 className="text-lg font-semibold text-primary leading-tight flex-1">
+              {mission.mission}
+            </h3>
+            {missionData.is_recurring && (
+              <Badge variant="outline" className="gap-1 flex-shrink-0">
+                <Repeat className="h-3 w-3" />
+                {getRecurrenceLabel(missionData.recurrence_type)}
+              </Badge>
+            )}
+          </div>
           <Badge className={cn("border", statusColors[mission.status || "Pendente"])}>
             {mission.status || "Pendente"}
           </Badge>
@@ -272,17 +342,45 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
         <Separator />
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
-          </Button>
-          <Button
-            onClick={() => setIsEditMode(true)}
-            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-          >
-            <Pencil className="h-4 w-4 mr-2" />
-            Editar
-          </Button>
+        <div className="flex justify-between gap-3">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir missão?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser desfeita. A missão será permanentemente excluída.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteMutation.mutate()}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Fechar
+            </Button>
+            <Button
+              onClick={() => setIsEditMode(true)}
+              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -312,9 +410,20 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
           render={({ field }) => (
             <FormItem>
               <FormLabel>Setor</FormLabel>
-              <FormControl>
-                <Input placeholder="Ex: Marketing, Obras, Financeiro..." {...field} />
-              </FormControl>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o setor" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {["Marketing", "Comercial", "Produto", "Admin", "Financeiro", "Obras", "RH", "TI"].map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
@@ -482,6 +591,85 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
             </FormItem>
           )}
         />
+
+        {/* Recurrence Section */}
+        <div className="border rounded-lg p-4 space-y-4">
+          <FormField
+            control={form.control}
+            name="is_recurring"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base flex items-center gap-2">
+                    <Repeat className="h-4 w-4" />
+                    Tarefa Recorrente
+                  </FormLabel>
+                  <p className="text-sm text-muted-foreground">
+                    Cria próxima ocorrência ao concluir
+                  </p>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {watchIsRecurring && (
+            <>
+              <FormField
+                control={form.control}
+                name="recurrence_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Frequência</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a frequência" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {recurrenceOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {watchRecurrenceType === "specific_day" && (
+                <FormField
+                  control={form.control}
+                  name="recurrence_day"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dia do Mês</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={31}
+                          placeholder="Ex: 10"
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </>
+          )}
+        </div>
 
         <FormField
           control={form.control}

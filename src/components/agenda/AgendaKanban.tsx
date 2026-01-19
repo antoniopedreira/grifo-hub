@@ -35,10 +35,11 @@ const departmentColors: Record<string, string> = {
 
 interface AgendaKanbanProps {
   ownerFilter: string | null;
+  departmentFilter?: string | null;
   searchTerm?: string;
 }
 
-export function AgendaKanban({ ownerFilter, searchTerm = "" }: AgendaKanbanProps) {
+export function AgendaKanban({ ownerFilter, departmentFilter, searchTerm = "" }: AgendaKanbanProps) {
   const queryClient = useQueryClient();
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -148,11 +149,12 @@ export function AgendaKanban({ ownerFilter, searchTerm = "" }: AgendaKanbanProps
       .slice(0, 2);
   };
 
-  // Filter missions by owner and search term
+  // Filter missions by owner, department and search term
   const filteredMissions = missions.filter((m) => {
     const matchesOwner = ownerFilter ? m.owner_id === ownerFilter : true;
+    const matchesDepartment = departmentFilter ? m.department === departmentFilter : true;
     const matchesSearch = searchTerm ? m.mission?.toLowerCase().includes(searchTerm.toLowerCase()) : true;
-    return matchesOwner && matchesSearch;
+    return matchesOwner && matchesDepartment && matchesSearch;
   });
 
   const getMissionsByStatus = (status: MissionStatus) => {
