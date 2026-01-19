@@ -56,6 +56,7 @@ export function CloseSaleDialog({
       if (dealError) throw dealError;
 
       // 2. Cria o registro de Venda na tabela Sales (Ação B - Nova)
+      const productId = deal.product_id || null;
       const productName = deal.product?.name || "Venda Consultiva";
       const transactionId = `deal-${deal.id}`;
 
@@ -63,6 +64,7 @@ export function CloseSaleDialog({
         .from("sales")
         .insert({
           lead_id: deal.lead_id || null,
+          product_id: productId,
           amount: finalAmount,
           product_name: productName,
           transaction_id: transactionId,

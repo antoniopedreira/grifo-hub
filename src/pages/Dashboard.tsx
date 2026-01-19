@@ -87,6 +87,7 @@ export default function Dashboard() {
           { data: wonDealsWithRelations },
           { data: upcomingMissions },
           { data: products },
+          { data: allSales },
         ] = await Promise.all([
           supabase.from("deals").select("*"),
           supabase.from("leads").select("*", { count: "exact", head: true }),
@@ -105,23 +106,24 @@ export default function Dashboard() {
             .order("deadline", { ascending: true })
             .limit(5),
           supabase.from("products").select("id, name"),
+          supabase.from("sales").select("*, products(name)"),
         ]);
 
-        // Calculate KPIs
-        const wonDeals = (allDeals || []).filter((d) => d.status === "won");
+        // Calculate KPIs from sales (more accurate than deals for revenue)
+        const totalRevenue = (allSales || []).reduce((sum, s) => sum + (s.amount || 0), 0);
+
+        // Calculate in negotiation from deals
         const inNegotiationDeals = (allDeals || []).filter(
           (d) => d.status !== "won" && d.status !== "lost" && d.status !== "abandoned",
         );
-
-        const totalRevenue = wonDeals.reduce((sum, d) => sum + (d.value || 0), 0);
         const inNegotiation = inNegotiationDeals.reduce((sum, d) => sum + (d.value || 0), 0);
 
-        // Calculate monthly revenue (last 6 months)
+        // Calculate monthly revenue from sales (last 6 months)
         const monthlyMap = new Map<string, number>();
-        wonDeals.forEach((deal) => {
-          if (deal.created_at) {
-            const monthKey = format(startOfMonth(parseISO(deal.created_at)), "yyyy-MM");
-            monthlyMap.set(monthKey, (monthlyMap.get(monthKey) || 0) + (deal.value || 0));
+        (allSales || []).forEach((sale) => {
+          if (sale.transaction_date) {
+            const monthKey = format(startOfMonth(parseISO(sale.transaction_date)), "yyyy-MM");
+            monthlyMap.set(monthKey, (monthlyMap.get(monthKey) || 0) + (sale.amount || 0));
           }
         });
 
@@ -133,16 +135,18 @@ export default function Dashboard() {
             value,
           }));
 
-        // Calculate sales by product
+        // Calculate sales by product using product_id (groups correctly even if name changes)
         const productMap = new Map<string, number>();
         const productNames = new Map<string, string>();
         (products || []).forEach((p) => productNames.set(p.id, p.name));
 
-        wonDeals.forEach((deal) => {
-          if (deal.product_id) {
-            const productName = productNames.get(deal.product_id) || "Outros";
-            productMap.set(productName, (productMap.get(productName) || 0) + (deal.value || 0));
-          }
+        (allSales || []).forEach((sale) => {
+          // Priority: use joined product name, then lookup by product_id, then fallback to product_name
+          const productName = sale.products?.name 
+            || (sale.product_id ? productNames.get(sale.product_id) : null) 
+            || sale.product_name 
+            || "Outros";
+          productMap.set(productName, (productMap.get(productName) || 0) + (sale.amount || 0));
         });
 
         const salesByProduct = Array.from(productMap.entries())
