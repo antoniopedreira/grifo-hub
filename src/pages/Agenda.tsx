@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, LayoutGrid, List, Plus, User, Search, Building2 } from "lucide-react";
+import { CalendarDays, LayoutGrid, List, Plus, User, Search, Building2, CircleDot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -11,18 +11,21 @@ import { AgendaList } from "@/components/agenda/AgendaList";
 import { MissionSheet } from "@/components/agenda/MissionSheet";
 import { useStandbyAutomation } from "@/hooks/useStandbyAutomation";
 import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import type { Tables, Enums } from "@/integrations/supabase/types";
 
 type ViewMode = "calendar" | "kanban" | "list";
 type TeamMember = Tables<"team_members">;
+type MissionStatus = Enums<"mission_status">;
 
 const departments = ["Marketing", "Comercial", "Produto", "Admin", "Financeiro", "Obras", "RH", "TI"];
+const statuses: MissionStatus[] = ["Pendente", "Em Andamento", "Em Revisão", "Concluído", "Stand-by"];
 
 export default function Agenda() {
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
 
   // Executa automação Stand-by → Pendente ao carregar
@@ -73,6 +76,24 @@ export default function Agenda() {
               ))}
             </SelectContent>
           </Select>
+
+          {/* Status Filter - Only visible in List view */}
+          {viewMode === "list" && (
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px] bg-background">
+                <CircleDot className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="min-w-[--radix-select-trigger-width]">
+                <SelectItem value="all">Todos</SelectItem>
+                {statuses.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {/* Owner Filter */}
           <Select value={ownerFilter} onValueChange={setOwnerFilter}>
@@ -129,6 +150,7 @@ export default function Agenda() {
         <AgendaList
           ownerFilter={ownerFilter === "all" ? null : ownerFilter}
           departmentFilter={departmentFilter === "all" ? null : departmentFilter}
+          statusFilter={statusFilter === "all" ? null : statusFilter}
           searchTerm={searchTerm}
         />
       ) : (
