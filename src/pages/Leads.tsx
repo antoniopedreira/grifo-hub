@@ -308,10 +308,23 @@ export default function Leads() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
+                  {/* Nome Ordenável */}
+                  <TableHead
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handleSort("full_name")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Nome
+                      <ArrowUpDown
+                        className={`h-3 w-3 ${sortConfig.key === "full_name" ? "text-primary" : "text-muted-foreground"}`}
+                      />
+                    </div>
+                  </TableHead>
+
                   <TableHead>Email</TableHead>
                   <TableHead>Telefone</TableHead>
 
+                  {/* LTV Ordenável */}
                   <TableHead
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => handleSort("ltv")}
@@ -326,6 +339,7 @@ export default function Leads() {
 
                   <TableHead>Status</TableHead>
 
+                  {/* Cadastro Ordenável (Texto Encurtado) */}
                   <TableHead
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => handleSort("created_at")}
@@ -367,6 +381,7 @@ export default function Leads() {
                       )}
                     </TableCell>
 
+                    {/* Valor do LTV */}
                     <TableCell className="font-medium text-slate-700">
                       {new Intl.NumberFormat("pt-BR", {
                         style: "currency",
