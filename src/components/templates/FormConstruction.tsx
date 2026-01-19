@@ -121,9 +121,11 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     if (!revenue) return null;
     const mapping: Record<string, number> = {
       "<500k": 0,
-      "500k-2M": 500000,
-      "2M-10M": 1000000,
-      "+10M": 10000000,
+      "500k-1M": 500000,
+      "1M-5M": 1000000,
+      "5M-10M": 5000000,
+      "10M-50M": 10000000,
+      "+50M": 50000000,
     };
     return mapping[revenue] ?? null;
   };
@@ -407,10 +409,12 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             >
               <div className="grid grid-cols-1 gap-3 mt-4">
                 {[
-                  { value: "<500k", label: "Menos de R$ 500 mil" },
-                  { value: "500k-2M", label: "R$ 500 mil a R$ 2 milhões" },
-                  { value: "2M-10M", label: "R$ 2 milhões a R$ 10 milhões" },
-                  { value: "+10M", label: "Mais de R$ 10 milhões" },
+                  { value: "<500k", label: "Até R$ 500 mil" },
+                  { value: "500k-1M", label: "Entre R$ 500 mil e R$ 1 mi" },
+                  { value: "1M-5M", label: "Entre R$ 1 mi e R$ 5 mi" },
+                  { value: "5M-10M", label: "Entre R$ 5 mi e R$ 10 mi" },
+                  { value: "10M-50M", label: "Entre R$ 10 mi e R$ 50 mi" },
+                  { value: "+50M", label: "Acima de R$ 50 mi" },
                 ].map((option) => (
                   <OptionButton
                     key={option.value}
