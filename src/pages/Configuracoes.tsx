@@ -1,65 +1,57 @@
 import { useState } from "react";
-import { Settings, GitBranch, Users, Sliders } from "lucide-react";
+import { Settings, Users, GitBranch, ListTodo } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PipelineList } from "@/components/settings/PipelineList";
-import { PipelineStageEditor } from "@/components/settings/PipelineStageEditor";
-import { TeamMembersList } from "@/components/settings/TeamMembersList";
 import { GeneralSettings } from "@/components/settings/GeneralSettings";
-
-interface Pipeline {
-  id: string;
-  name: string;
-  archived?: boolean;
-}
+import { TeamMembersList } from "@/components/settings/TeamMembersList";
+import { PipelineList } from "@/components/settings/PipelineList";
+import { CrmSettings } from "@/components/settings/CrmSettings"; // Importamos o novo componente
 
 export default function Configuracoes() {
-  const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
+  const [activeTab, setActiveTab] = useState("geral");
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Settings className="h-8 w-8 text-secondary" />
         <h1 className="text-3xl font-bold text-primary">Configurações</h1>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="geral" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="geral" className="gap-2">
-            <Sliders className="h-4 w-4" />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="geral" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
             Geral
           </TabsTrigger>
-          <TabsTrigger value="pipelines" className="gap-2">
-            <GitBranch className="h-4 w-4" />
-            Pipelines
-          </TabsTrigger>
-          <TabsTrigger value="equipe" className="gap-2">
+          <TabsTrigger value="equipe" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Equipe
           </TabsTrigger>
+          <TabsTrigger value="pipelines" className="flex items-center gap-2">
+            <GitBranch className="h-4 w-4" />
+            Pipelines (Vendas)
+          </TabsTrigger>
+          {/* Nova Aba CRM */}
+          <TabsTrigger value="crm" className="flex items-center gap-2">
+            <ListTodo className="h-4 w-4" />
+            Checklists CRM
+          </TabsTrigger>
         </TabsList>
 
-        {/* Tab: Geral */}
-        <TabsContent value="geral">
+        <TabsContent value="geral" className="space-y-4">
           <GeneralSettings />
         </TabsContent>
 
-        {/* Tab: Pipelines */}
-        <TabsContent value="pipelines">
-          {selectedPipeline ? (
-            <PipelineStageEditor
-              pipeline={selectedPipeline}
-              onBack={() => setSelectedPipeline(null)}
-            />
-          ) : (
-            <PipelineList onSelectPipeline={setSelectedPipeline} />
-          )}
+        <TabsContent value="equipe" className="space-y-4">
+          <TeamMembersList />
         </TabsContent>
 
-        {/* Tab: Equipe */}
-        <TabsContent value="equipe">
-          <TeamMembersList />
+        <TabsContent value="pipelines" className="space-y-4">
+          <PipelineList />
+        </TabsContent>
+
+        {/* Conteúdo da Aba CRM */}
+        <TabsContent value="crm" className="space-y-4">
+          <CrmSettings />
         </TabsContent>
       </Tabs>
     </div>
