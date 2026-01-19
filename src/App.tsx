@@ -16,6 +16,7 @@ import Marketing from "@/pages/Marketing";
 import Templates from "@/pages/Templates";
 import Configuracoes from "@/pages/Configuracoes";
 import Agenda from "@/pages/Agenda";
+import CRM from "@/pages/CRM";
 import NotFound from "@/pages/NotFound";
 import PublicPageRenderer from "@/pages/PublicPageRenderer";
 
@@ -47,6 +48,7 @@ const App = () => (
                 <Route path="/templates" element={<Templates />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
                 <Route path="/agenda" element={<Agenda />} />
+                <Route path="/crm" element={<CRM />} />
               </Route>
             </Route>
             

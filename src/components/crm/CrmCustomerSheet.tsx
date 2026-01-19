@@ -38,13 +38,18 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
     queryKey: ["crm-journey-detail", journeyId],
     queryFn: async () => {
       if (!journeyId) return null;
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("crm_journeys")
         .select("*, leads(full_name, email, company_revenue)")
         .eq("id", journeyId)
         .single();
       if (error) throw error;
-      return data;
+      return data as {
+        id: string;
+        current_quarter: 'Q1' | 'Q2' | 'Q3' | 'Q4';
+        start_date: string | null;
+        leads: { full_name: string; email: string; company_revenue: number | null };
+      };
     },
     enabled: !!journeyId && open,
   });
@@ -53,12 +58,12 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
     queryKey: ["crm-checklist", journeyId],
     queryFn: async () => {
       if (!journeyId) return [];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("crm_checklist_items")
         .select("*")
         .eq("journey_id", journeyId)
-        .order("order_index", { ascending: true }) // Ordena pela sequência correta
-        .order("created_at", { ascending: true }); // Fallback
+        .order("order_index", { ascending: true })
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data as ChecklistItem[];
     },
@@ -76,7 +81,7 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
       const newStatus = currentStatus === 'todo' ? 'done' : 'todo';
       const completedAt = newStatus === 'done' ? new Date().toISOString() : null;
       
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("crm_checklist_items")
         .update({ status: newStatus, completed_at: completedAt })
         .eq("id", id);
