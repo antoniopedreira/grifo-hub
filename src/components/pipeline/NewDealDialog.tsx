@@ -65,6 +65,7 @@ export function NewDealDialog({
   // ===== IMPORT TAB STATE =====
   const [ltvMin, setLtvMin] = useState("");
   const [ltvMax, setLtvMax] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedProductFilters, setSelectedProductFilters] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<LeadResult[]>([]);
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
@@ -110,8 +111,13 @@ export function NewDealDialog({
     try {
       let query = supabase
         .from("leads")
-        .select("id, full_name, email, ltv")
+        .select("id, full_name, email, ltv, status")
         .order("full_name");
+
+      // Status filter
+      if (statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
+      }
 
       // LTV filters
       if (ltvMin) {
@@ -314,6 +320,7 @@ export function NewDealDialog({
     // Import tab
     setLtvMin("");
     setLtvMax("");
+    setStatusFilter("all");
     setSelectedProductFilters([]);
     setSearchResults([]);
     setSelectedLeadIds(new Set());
@@ -500,7 +507,20 @@ export function NewDealDialog({
                     </Button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Status</Label>
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          <SelectItem value="Novo">Novo</SelectItem>
+                          <SelectItem value="Cliente">Cliente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] text-muted-foreground">LTV Mín (R$)</Label>
                       <Input

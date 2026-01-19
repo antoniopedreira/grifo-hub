@@ -134,8 +134,30 @@ export type Database = {
           },
         ]
       }
+      import_temp_full: {
+        Row: {
+          email: string | null
+          full_name: string | null
+          phone: string | null
+          revenue_slug: string | null
+        }
+        Insert: {
+          email?: string | null
+          full_name?: string | null
+          phone?: string | null
+          revenue_slug?: string | null
+        }
+        Update: {
+          email?: string | null
+          full_name?: string | null
+          phone?: string | null
+          revenue_slug?: string | null
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
+          company_revenue: number | null
           created_at: string | null
           email: string | null
           full_name: string | null
@@ -146,6 +168,7 @@ export type Database = {
           status: string | null
         }
         Insert: {
+          company_revenue?: number | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
@@ -156,6 +179,7 @@ export type Database = {
           status?: string | null
         }
         Update: {
+          company_revenue?: number | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
