@@ -1,6 +1,14 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, Mail, Phone, User, Package, DollarSign, FileText, Trash2 } from "lucide-react";
+import { MessageCircle, Mail, Phone, User, Package, DollarSign, FileText, Trash2, Pencil, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -33,6 +41,23 @@ interface DealDetailSheetProps {
 export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isEditingProduct, setIsEditingProduct] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+
+  // Fetch products for the selector
+  const { data: products = [] } = useQuery({
+    queryKey: ["products-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, name, price")
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: open,
+  });
 
   // Fetch form submission for this lead/product
   const { data: formSubmission } = useQuery({
@@ -50,6 +75,36 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
       return data;
     },
     enabled: open && !!deal?.lead_id,
+  });
+
+  // Update deal product mutation
+  const updateProductMutation = useMutation({
+    mutationFn: async ({ dealId, productId }: { dealId: string; productId: string | null }) => {
+      const selectedProduct = products.find((p) => p.id === productId);
+      const { error } = await supabase
+        .from("deals")
+        .update({
+          product_id: productId,
+          value: selectedProduct?.price ?? null,
+        })
+        .eq("id", dealId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Produto atualizado",
+        description: "O produto do deal foi atualizado com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      setIsEditingProduct(false);
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar o produto.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Delete deal mutation
@@ -74,6 +129,21 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
       });
     },
   });
+
+  const handleStartEditProduct = () => {
+    setSelectedProductId(deal?.product_id ?? null);
+    setIsEditingProduct(true);
+  };
+
+  const handleSaveProduct = () => {
+    if (!deal) return;
+    updateProductMutation.mutate({ dealId: deal.id, productId: selectedProductId });
+  };
+
+  const handleCancelEditProduct = () => {
+    setIsEditingProduct(false);
+    setSelectedProductId(null);
+  };
 
   if (!deal) return null;
 
@@ -172,11 +242,62 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
 
             {/* Product Info */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-primary flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                Produto
-              </h4>
-              <p className="text-sm">{product?.name || "Sem produto associado"}</p>
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-primary flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Produto
+                </h4>
+                {!isEditingProduct && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleStartEditProduct}
+                    className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              
+              {isEditingProduct ? (
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={selectedProductId ?? "none"}
+                    onValueChange={(value) => setSelectedProductId(value === "none" ? null : value)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecione um produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem produto</SelectItem>
+                      {products.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleSaveProduct}
+                    disabled={updateProductMutation.isPending}
+                    className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleCancelEditProduct}
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm">{product?.name || "Sem produto associado"}</p>
+              )}
             </div>
 
             <Separator />
