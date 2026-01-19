@@ -117,11 +117,10 @@ const formatAnswerKey = (key: string): string => {
 // Função auxiliar para traduzir o valor numérico para texto da faixa
 const getRevenueLabel = (value: number | null) => {
   if (value === null || value === undefined) return "Não informado";
-  if (value === 0) return "Até R$ 500 mil";
-  if (value === 500000) return "Entre R$ 500 mil e R$ 1 mi";
-  if (value === 1000000) return "Entre R$ 1 mi e R$ 10 mi";
-  if (value === 10000000) return "Entre R$ 10 mi e R$ 50 mi";
-  if (value === 50000000) return "Mais de R$ 50 mi";
+  if (value === 0) return "Menos de R$ 500 mil";
+  if (value === 500000) return "Entre R$ 500 mil e R$ 2 mi";
+  if (value === 1000000) return "Entre R$ 2 mi e R$ 10 mi";
+  if (value === 10000000) return "Mais de R$ 10 mi";
   return "R$ " + value.toLocaleString("pt-BR");
 };
 
