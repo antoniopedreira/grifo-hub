@@ -45,7 +45,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { NewLeadDialog } from "@/components/leads/NewLeadDialog";
 import { LeadDetailSheet } from "@/components/leads/LeadDetailSheet";
 
-// Interface atualizada para incluir as vendas (necessário para o filtro de produto)
+// Interface atualizada para incluir as vendas e o company_revenue
 interface Lead {
   id: string;
   full_name: string | null;
@@ -54,6 +54,7 @@ interface Lead {
   status: string | null;
   origin: string | null;
   ltv: number | null;
+  company_revenue: number | null; // Adicionado para corrigir o erro de TS
   created_at: string | null;
   sales?: {
     product_id: string | null;
