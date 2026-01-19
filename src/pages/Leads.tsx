@@ -123,7 +123,9 @@ export default function Leads() {
   const handleSort = (key: keyof Lead) => {
     setSortConfig((current) => ({
       key,
-      direction: current.key === key && current.direction === "desc" ? "asc" : "desc",
+      // Lógica alterada: Se for a mesma coluna e estava ASC, vira DESC.
+      // Se for nova coluna ou estava DESC, vira ASC (A-Z).
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
     }));
   };
 
@@ -144,7 +146,7 @@ export default function Leads() {
         const bValue = b[sortConfig.key];
 
         if (aValue === bValue) return 0;
-        if (aValue === null) return 1;
+        if (aValue === null) return 1; // Nulos vão para o final
         if (bValue === null) return -1;
 
         if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
@@ -324,7 +326,6 @@ export default function Leads() {
                   <TableHead>Email</TableHead>
                   <TableHead>Telefone</TableHead>
 
-                  {/* LTV Ordenável */}
                   <TableHead
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => handleSort("ltv")}
@@ -339,7 +340,6 @@ export default function Leads() {
 
                   <TableHead>Status</TableHead>
 
-                  {/* Cadastro Ordenável (Texto Encurtado) */}
                   <TableHead
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => handleSort("created_at")}
@@ -381,7 +381,6 @@ export default function Leads() {
                       )}
                     </TableCell>
 
-                    {/* Valor do LTV */}
                     <TableCell className="font-medium text-slate-700">
                       {new Intl.NumberFormat("pt-BR", {
                         style: "currency",
