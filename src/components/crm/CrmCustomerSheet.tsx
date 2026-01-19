@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -50,6 +50,7 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
   const queryClient = useQueryClient();
   const [activeQuarter, setActiveQuarter] = useState<string>("Q1");
   const [isPopulating, setIsPopulating] = useState(false);
+  const populatedJourneys = useRef<Set<string>>(new Set());
 
   // Busca dados da jornada
   const { data: journey } = useQuery({
@@ -107,10 +108,15 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
   // Popula os items baseados nos templates se não existirem
   useEffect(() => {
     const populateChecklist = async () => {
+      // Guards para evitar execução duplicada
       if (!journeyId || !templates || templates.length === 0 || loadingItems || isPopulating) return;
       if (checklistItems && checklistItems.length > 0) return; // Já tem items
+      if (populatedJourneys.current.has(journeyId)) return; // Já foi populado nesta sessão
 
+      // Marca como "em processo" antes de iniciar
+      populatedJourneys.current.add(journeyId);
       setIsPopulating(true);
+      
       try {
         const itemsToInsert = templates.map(template => ({
           journey_id: journeyId,
@@ -130,6 +136,8 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
         toast.success("Checklist criado com base nos templates!");
       } catch (error: any) {
         console.error("Erro ao popular checklist:", error);
+        // Remove do set para permitir retry
+        populatedJourneys.current.delete(journeyId);
         toast.error("Erro ao criar checklist");
       } finally {
         setIsPopulating(false);
