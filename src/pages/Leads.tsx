@@ -1,32 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Papa from "papaparse";
-import {
-  Users,
-  Search,
-  Download,
-  Phone,
-  Eye,
-  Trash2,
-  Loader2,
-  UserX,
-  Package,
-} from "lucide-react";
+import { Users, Search, Download, Phone, Eye, Trash2, Loader2, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Pagination,
   PaginationContent,
@@ -46,13 +29,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { NewLeadDialog } from "@/components/leads/NewLeadDialog";
 import { LeadDetailSheet } from "@/components/leads/LeadDetailSheet";
 
@@ -80,60 +56,17 @@ export default function Leads() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [productFilter, setProductFilter] = useState<string>("all");
 
   const queryClient = useQueryClient();
 
   const { data: leadsData, isLoading } = useQuery({
     queryKey: ["leads"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("leads")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return data as Lead[];
     },
   });
-
-  // Fetch products for filter
-  const { data: products } = useQuery({
-    queryKey: ["products-filter"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name")
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Fetch sales to know which leads bought which products
-  const { data: salesData } = useQuery({
-    queryKey: ["sales-by-lead"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sales")
-        .select("lead_id, product_id");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Create a map of lead_id -> product_ids they bought
-  const leadProductsMap = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    salesData?.forEach((sale) => {
-      if (sale.lead_id && sale.product_id) {
-        if (!map.has(sale.lead_id)) {
-          map.set(sale.lead_id, new Set());
-        }
-        map.get(sale.lead_id)!.add(sale.product_id);
-      }
-    });
-    return map;
-  }, [salesData]);
 
   const deleteLead = useMutation({
     mutationFn: async (id: string) => {
@@ -149,28 +82,16 @@ export default function Leads() {
     },
   });
 
-  // Filter leads by search query and product
+  // Filter leads by search query
   const filteredLeads =
     leadsData?.filter((lead) => {
       const query = searchQuery.toLowerCase();
-      const matchesSearch =
-        lead.full_name?.toLowerCase().includes(query) ||
-        lead.email?.toLowerCase().includes(query);
-      
-      // Product filter: check if lead bought the selected product
-      const matchesProduct =
-        productFilter === "all" ||
-        leadProductsMap.get(lead.id)?.has(productFilter);
-
-      return matchesSearch && matchesProduct;
+      return lead.full_name?.toLowerCase().includes(query) || lead.email?.toLowerCase().includes(query);
     }) || [];
 
   // Pagination
   const totalPages = Math.ceil(filteredLeads.length / ITEMS_PER_PAGE);
-  const paginatedLeads = filteredLeads.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const paginatedLeads = filteredLeads.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   // Export CSV
   const handleExportCSV = () => {
@@ -186,9 +107,7 @@ export default function Leads() {
       Status: lead.status || "",
       Origem: lead.origin || "",
       LTV: lead.ltv || 0,
-      "Data de Cadastro": lead.created_at
-        ? format(new Date(lead.created_at), "dd/MM/yyyy", { locale: ptBR })
-        : "",
+      "Data de Cadastro": lead.created_at ? format(new Date(lead.created_at), "dd/MM/yyyy", { locale: ptBR }) : "",
     }));
 
     const csv = Papa.unparse(csvData);
@@ -232,26 +151,6 @@ export default function Leads() {
           />
         </div>
         <div className="flex gap-2">
-          <Select
-            value={productFilter}
-            onValueChange={(value) => {
-              setProductFilter(value);
-              setCurrentPage(1);
-            }}
-          >
-            <SelectTrigger className="w-[180px] bg-background">
-              <Package className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Produto" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os produtos</SelectItem>
-              {products?.map((product) => (
-                <SelectItem key={product.id} value={product.id}>
-                  {product.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Button variant="outline" onClick={handleExportCSV}>
             <Download className="h-4 w-4 mr-2" />
             Exportar CSV
@@ -269,9 +168,7 @@ export default function Leads() {
         ) : filteredLeads.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <UserX className="h-16 w-16 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-1">
-              Nenhum lead encontrado
-            </h3>
+            <h3 className="text-lg font-semibold text-foreground mb-1">Nenhum lead encontrado</h3>
             <p className="text-sm text-muted-foreground max-w-sm">
               {searchQuery
                 ? "Tente ajustar sua busca ou limpar os filtros."
@@ -286,6 +183,8 @@ export default function Leads() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Telefone</TableHead>
+                  {/* Nova coluna LTV */}
+                  <TableHead>LTV</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data de Cadastro</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -298,12 +197,8 @@ export default function Leads() {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleViewDetails(lead)}
                   >
-                    <TableCell className="font-semibold">
-                      {lead.full_name || "Sem nome"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {lead.email || "-"}
-                    </TableCell>
+                    <TableCell className="font-semibold">{lead.full_name || "Sem nome"}</TableCell>
+                    <TableCell className="text-muted-foreground">{lead.email || "-"}</TableCell>
                     <TableCell>
                       {lead.phone ? (
                         <a
@@ -320,10 +215,17 @@ export default function Leads() {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
+
+                    {/* Valor do LTV formatado */}
+                    <TableCell className="font-medium">
+                      {new Intl.NumberFormat("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      }).format(lead.ltv || 0)}
+                    </TableCell>
+
                     <TableCell>
-                      <Badge className={statusColors[lead.status || "Novo"]}>
-                        {lead.status || "Novo"}
-                      </Badge>
+                      <Badge className={statusColors[lead.status || "Novo"]}>{lead.status || "Novo"}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {lead.created_at
@@ -359,9 +261,8 @@ export default function Leads() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Tem certeza que deseja excluir{" "}
-                                <strong>{lead.full_name}</strong>? Esta ação não
-                                pode ser desfeita.
+                                Tem certeza que deseja excluir <strong>{lead.full_name}</strong>? Esta ação não pode ser
+                                desfeita.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -389,39 +290,25 @@ export default function Leads() {
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
-                        onClick={() =>
-                          setCurrentPage((p) => Math.max(1, p - 1))
-                        }
-                        className={
-                          currentPage === 1
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                      (page) => (
-                        <PaginationItem key={page}>
-                          <PaginationLink
-                            onClick={() => setCurrentPage(page)}
-                            isActive={currentPage === page}
-                            className="cursor-pointer"
-                          >
-                            {page}
-                          </PaginationLink>
-                        </PaginationItem>
-                      )
-                    )}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={currentPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
                     <PaginationItem>
                       <PaginationNext
-                        onClick={() =>
-                          setCurrentPage((p) => Math.min(totalPages, p + 1))
-                        }
-                        className={
-                          currentPage === totalPages
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
                   </PaginationContent>
@@ -433,11 +320,7 @@ export default function Leads() {
       </div>
 
       {/* Lead Detail Sheet */}
-      <LeadDetailSheet
-        lead={selectedLead}
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-      />
+      <LeadDetailSheet lead={selectedLead} open={sheetOpen} onOpenChange={setSheetOpen} />
     </div>
   );
 }
