@@ -48,10 +48,11 @@ type SortDirection = "asc" | "desc";
 interface AgendaListProps {
   ownerFilter: string | null;
   departmentFilter: string | null;
+  statusFilter: string | null;
   searchTerm?: string;
 }
 
-export function AgendaList({ ownerFilter, departmentFilter, searchTerm = "" }: AgendaListProps) {
+export function AgendaList({ ownerFilter, departmentFilter, statusFilter, searchTerm = "" }: AgendaListProps) {
   const queryClient = useQueryClient();
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -112,10 +113,11 @@ export function AgendaList({ ownerFilter, departmentFilter, searchTerm = "" }: A
   const filteredMissions = missions.filter((m) => {
     const matchesOwner = ownerFilter ? m.owner_id === ownerFilter : true;
     const matchesDepartment = departmentFilter ? m.department === departmentFilter : true;
+    const matchesStatus = statusFilter ? m.status === statusFilter : true;
     const matchesSearch = searchTerm
       ? m.mission?.toLowerCase().includes(searchTerm.toLowerCase())
       : true;
-    return matchesOwner && matchesDepartment && matchesSearch;
+    return matchesOwner && matchesDepartment && matchesStatus && matchesSearch;
   });
 
   // Sort missions
