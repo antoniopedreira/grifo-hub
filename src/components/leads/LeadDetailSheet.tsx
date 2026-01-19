@@ -2,25 +2,25 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Mail, Phone, Calendar, DollarSign, FileText, Loader2, ShoppingBag, Plus, Package } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Mail,
+  Phone,
+  Calendar,
+  DollarSign,
+  FileText,
+  Loader2,
+  ShoppingBag,
+  Plus,
+  Package,
+  TrendingUp, // Ícone para Faturamento
+} from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -43,6 +43,7 @@ interface Lead {
   status: string | null;
   origin: string | null;
   ltv: number | null;
+  company_revenue: number | null; // Adicionado aqui
   created_at: string | null;
 }
 
@@ -111,6 +112,17 @@ const formatAnswerKey = (key: string): string => {
     message: "Mensagem",
   };
   return keyMap[key.toLowerCase()] || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ");
+};
+
+// Função auxiliar para traduzir o valor numérico para texto da faixa
+const getRevenueLabel = (value: number | null) => {
+  if (value === null || value === undefined) return "Não informado";
+  if (value === 0) return "Até R$ 500 mil";
+  if (value === 500000) return "Entre R$ 500 mil e R$ 1 mi";
+  if (value === 1000000) return "Entre R$ 1 mi e R$ 10 mi";
+  if (value === 10000000) return "Entre R$ 10 mi e R$ 50 mi";
+  if (value === 50000000) return "Mais de R$ 50 mi";
+  return "R$ " + value.toLocaleString("pt-BR");
 };
 
 export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetProps) {
@@ -279,9 +291,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
               {/* Profile Card - Info Display */}
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Informações
-                  </h3>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Informações</h3>
                   {!isEditing && (
                     <Button
                       variant="ghost"
@@ -307,13 +317,9 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                         />
                       </div>
                     ) : (
-                      <span className="text-xl font-bold text-primary">
-                        {lead.full_name || "Sem nome"}
-                      </span>
+                      <span className="text-xl font-bold text-primary">{lead.full_name || "Sem nome"}</span>
                     )}
-                    <Badge className={`${statusColors[lead.status || "Novo"]} shrink-0`}>
-                      {lead.status || "Novo"}
-                    </Badge>
+                    <Badge className={`${statusColors[lead.status || "Novo"]} shrink-0`}>{lead.status || "Novo"}</Badge>
                   </div>
 
                   <Separator />
@@ -374,12 +380,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
 
                   {isEditing && (
                     <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCancelEdit}
-                        className="flex-1"
-                      >
+                      <Button variant="outline" size="sm" onClick={handleCancelEdit} className="flex-1">
                         Cancelar
                       </Button>
                       <Button
@@ -397,9 +398,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
 
               {/* Additional Info Card */}
               <section className="space-y-4">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  Detalhes
-                </h3>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Detalhes</h3>
                 <div className="bg-muted/30 rounded-lg p-5 space-y-4 border border-border/50">
                   {/* LTV Display - Static, highlighted */}
                   <div className="flex items-center justify-between">
@@ -412,6 +411,19 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                     <span className="text-lg font-bold text-green-600">
                       R$ {(calculatedLtv || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </span>
+                  </div>
+
+                  <Separator />
+
+                  {/* NOVO: Faturamento (Baseado no Company Revenue) */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-blue-100">
+                        <TrendingUp className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <span className="text-sm text-muted-foreground">Faturamento</span>
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{getRevenueLabel(lead.company_revenue)}</span>
                   </div>
 
                   <Separator />
@@ -465,18 +477,12 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                           : "Data não disponível"}
                       </div>
                       <div className="space-y-2">
-                        {Object.entries(submission.answers as Record<string, unknown>).map(
-                          ([key, value]) => (
-                            <div key={key} className="text-sm">
-                              <span className="font-medium text-foreground">
-                                {formatAnswerKey(key)}:
-                              </span>{" "}
-                              <span className="text-muted-foreground">
-                                {String(value) || "-"}
-                              </span>
-                            </div>
-                          )
-                        )}
+                        {Object.entries(submission.answers as Record<string, unknown>).map(([key, value]) => (
+                          <div key={key} className="text-sm">
+                            <span className="font-medium text-foreground">{formatAnswerKey(key)}:</span>{" "}
+                            <span className="text-muted-foreground">{String(value) || "-"}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}
@@ -534,11 +540,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                     </div>
                     <div className="space-y-2">
                       <Label>Data da Venda</Label>
-                      <Input
-                        type="date"
-                        value={saleDate}
-                        onChange={(e) => setSaleDate(e.target.value)}
-                      />
+                      <Input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label>Valor (R$)</Label>
@@ -588,9 +590,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                         <div className="flex-1">
                           <div className="flex items-center gap-3">
                             <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                              {sale.transaction_date
-                                ? format(new Date(sale.transaction_date), "dd/MM/yyyy")
-                                : "-"}
+                              {sale.transaction_date ? format(new Date(sale.transaction_date), "dd/MM/yyyy") : "-"}
                             </div>
                             <span className="font-semibold text-foreground">
                               {sale.products?.name || sale.product_name || "Produto"}
