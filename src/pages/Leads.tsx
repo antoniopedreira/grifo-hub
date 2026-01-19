@@ -4,7 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Papa from "papaparse";
-import { Users, Search, Download, Phone, Eye, Trash2, Loader2, UserX } from "lucide-react";
+import {
+  Users,
+  Search,
+  Download,
+  Phone,
+  Eye,
+  Trash2,
+  Loader2,
+  UserX,
+  ArrowUpDown, // Ícone de ordenação
+  Filter, // Ícone de filtro
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,9 +40,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Componentes do Select
 import { NewLeadDialog } from "@/components/leads/NewLeadDialog";
 import { LeadDetailSheet } from "@/components/leads/LeadDetailSheet";
 
+// Interface atualizada para incluir as vendas (necessário para o filtro de produto)
 interface Lead {
   id: string;
   full_name: string | null;
@@ -41,6 +54,10 @@ interface Lead {
   origin: string | null;
   ltv: number | null;
   created_at: string | null;
+  sales?: {
+    product_id: string | null;
+    product_name: string | null;
+  }[];
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -53,18 +70,39 @@ const statusColors: Record<string, string> = {
 
 export default function Leads() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [productFilter, setProductFilter] = useState("all"); // Estado do filtro de produto
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  // Estado de Ordenação (Padrão: Data de criação decrescente)
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Lead | "created_at";
+    direction: "asc" | "desc";
+  }>({ key: "created_at", direction: "desc" });
+
   const queryClient = useQueryClient();
 
-  const { data: leadsData, isLoading } = useQuery({
+  // 1. Busca os Leads com as Vendas associadas
+  const { data: leadsData, isLoading: isLoadingLeads } = useQuery({
     queryKey: ["leads"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("leads")
+        .select("*, sales(product_id, product_name)") // Traz vendas para filtrar
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Lead[];
+    },
+  });
+
+  // 2. Busca a lista de Produtos para o Dropdown
+  const { data: productsData } = useQuery({
+    queryKey: ["products-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("products").select("id, name").order("name");
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -82,31 +120,61 @@ export default function Leads() {
     },
   });
 
-  // Filter leads by search query
-  const filteredLeads =
-    leadsData?.filter((lead) => {
-      const query = searchQuery.toLowerCase();
-      return lead.full_name?.toLowerCase().includes(query) || lead.email?.toLowerCase().includes(query);
-    }) || [];
+  // Função para lidar com o clique na ordenação
+  const handleSort = (key: keyof Lead) => {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === "desc" ? "asc" : "desc",
+    }));
+  };
 
-  // Pagination
-  const totalPages = Math.ceil(filteredLeads.length / ITEMS_PER_PAGE);
-  const paginatedLeads = filteredLeads.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  // Lógica de Filtragem e Ordenação Combinada
+  const filteredAndSortedLeads =
+    leadsData
+      ?.filter((lead) => {
+        // Filtro de Texto
+        const query = searchQuery.toLowerCase();
+        const matchesSearch =
+          lead.full_name?.toLowerCase().includes(query) || lead.email?.toLowerCase().includes(query);
+
+        // Filtro de Produto
+        const matchesProduct = productFilter === "all" || lead.sales?.some((sale) => sale.product_id === productFilter);
+
+        return matchesSearch && matchesProduct;
+      })
+      .sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+
+        if (aValue === bValue) return 0;
+        if (aValue === null) return 1;
+        if (bValue === null) return -1;
+
+        // Comparação simples para strings, números e datas
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      }) || [];
+
+  // Paginação
+  const totalPages = Math.ceil(filteredAndSortedLeads.length / ITEMS_PER_PAGE);
+  const paginatedLeads = filteredAndSortedLeads.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   // Export CSV
   const handleExportCSV = () => {
-    if (!filteredLeads.length) {
+    if (!filteredAndSortedLeads.length) {
       toast.error("Nenhum lead para exportar");
       return;
     }
 
-    const csvData = filteredLeads.map((lead) => ({
+    const csvData = filteredAndSortedLeads.map((lead) => ({
       Nome: lead.full_name || "",
       Email: lead.email || "",
       Telefone: lead.phone || "",
       Status: lead.status || "",
       Origem: lead.origin || "",
       LTV: lead.ltv || 0,
+      Produtos: lead.sales?.map((s) => s.product_name).join(", ") || "",
       "Data de Cadastro": lead.created_at ? format(new Date(lead.created_at), "dd/MM/yyyy", { locale: ptBR }) : "",
     }));
 
@@ -137,7 +205,8 @@ export default function Leads() {
       </div>
 
       {/* Actions Bar */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col md:flex-row gap-4">
+        {/* Barra de Busca */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -150,10 +219,37 @@ export default function Leads() {
             className="pl-10"
           />
         </div>
+
+        {/* Filtro de Produto */}
+        <div className="w-full md:w-[250px]">
+          <Select
+            value={productFilter}
+            onValueChange={(value) => {
+              setProductFilter(value);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger>
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <SelectValue placeholder="Filtrar por produto" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os produtos</SelectItem>
+              {productsData?.map((product) => (
+                <SelectItem key={product.id} value={product.id}>
+                  {product.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExportCSV}>
             <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
+            CSV
           </Button>
           <NewLeadDialog />
         </div>
@@ -161,17 +257,17 @@ export default function Leads() {
 
       {/* Data Table */}
       <div className="rounded-lg border border-border bg-card">
-        {isLoading ? (
+        {isLoadingLeads ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : filteredLeads.length === 0 ? (
+        ) : filteredAndSortedLeads.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <UserX className="h-16 w-16 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-1">Nenhum lead encontrado</h3>
             <p className="text-sm text-muted-foreground max-w-sm">
-              {searchQuery
-                ? "Tente ajustar sua busca ou limpar os filtros."
+              {searchQuery || productFilter !== "all"
+                ? "Tente ajustar sua busca ou filtros."
                 : "Comece adicionando seu primeiro lead clicando no botão 'Novo Lead'."}
             </p>
           </div>
@@ -183,10 +279,35 @@ export default function Leads() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Telefone</TableHead>
-                  {/* Nova coluna LTV */}
-                  <TableHead>LTV</TableHead>
+
+                  {/* Cabeçalho LTV com Ordenação */}
+                  <TableHead
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handleSort("ltv")}
+                  >
+                    <div className="flex items-center gap-1">
+                      LTV
+                      <ArrowUpDown
+                        className={`h-3 w-3 ${sortConfig.key === "ltv" ? "text-primary" : "text-muted-foreground"}`}
+                      />
+                    </div>
+                  </TableHead>
+
                   <TableHead>Status</TableHead>
-                  <TableHead>Data de Cadastro</TableHead>
+
+                  {/* Cabeçalho Data com Ordenação */}
+                  <TableHead
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handleSort("created_at")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Data de Cadastro
+                      <ArrowUpDown
+                        className={`h-3 w-3 ${sortConfig.key === "created_at" ? "text-primary" : "text-muted-foreground"}`}
+                      />
+                    </div>
+                  </TableHead>
+
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -216,8 +337,8 @@ export default function Leads() {
                       )}
                     </TableCell>
 
-                    {/* Valor do LTV formatado */}
-                    <TableCell className="font-medium">
+                    {/* Valor do LTV */}
+                    <TableCell className="font-medium text-slate-700">
                       {new Intl.NumberFormat("pt-BR", {
                         style: "currency",
                         currency: "BRL",
