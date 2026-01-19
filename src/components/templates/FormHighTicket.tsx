@@ -61,6 +61,17 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Map faturamento string to numeric value for company_revenue
+  const mapFaturamentoToNumber = (faturamento: string): number => {
+    const mapping: Record<string, number> = {
+      "<500k": 0,
+      "500k-2M": 500000,
+      "2M-10M": 1000000,
+      "+10M": 10000000,
+    };
+    return mapping[faturamento] ?? 0;
+  };
+
   const submitMutation = useMutation({
     mutationFn: async () => {
       // Check if lead already exists by email
@@ -71,19 +82,21 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
         .single();
 
       let leadId: string;
+      const companyRevenue = mapFaturamentoToNumber(formData.faturamento);
 
       if (existingLead) {
         leadId = existingLead.id;
-        // Update lead info
+        // Update lead info including company_revenue
         await supabase
           .from("leads")
           .update({
             full_name: formData.nome,
             phone: formData.whatsapp,
+            company_revenue: companyRevenue,
           })
           .eq("id", leadId);
       } else {
-        // Create new lead
+        // Create new lead with company_revenue
         const { data: newLead, error: leadError } = await supabase
           .from("leads")
           .insert({
@@ -92,6 +105,7 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
             phone: formData.whatsapp,
             origin: product.name,
             status: "Novo",
+            company_revenue: companyRevenue,
           })
           .select()
           .single();
