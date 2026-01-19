@@ -123,8 +123,6 @@ export default function Leads() {
   const handleSort = (key: keyof Lead) => {
     setSortConfig((current) => ({
       key,
-      // Lógica alterada: Se for a mesma coluna e estava ASC, vira DESC.
-      // Se for nova coluna ou estava DESC, vira ASC (A-Z).
       direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
     }));
   };
@@ -146,8 +144,16 @@ export default function Leads() {
         const bValue = b[sortConfig.key];
 
         if (aValue === bValue) return 0;
-        if (aValue === null) return 1; // Nulos vão para o final
+        if (aValue === null) return 1;
         if (bValue === null) return -1;
+
+        // --- CORREÇÃO AQUI: Uso de localeCompare para strings (resolve o bug dos acentos) ---
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          return sortConfig.direction === "asc"
+            ? aValue.localeCompare(bValue, "pt-BR")
+            : bValue.localeCompare(aValue, "pt-BR");
+        }
+        // ------------------------------------------------------------------------------------
 
         if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
