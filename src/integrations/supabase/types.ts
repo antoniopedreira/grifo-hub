@@ -399,6 +399,7 @@ export type Database = {
           id: string
           lead_id: string | null
           origin: Database["public"]["Enums"]["sale_origin"]
+          product_id: string | null
           product_name: string | null
           transaction_date: string | null
           transaction_id: string | null
@@ -408,6 +409,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           origin: Database["public"]["Enums"]["sale_origin"]
+          product_id?: string | null
           product_name?: string | null
           transaction_date?: string | null
           transaction_id?: string | null
@@ -417,6 +419,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           origin?: Database["public"]["Enums"]["sale_origin"]
+          product_id?: string | null
           product_name?: string | null
           transaction_date?: string | null
           transaction_id?: string | null
@@ -427,6 +430,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]

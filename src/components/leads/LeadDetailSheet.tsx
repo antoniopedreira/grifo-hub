@@ -57,8 +57,10 @@ interface Sale {
   id: string;
   amount: number;
   transaction_date: string | null;
+  product_id: string | null;
   product_name: string | null;
   origin: string;
+  products: { name: string } | null;
 }
 
 interface Product {
@@ -152,14 +154,14 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
     enabled: !!lead?.id && open,
   });
 
-  // Fetch sales for this lead
+  // Fetch sales for this lead with product join
   const { data: sales, isLoading: loadingSales } = useQuery({
     queryKey: ["lead-sales", lead?.id],
     queryFn: async () => {
       if (!lead?.id) return [];
       const { data, error } = await supabase
         .from("sales")
-        .select("*")
+        .select("*, products(name)")
         .eq("lead_id", lead.id)
         .order("transaction_date", { ascending: false });
       if (error) throw error;
@@ -217,6 +219,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
       const selectedProduct = products?.find((p) => p.id === selectedProductId);
       const { error } = await supabase.from("sales").insert({
         lead_id: lead.id,
+        product_id: selectedProductId,
         product_name: selectedProduct?.name || "Produto Manual",
         amount: parseFloat(saleValue) || 0,
         transaction_date: saleDate,
@@ -590,7 +593,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                                 : "-"}
                             </div>
                             <span className="font-semibold text-foreground">
-                              {sale.product_name || "Produto"}
+                              {sale.products?.name || sale.product_name || "Produto"}
                             </span>
                           </div>
                         </div>
