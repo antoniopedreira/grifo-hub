@@ -344,13 +344,13 @@ export default function Leads() {
 
                   <TableHead>Status</TableHead>
 
-                  {/* Cabeçalho Data com Ordenação */}
+                  {/* Cabeçalho Data com Ordenação (ALTERADO AQUI) */}
                   <TableHead
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => handleSort("created_at")}
                   >
                     <div className="flex items-center gap-1">
-                      Data de Cadastro
+                      Cadastro
                       <ArrowUpDown
                         className={`h-3 w-3 ${sortConfig.key === "created_at" ? "text-primary" : "text-muted-foreground"}`}
                       />
