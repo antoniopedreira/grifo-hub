@@ -21,6 +21,7 @@ export interface Deal {
     full_name: string;
     email?: string;
     phone?: string;
+    ltv?: number;
   } | null;
 
   product?: {
