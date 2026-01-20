@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, User, Loader2, MessageSquare } from "lucide-react";
+import { Send, Loader2, MessageSquare, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -49,7 +48,7 @@ export function DealComments({ dealId }: DealCommentsProps) {
       if (!currentUser) throw new Error("Usuário não logado");
 
       const { error } = await supabase
-        .from("deal_comments" as "deals") // Type workaround para tabela não tipada
+        .from("deal_comments" as "deals")
         .insert({
           deal_id: dealId,
           user_id: currentUser.id,
@@ -64,6 +63,23 @@ export function DealComments({ dealId }: DealCommentsProps) {
       toast.success("Comentário enviado!");
     },
     onError: () => toast.error("Erro ao enviar comentário"),
+  });
+
+  // 4. Deletar Comentário
+  const deleteComment = useMutation({
+    mutationFn: async (commentId: string) => {
+      const { error } = await supabase
+        .from("deal_comments" as "deals")
+        .delete()
+        .eq("id" as "id", commentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deal-comments", dealId] });
+      toast.success("Comentário excluído!");
+    },
+    onError: () => toast.error("Erro ao excluir comentário"),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -109,8 +125,19 @@ export function DealComments({ dealId }: DealCommentsProps) {
           <ScrollArea className="max-h-[400px]">
             <div className="divide-y">
               {comments?.map((comment) => (
-                <div key={comment.id} className="p-4">
-                  <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+                <div key={comment.id} className="p-4 group">
+                  <div className="flex justify-between items-start gap-2">
+                    <p className="text-sm whitespace-pre-wrap flex-1">{comment.content}</p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteComment.mutate(comment.id)}
+                      disabled={deleteComment.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     {formatDistanceToNow(new Date(comment.created_at), {
                       addSuffix: true,
