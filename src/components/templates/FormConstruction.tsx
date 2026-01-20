@@ -132,6 +132,9 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
   // Aceita value opcional para casos onde o state ainda não atualizou no closure
   const handleSubmit = async (finalValue?: string) => {
+    // Guard contra duplo-clique
+    if (isSubmitting) return;
+    
     setIsSubmitting(true);
     try {
       const finalData = { ...formData, investment: finalValue || formData.investment };
