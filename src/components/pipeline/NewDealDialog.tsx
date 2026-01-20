@@ -102,22 +102,38 @@ export function NewDealDialog({
     enabled: open,
   });
 
+  // Check if product filter is required
+  const canSearch = selectedProductFilters.length > 0;
+
   // Search leads for import
   const handleSearch = async () => {
+    if (!canSearch) {
+      toast({
+        title: "Selecione um produto",
+        description: "É obrigatório selecionar pelo menos um produto para buscar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSearching(true);
     setHasSearched(true);
     setSelectedLeadIds(new Set());
 
     try {
+      // Get leads who bought the selected products (via sales table)
+      const { data: salesData } = await supabase
+        .from("sales")
+        .select("lead_id")
+        .in("product_id", selectedProductFilters);
+
+      const leadIdsWhoBought = new Set(salesData?.map((s) => s.lead_id).filter(Boolean) || []);
+
+      // Fetch all leads with basic filters
       let query = supabase
         .from("leads")
         .select("id, full_name, email, ltv, status")
         .order("full_name");
-
-      // Status filter
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
-      }
 
       // LTV filters
       if (ltvMin) {
@@ -132,31 +148,16 @@ export function NewDealDialog({
 
       let filteredLeads = leadsData || [];
 
-      // Product filter - need to check form_submissions and sales
-      if (selectedProductFilters.length > 0) {
-        // Get leads that have form_submissions with selected products
-        const { data: formSubmissions } = await supabase
-          .from("form_submissions")
-          .select("lead_id")
-          .in("product_id", selectedProductFilters);
-
-        // Get leads that have sales with selected products (using product_name match)
-        const selectedProductNames = products
-          ?.filter((p) => selectedProductFilters.includes(p.id))
-          .map((p) => p.name) || [];
-
-        const { data: salesData } = await supabase
-          .from("sales")
-          .select("lead_id")
-          .in("product_name", selectedProductNames);
-
-        const leadIdsFromForms = new Set(formSubmissions?.map((f) => f.lead_id) || []);
-        const leadIdsFromSales = new Set(salesData?.map((s) => s.lead_id) || []);
-
-        // Merge both sets
-        const validLeadIds = new Set([...leadIdsFromForms, ...leadIdsFromSales]);
-
-        filteredLeads = filteredLeads.filter((lead) => validLeadIds.has(lead.id));
+      // Smart filter based on status + product
+      if (statusFilter === "Cliente") {
+        // Cliente + Produto = apenas quem COMPROU esse produto
+        filteredLeads = filteredLeads.filter((lead) => leadIdsWhoBought.has(lead.id));
+      } else if (statusFilter === "Novo") {
+        // Novo + Produto = apenas quem NÃO comprou esse produto
+        filteredLeads = filteredLeads.filter((lead) => !leadIdsWhoBought.has(lead.id));
+      } else {
+        // "Todos" = mostra ambos (quem comprou e quem não comprou)
+        // Não aplica filtro adicional por produto
       }
 
       setSearchResults(filteredLeads);
@@ -489,7 +490,7 @@ export function NewDealDialog({
                     </div>
                     <Button
                       onClick={handleSearch}
-                      disabled={isSearching}
+                      disabled={isSearching || !canSearch}
                       size="sm"
                       className="h-7 gap-1.5 text-xs"
                     >
@@ -543,10 +544,12 @@ export function NewDealDialog({
                     </div>
                   </div>
 
-                  {/* Product Filter */}
+                  {/* Product Filter - Required */}
                   {products && products.length > 0 && (
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Produtos (opcional)</Label>
+                      <Label className="text-[10px] text-muted-foreground">
+                        Produto <span className="text-destructive">*</span>
+                      </Label>
                       <div className="flex flex-wrap gap-1.5">
                         {products.map((product) => (
                           <Badge
@@ -559,6 +562,11 @@ export function NewDealDialog({
                           </Badge>
                         ))}
                       </div>
+                      {selectedProductFilters.length === 0 && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Selecione pelo menos 1 produto para buscar
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
