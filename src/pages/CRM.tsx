@@ -29,22 +29,23 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CrmCustomerSheet } from "@/components/crm/CrmCustomerSheet";
+import type { CrmQuarter, CrmHealth } from "@/types/database";
 
 // Tipos
-type Quarter = "Q1" | "Q2" | "Q3" | "Q4";
-type HealthStatus = "active" | "warning" | "risk";
+type Quarter = CrmQuarter;
+type HealthStatus = CrmHealth;
 
 interface CrmCustomer {
   id: string;
-  lead_id: string;
-  current_quarter: Quarter;
-  health_status: HealthStatus;
+  lead_id: string | null;
+  current_quarter: Quarter | null;
+  health_status: HealthStatus | null;
   cx_owner: string | null;
   start_date: string | null;
   leads: {
-    full_name: string;
+    full_name: string | null;
     company_revenue: number | null;
-  };
+  } | null;
 }
 
 const quarters: { id: Quarter; label: string; description: string }[] = [
@@ -77,8 +78,7 @@ export default function CRM() {
   const { data: journeys, isLoading: loadingJourneys } = useQuery({
     queryKey: ["crm-journeys"],
     queryFn: async () => {
-      // Usamos 'as any' temporariamente para evitar erros de tipagem
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("crm_journeys")
         .select(
           `
@@ -109,7 +109,7 @@ export default function CRM() {
     }) => {
       // Validação: Só permite avançar se checklists estiverem completos
       if (targetQuarter > currentQuarter) {
-        const { data: pendingItems, error: checkError } = await (supabase as any)
+        const { data: pendingItems, error: checkError } = await supabase
           .from("crm_checklist_items")
           .select("title")
           .eq("journey_id", id)
@@ -125,7 +125,7 @@ export default function CRM() {
         }
       }
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("crm_journeys")
         .update({ current_quarter: targetQuarter })
         .eq("id", id);
@@ -135,7 +135,7 @@ export default function CRM() {
       queryClient.invalidateQueries({ queryKey: ["crm-journeys"] });
       toast.success("Cliente avançou de fase com sucesso!");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error("Movimentação bloqueada", { description: error.message });
     },
   });
@@ -143,7 +143,7 @@ export default function CRM() {
   // 3. Atualizar Saúde
   const updateHealth = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: HealthStatus }) => {
-      const { error } = await (supabase as any).from("crm_journeys").update({ health_status: status }).eq("id", id);
+      const { error } = await supabase.from("crm_journeys").update({ health_status: status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

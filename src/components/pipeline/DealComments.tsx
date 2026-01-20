@@ -9,17 +9,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import type { DealComment } from "@/types/database";
 
 interface DealCommentsProps {
   dealId: string;
-}
-
-interface Comment {
-  id: string;
-  content: string;
-  created_at: string;
-  user_id: string;
-  user_email?: string;
 }
 
 export function DealComments({ dealId }: DealCommentsProps) {
@@ -35,20 +28,18 @@ export function DealComments({ dealId }: DealCommentsProps) {
     },
   });
 
-  // 2. Busca Comentários
+  // 2. Busca Comentários (tabela deal_comments não está no types.ts auto-gerado)
   const { data: comments, isLoading } = useQuery({
     queryKey: ["deal-comments", dealId],
     queryFn: async () => {
-      // CORREÇÃO: Usamos (supabase as any) para contornar o erro de tipagem TS2769
-      // já que a tabela deal_comments é nova e não está no types.ts
-      const { data, error } = await (supabase as any)
-        .from("deal_comments")
+      const { data, error } = await supabase
+        .from("deal_comments" as "deals") // Type workaround para tabela não tipada
         .select("*")
-        .eq("deal_id", dealId)
+        .eq("deal_id" as "id", dealId)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return data as Comment[];
+      return data as unknown as DealComment[];
     },
   });
 
@@ -57,12 +48,13 @@ export function DealComments({ dealId }: DealCommentsProps) {
     mutationFn: async (content: string) => {
       if (!currentUser) throw new Error("Usuário não logado");
 
-      // CORREÇÃO: Usamos (supabase as any) aqui também
-      const { error } = await (supabase as any).from("deal_comments").insert({
-        deal_id: dealId,
-        user_id: currentUser.id,
-        content: content,
-      });
+      const { error } = await supabase
+        .from("deal_comments" as "deals") // Type workaround para tabela não tipada
+        .insert({
+          deal_id: dealId,
+          user_id: currentUser.id,
+          content: content,
+        } as never);
 
       if (error) throw error;
     },

@@ -7,15 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import type { CrmQuarter, CrmChecklistTemplate } from "@/types/database";
 
-type Quarter = "Q1" | "Q2" | "Q3" | "Q4";
-
-interface ChecklistTemplate {
-  id: string;
-  quarter: Quarter;
-  title: string;
-  created_at?: string;
-}
+type Quarter = CrmQuarter;
 
 const quarters: { id: Quarter; label: string }[] = [
   { id: "Q1", label: "Q1: Onboarding" },
@@ -37,21 +31,20 @@ export function CrmSettings() {
   const { data: templates, isLoading } = useQuery({
     queryKey: ["crm-checklist-templates"],
     queryFn: async () => {
-      // Uso de (supabase as any) para contornar o erro de tipagem
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("crm_checklist_templates")
         .select("*")
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return data as ChecklistTemplate[];
+      return data as CrmChecklistTemplate[];
     },
   });
 
   // Adiciona novo item ao template
   const addItem = useMutation({
     mutationFn: async ({ quarter, title }: { quarter: Quarter; title: string }) => {
-      const { error } = await (supabase as any).from("crm_checklist_templates").insert({ quarter, title });
+      const { error } = await supabase.from("crm_checklist_templates").insert({ quarter, title, order_index: 0 });
 
       if (error) throw error;
     },
@@ -60,13 +53,13 @@ export function CrmSettings() {
       toast.success("Item adicionado ao modelo!");
       setNewItems({ Q1: "", Q2: "", Q3: "", Q4: "" }); // Limpa inputs
     },
-    onError: (error: any) => toast.error(error.message),
+    onError: (error: Error) => toast.error(error.message),
   });
 
   // Remove item do template
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from("crm_checklist_templates").delete().eq("id", id);
+      const { error } = await supabase.from("crm_checklist_templates").delete().eq("id", id);
 
       if (error) throw error;
     },
@@ -74,7 +67,7 @@ export function CrmSettings() {
       queryClient.invalidateQueries({ queryKey: ["crm-checklist-templates"] });
       toast.success("Item removido!");
     },
-    onError: (error: any) => toast.error(error.message),
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const handleAddItem = (quarter: Quarter) => {

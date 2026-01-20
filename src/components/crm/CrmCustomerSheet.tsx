@@ -15,6 +15,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import type { CrmQuarter, CrmChecklistItem, CrmChecklistTemplate } from "@/types/database";
 
 interface CrmCustomerSheetProps {
   journeyId: string | null;
@@ -22,24 +23,24 @@ interface CrmCustomerSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
+type Quarter = CrmQuarter;
 
 interface ChecklistItem {
   id: string;
   quarter: Quarter;
   title: string;
-  status: string;
+  status: string | null;
   completed_at: string | null;
   order_index: number | null;
   attachment_url: string | null;
   observations: string | null;
 }
 
-interface ChecklistTemplate {
+interface JourneyDetail {
   id: string;
-  quarter: Quarter;
-  title: string;
-  order_index: number;
+  current_quarter: Quarter | null;
+  start_date: string | null;
+  leads: { full_name: string | null; email: string | null; company_revenue: number | null } | null;
 }
 
 const quarterLabels: Record<Quarter, string> = {
@@ -64,18 +65,13 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
     queryKey: ["crm-journey-detail", journeyId],
     queryFn: async () => {
       if (!journeyId) return null;
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("crm_journeys")
         .select("*, leads(full_name, email, company_revenue)")
         .eq("id", journeyId)
         .single();
       if (error) throw error;
-      return data as {
-        id: string;
-        current_quarter: Quarter;
-        start_date: string | null;
-        leads: { full_name: string; email: string; company_revenue: number | null };
-      };
+      return data as JourneyDetail;
     },
     enabled: !!journeyId && open,
   });
@@ -85,7 +81,7 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
     queryKey: ["crm-checklist", journeyId],
     queryFn: async () => {
       if (!journeyId) return [];
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("crm_checklist_items")
         .select("*")
         .eq("journey_id", journeyId)
@@ -101,13 +97,13 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
   const { data: templates } = useQuery({
     queryKey: ["crm-checklist-templates"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("crm_checklist_templates")
         .select("*")
         .order("quarter", { ascending: true })
         .order("order_index", { ascending: true });
       if (error) throw error;
-      return data as ChecklistTemplate[];
+      return data as CrmChecklistTemplate[];
     },
     enabled: open,
   });
@@ -133,7 +129,7 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
           order_index: template.order_index,
         }));
 
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from("crm_checklist_items")
           .insert(itemsToInsert);
 
@@ -141,7 +137,7 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
         
         queryClient.invalidateQueries({ queryKey: ["crm-checklist", journeyId] });
         toast.success("Checklist criado com base nos templates!");
-      } catch (error: any) {
+      } catch (error) {
         console.error("Erro ao popular checklist:", error);
         // Remove do set para permitir retry
         populatedJourneys.current.delete(journeyId);
@@ -165,7 +161,7 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
       const newStatus = currentStatus === 'todo' ? 'done' : 'todo';
       const completedAt = newStatus === 'done' ? new Date().toISOString() : null;
       
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("crm_checklist_items")
         .update({ status: newStatus, completed_at: completedAt })
         .eq("id", id);
@@ -201,7 +197,7 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
         .getPublicUrl(fileName);
 
       // Atualiza o item com a URL
-      const { error: updateError } = await (supabase as any)
+      const { error: updateError } = await supabase
         .from("crm_checklist_items")
         .update({ attachment_url: publicUrl })
         .eq("id", itemId);
@@ -215,7 +211,7 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
       toast.success("Contrato anexado com sucesso!");
       setUploadingItemId(null);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       console.error("Erro ao anexar:", error);
       toast.error("Erro ao anexar arquivo");
       setUploadingItemId(null);
@@ -225,7 +221,7 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
   // Remove anexo
   const removeAttachment = useMutation({
     mutationFn: async (itemId: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("crm_checklist_items")
         .update({ attachment_url: null })
         .eq("id", itemId);
@@ -240,7 +236,7 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
   // Mutation para salvar observação
   const saveObservation = useMutation({
     mutationFn: async ({ itemId, observations }: { itemId: string; observations: string }) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("crm_checklist_items")
         .update({ observations: observations || null })
         .eq("id", itemId);
@@ -260,7 +256,7 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
   // Mutation para excluir observação
   const deleteObservation = useMutation({
     mutationFn: async (itemId: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("crm_checklist_items")
         .update({ observations: null })
         .eq("id", itemId);

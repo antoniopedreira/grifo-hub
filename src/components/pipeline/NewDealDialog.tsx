@@ -24,6 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import type { ProductWithCategory } from "@/types/database";
 
 interface NewDealDialogProps {
   open: boolean;
@@ -93,11 +94,11 @@ export function NewDealDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, price, category_id, product_categories(slug, name)")
+        .select("id, name, price, category_id, product_categories(id, slug, name)")
         .eq("active", true)
         .order("name");
       if (error) throw error;
-      return data;
+      return data as ProductWithCategory[];
     },
     enabled: open,
   });
@@ -124,7 +125,7 @@ export function NewDealDialog({
     let maxLevel = 0;
     for (const productId of selectedProductFilters) {
       const product = products.find(p => p.id === productId);
-      const categorySlug = (product?.product_categories as any)?.slug;
+      const categorySlug = product?.product_categories?.slug;
       if (categorySlug && CATEGORY_HIERARCHY[categorySlug] > maxLevel) {
         maxLevel = CATEGORY_HIERARCHY[categorySlug];
       }
@@ -156,7 +157,7 @@ export function NewDealDialog({
       
       // Get all products from categories STRICTLY ABOVE the target level (for hierarchy exclusion)
       const productsInStrictlyHigherTiers = products?.filter(p => {
-        const categorySlug = (p.product_categories as any)?.slug;
+        const categorySlug = p.product_categories?.slug;
         return categorySlug && CATEGORY_HIERARCHY[categorySlug] > targetLevel;
       }).map(p => p.id) || [];
 
@@ -181,7 +182,7 @@ export function NewDealDialog({
 
       // Get leads who bought products from same or higher tier (for "Novo" filter)
       const productsInSameOrHigherTiers = products?.filter(p => {
-        const categorySlug = (p.product_categories as any)?.slug;
+        const categorySlug = p.product_categories?.slug;
         return categorySlug && CATEGORY_HIERARCHY[categorySlug] >= targetLevel;
       }).map(p => p.id) || [];
 
