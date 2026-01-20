@@ -5,7 +5,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription 
 } from "@/components/ui/sheet";
 import { 
-  CheckCircle2, FileText, Calendar, Lock, Loader2, Paperclip, ExternalLink, X
+  CheckCircle2, FileText, Calendar, Loader2, Paperclip, ExternalLink, X
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -325,39 +325,30 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
                             {/* Linha vertical conectora */}
                             <div className="absolute left-[11px] top-2 bottom-4 w-[2px] bg-muted/50" />
 
-                            {items.map((item, index) => {
-                              // Lógica de Bloqueio (Timeline)
-                              const previousItem = index > 0 ? items[index - 1] : null;
-                              const isLocked = previousItem ? previousItem.status !== 'done' : false;
-                              
+                            {items.map((item) => {
                               return (
-                                <div key={item.id} className={`relative flex items-start gap-4 group transition-all ${isLocked ? "opacity-50 grayscale" : "opacity-100"}`}>
+                                <div key={item.id} className="relative flex items-start gap-4 group transition-all">
                                   
                                   {/* Bolinha da Timeline */}
                                   <div className={`
                                     absolute -left-[19px] top-1 w-3 h-3 rounded-full border-2 z-10 bg-white
-                                    ${item.status === 'done' ? 'border-green-500 bg-green-500' : isLocked ? 'border-muted' : 'border-primary'}
+                                    ${item.status === 'done' ? 'border-green-500 bg-green-500' : 'border-primary'}
                                   `} />
 
                                   <div className="mt-0.5">
-                                    {isLocked ? (
-                                      <Lock className="h-5 w-5 text-muted-foreground" />
-                                    ) : (
-                                      <Checkbox 
-                                        id={item.id}
-                                        checked={item.status === 'done'}
-                                        onCheckedChange={() => toggleItem.mutate({ id: item.id, currentStatus: item.status })}
-                                        className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
-                                      />
-                                    )}
+                                    <Checkbox 
+                                      id={item.id}
+                                      checked={item.status === 'done'}
+                                      onCheckedChange={() => toggleItem.mutate({ id: item.id, currentStatus: item.status })}
+                                      className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+                                    />
                                   </div>
 
                                   <div className="space-y-1 flex-1">
                                     <label 
                                       htmlFor={item.id}
-                                      className={`text-sm font-medium leading-none block transition-colors
+                                      className={`text-sm font-medium leading-none block transition-colors cursor-pointer
                                         ${item.status === 'done' ? 'text-muted-foreground line-through' : 'text-foreground'}
-                                        ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}
                                       `}
                                     >
                                       {item.title}
@@ -370,8 +361,8 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
                                       </p>
                                     )}
 
-                                    {/* Anexar - só para "Upload do contrato" e se não bloqueado */}
-                                    {!isLocked && isContractUploadItem(item.title) && (
+                                    {/* Anexar - só para "Upload do contrato" */}
+                                    {isContractUploadItem(item.title) && (
                                       <div className="flex items-center gap-2 mt-2">
                                         {item.attachment_url ? (
                                           <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded px-2 py-1">
@@ -412,14 +403,12 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
                                       </div>
                                     )}
 
-                                    {/* Botão Obs - sempre aparece se não bloqueado */}
-                                    {!isLocked && (
-                                      <div className="flex items-center gap-2 mt-2">
-                                        <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 bg-white hover:bg-slate-50">
-                                          <FileText className="h-3 w-3" /> Obs
-                                        </Button>
-                                      </div>
-                                    )}
+                                    {/* Botão Obs - sempre aparece */}
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 bg-white hover:bg-slate-50">
+                                        <FileText className="h-3 w-3" /> Obs
+                                      </Button>
+                                    </div>
                                   </div>
                                 </div>
                               );
