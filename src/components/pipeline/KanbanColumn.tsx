@@ -46,6 +46,15 @@ const stageTypeStyles: Record<string, {
     dropBg: "bg-blue-50/30",
     animation: "",
   },
+  negotiation: {
+    headerBg: "bg-amber-50 border-amber-200",
+    headerText: "text-amber-700",
+    dotColor: "bg-amber-500",
+    badgeBg: "bg-amber-600",
+    badgeText: "text-white",
+    dropBg: "bg-amber-50/30",
+    animation: "",
+  },
   default: {
     headerBg: "bg-white border-border",
     headerText: "text-foreground",

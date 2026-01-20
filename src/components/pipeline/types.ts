@@ -41,7 +41,7 @@ export interface PipelineStage {
   name: string;
   pipeline_id: string;
   order_index: number;
-  type?: "default" | "meeting" | "won" | "lost";
+  type?: "default" | "meeting" | "won" | "lost" | "negotiation";
 }
 
 export interface Pipeline {

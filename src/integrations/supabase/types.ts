@@ -175,6 +175,7 @@ export type Database = {
           meeting_date: string | null
           meeting_owner_id: string | null
           order_index: number | null
+          payment_method: string | null
           pipeline_id: string | null
           priority: string | null
           product_id: string | null
@@ -189,6 +190,7 @@ export type Database = {
           meeting_date?: string | null
           meeting_owner_id?: string | null
           order_index?: number | null
+          payment_method?: string | null
           pipeline_id?: string | null
           priority?: string | null
           product_id?: string | null
@@ -203,6 +205,7 @@ export type Database = {
           meeting_date?: string | null
           meeting_owner_id?: string | null
           order_index?: number | null
+          payment_method?: string | null
           pipeline_id?: string | null
           priority?: string | null
           product_id?: string | null
