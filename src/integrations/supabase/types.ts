@@ -462,6 +462,7 @@ export type Database = {
           funnel_type: Database["public"]["Enums"]["product_funnel_type"] | null
           id: string
           is_crm_trigger: boolean | null
+          lead_origin: string | null
           name: string
           pipeline_id: string | null
           price: number | null
@@ -480,6 +481,7 @@ export type Database = {
             | null
           id?: string
           is_crm_trigger?: boolean | null
+          lead_origin?: string | null
           name: string
           pipeline_id?: string | null
           price?: number | null
@@ -498,6 +500,7 @@ export type Database = {
             | null
           id?: string
           is_crm_trigger?: boolean | null
+          lead_origin?: string | null
           name?: string
           pipeline_id?: string | null
           price?: number | null

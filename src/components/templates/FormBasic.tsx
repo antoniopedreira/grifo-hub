@@ -16,6 +16,7 @@ interface FormBasicProps {
     name: string;
     create_deal?: boolean;
     pipeline_id?: string | null;
+    lead_origin?: string | null;
   };
 }
 
@@ -73,14 +74,15 @@ export default function FormBasic({ product }: FormBasicProps) {
           })
           .eq("id", leadId);
       } else {
-        // Create new lead
+        // Create new lead - use lead_origin if configured, fallback to product name
+        const leadOrigin = product.lead_origin || product.name;
         const { data: newLead, error: leadError } = await supabase
           .from("leads")
           .insert({
             email: formData.email,
             full_name: formData.nome,
             phone: formData.whatsapp,
-            origin: product.name,
+            origin: leadOrigin,
             status: "Novo",
           })
           .select()

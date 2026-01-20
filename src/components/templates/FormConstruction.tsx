@@ -164,12 +164,24 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           .eq("id", existingLead.id);
         lead = existingLead;
       } else {
+        // Fetch product's lead_origin setting
+        let leadOrigin: string | null = null;
+        if (productId) {
+          const { data: productConfig } = await supabase
+            .from("products")
+            .select("lead_origin, name")
+            .eq("id", productId)
+            .single();
+          leadOrigin = productConfig?.lead_origin || productConfig?.name || null;
+        }
+
         // Create new lead
         const insertData: Record<string, unknown> = {
           full_name: finalData.full_name,
           email: finalData.email,
           phone: finalData.phone,
           status: "Novo",
+          origin: leadOrigin,
         };
         if (companyRevenue !== null) {
           insertData.company_revenue = companyRevenue;

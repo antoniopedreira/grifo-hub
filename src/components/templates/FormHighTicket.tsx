@@ -16,6 +16,7 @@ interface FormHighTicketProps {
     name: string;
     create_deal?: boolean;
     pipeline_id?: string | null;
+    lead_origin?: string | null;
   };
 }
 
@@ -103,12 +104,13 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
           .update(updateData)
           .eq("id", leadId);
       } else {
-        // Create new lead - only include company_revenue if answered
+        // Create new lead - use lead_origin if configured, fallback to product name
+        const leadOrigin = product.lead_origin || product.name;
         const insertData: Record<string, unknown> = {
           email: formData.email,
           full_name: formData.nome,
           phone: formData.whatsapp,
-          origin: product.name,
+          origin: leadOrigin,
           status: "Novo",
         };
         if (companyRevenue !== null) {
