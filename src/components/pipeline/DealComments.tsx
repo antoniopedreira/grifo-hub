@@ -73,90 +73,62 @@ export function DealComments({ dealId }: DealCommentsProps) {
   };
 
   return (
-    <div className="flex flex-col h-[500px] border rounded-lg bg-background">
-      {/* Header */}
-      <div className="p-4 border-b flex items-center gap-2 bg-muted/30">
-        <MessageSquare className="h-4 w-4 text-primary" />
-        <h3 className="font-semibold text-sm">Histórico de Conversa</h3>
+    <div className="space-y-4">
+      {/* Input no topo */}
+      <div className="border rounded-xl p-4 bg-card">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <Textarea
+            placeholder="Escrever um comentário..."
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            className="min-h-[100px] resize-y border-0 shadow-none focus-visible:ring-0 p-0 text-sm"
+          />
+          <div className="flex justify-end">
+            <Button
+              type="submit"
+              disabled={addComment.isPending || !newComment.trim()}
+              className="gap-2"
+            >
+              {addComment.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Enviar
+            </Button>
+          </div>
+        </form>
       </div>
 
-      {/* Lista de Mensagens */}
-      <ScrollArea className="flex-1 p-4">
+      {/* Lista de Comentários */}
+      <div className="border rounded-xl bg-card">
         {isLoading ? (
-          <div className="flex justify-center py-4">
+          <div className="flex justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : comments?.length === 0 ? (
-          <div className="text-center text-muted-foreground py-10 text-sm">
-            Nenhum comentário ainda. Inicie a conversa!
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <MessageSquare className="h-12 w-12 mb-3 opacity-30" />
+            <p className="font-medium">Nenhum comentário ainda</p>
+            <p className="text-sm">Seja o primeiro a comentar!</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {comments?.map((comment) => {
-              const isMe = currentUser?.id === comment.user_id;
-
-              return (
-                <div key={comment.id} className={`flex gap-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
-                  <Avatar className="h-8 w-8 mt-1 border">
-                    <AvatarFallback className={isMe ? "bg-primary text-primary-foreground" : ""}>
-                      <User className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
-
-                  <div
-                    className={`
-                      max-w-[80%] rounded-lg p-3 text-sm
-                      ${
-                        isMe
-                          ? "bg-primary text-primary-foreground rounded-tr-none"
-                          : "bg-muted text-foreground rounded-tl-none border"
-                      }
-                    `}
-                  >
-                    <p className="whitespace-pre-wrap">{comment.content}</p>
-                    <div
-                      className={`text-[10px] mt-1 opacity-70 flex justify-end gap-2
-                      ${isMe ? "text-primary-foreground" : "text-muted-foreground"}`}
-                    >
-                      <span>
-                        {formatDistanceToNow(new Date(comment.created_at), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })}
-                      </span>
-                    </div>
-                  </div>
+          <ScrollArea className="max-h-[400px]">
+            <div className="divide-y">
+              {comments?.map((comment) => (
+                <div key={comment.id} className="p-4">
+                  <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {formatDistanceToNow(new Date(comment.created_at), {
+                      addSuffix: true,
+                      locale: ptBR,
+                    })}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          </ScrollArea>
         )}
-      </ScrollArea>
-
-      {/* Input de Envio */}
-      <div className="p-4 border-t bg-muted/10">
-        <form onSubmit={handleSubmit} className="flex gap-2 items-end">
-          <Textarea
-            placeholder="Escreva um comentário ou atualização..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            className="min-h-[60px] resize-none"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={addComment.isPending || !newComment.trim()}
-            className="h-[60px] w-[60px]"
-          >
-            {addComment.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-          </Button>
-        </form>
       </div>
     </div>
   );
