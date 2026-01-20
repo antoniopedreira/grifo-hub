@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Settings2, Trash2, Pencil, GitBranch, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, Settings2, Trash2, Pencil, GitBranch, Archive, ArchiveRestore, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,6 +128,55 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
     },
   });
 
+  // Duplicate pipeline mutation
+  const duplicatePipeline = useMutation({
+    mutationFn: async (pipeline: Pipeline) => {
+      // 1. Create new pipeline with "(Cópia)" suffix
+      const { data: newPipeline, error: pipelineError } = await supabase
+        .from("pipelines")
+        .insert({ name: `${pipeline.name} (Cópia)` })
+        .select()
+        .single();
+      if (pipelineError) throw pipelineError;
+
+      // 2. Fetch all stages from the original pipeline
+      const { data: originalStages, error: stagesError } = await supabase
+        .from("pipeline_stages")
+        .select("*")
+        .eq("pipeline_id", pipeline.id)
+        .order("order_index");
+      if (stagesError) throw stagesError;
+
+      // 3. Create copies of stages for the new pipeline
+      if (originalStages && originalStages.length > 0) {
+        const newStages = originalStages.map((stage) => ({
+          name: stage.name,
+          order_index: stage.order_index,
+          type: stage.type,
+          pipeline_id: newPipeline.id,
+        }));
+
+        const { error: insertStagesError } = await supabase
+          .from("pipeline_stages")
+          .insert(newStages);
+        if (insertStagesError) throw insertStagesError;
+      }
+
+      return newPipeline;
+    },
+    onSuccess: (newPipeline) => {
+      queryClient.invalidateQueries({ queryKey: ["pipelines"] });
+      queryClient.invalidateQueries({ queryKey: ["pipeline_stages"] });
+      toast({ 
+        title: "Pipeline duplicado!", 
+        description: `"${newPipeline.name}" foi criado com todos os estágios.` 
+      });
+    },
+    onError: () => {
+      toast({ title: "Erro", description: "Não foi possível duplicar o pipeline.", variant: "destructive" });
+    },
+  });
+
   // Delete pipeline mutation
   const deletePipeline = useMutation({
     mutationFn: async (id: string) => {
@@ -241,6 +290,16 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
                         title="Renomear"
                       >
                         <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => duplicatePipeline.mutate(pipeline)}
+                        disabled={duplicatePipeline.isPending}
+                        className="h-8 w-8 hover:text-blue-600"
+                        title="Duplicar"
+                      >
+                        <Copy className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
