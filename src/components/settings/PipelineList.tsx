@@ -108,6 +108,15 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
   // Archive/Unarchive pipeline mutation
   const toggleArchivePipeline = useMutation({
     mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
+      // If archiving, first unlink products from this pipeline
+      if (archived) {
+        const { error: unlinkError } = await supabase
+          .from("products")
+          .update({ pipeline_id: null })
+          .eq("pipeline_id", id);
+        if (unlinkError) throw unlinkError;
+      }
+
       const { error } = await supabase
         .from("pipelines")
         .update({ archived })
@@ -116,10 +125,11 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pipelines"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
       toast({ 
         title: variables.archived ? "Pipeline arquivado!" : "Pipeline restaurado!",
         description: variables.archived 
-          ? "O pipeline não aparecerá mais no seletor."
+          ? "O pipeline não aparecerá mais no seletor. Produtos desvinculados."
           : "O pipeline está disponível novamente."
       });
     },
@@ -180,7 +190,7 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
   // Delete pipeline mutation
   const deletePipeline = useMutation({
     mutationFn: async (id: string) => {
-      // Check if there are deals linked to any stage of this pipeline
+      // 1. Check if there are deals linked to any stage of this pipeline
       const { data: pipelineStages } = await supabase
         .from("pipeline_stages")
         .select("id")
@@ -199,19 +209,27 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
         }
       }
 
-      // First delete all stages of this pipeline
+      // 2. Unlink products that reference this pipeline
+      const { error: unlinkProductsError } = await supabase
+        .from("products")
+        .update({ pipeline_id: null })
+        .eq("pipeline_id", id);
+      if (unlinkProductsError) throw unlinkProductsError;
+
+      // 3. Delete all stages of this pipeline
       const { error: stagesError } = await supabase
         .from("pipeline_stages")
         .delete()
         .eq("pipeline_id", id);
       if (stagesError) throw stagesError;
 
-      // Then delete the pipeline
+      // 4. Delete the pipeline
       const { error } = await supabase.from("pipelines").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pipelines"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
       toast({ title: "Pipeline excluído!" });
       setDeletingPipelineId(null);
     },
