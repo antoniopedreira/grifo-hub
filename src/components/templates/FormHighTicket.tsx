@@ -67,6 +67,7 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
   const mapFaturamentoToNumber = (faturamento: string): number | null => {
     if (!faturamento) return null;
     const mapping: Record<string, number> = {
+      "<500k": 0,
       "500k-1M": 500000,
       "1M-5M": 1000000,
       "5M-10M": 5000000,
@@ -413,6 +414,7 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
                   </div>
                   <div className="space-y-3">
                     {[
+                      { value: "<500k", label: "Até R$ 500 mil" },
                       { value: "500k-1M", label: "Entre R$ 500 mil e R$ 1 mi" },
                       { value: "1M-5M", label: "Entre R$ 1 mi e R$ 5 mi" },
                       { value: "5M-10M", label: "Entre R$ 5 mi e R$ 10 mi" },
