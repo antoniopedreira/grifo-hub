@@ -271,6 +271,8 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
                   <div className="space-y-4">
                     <Input
                       type="text"
+                      name="name"
+                      autoComplete="name"
                       placeholder="Digite seu nome completo"
                       value={formData.nome}
                       onChange={(e) => handleInputChange("nome", e.target.value)}
@@ -294,6 +296,8 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
                       <Label className="text-white/70 text-sm">E-mail</Label>
                       <Input
                         type="email"
+                        name="email"
+                        autoComplete="email"
                         placeholder="seu@email.com"
                         value={formData.email}
                         onChange={(e) => handleInputChange("email", e.target.value)}
@@ -304,6 +308,8 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
                       <Label className="text-white/70 text-sm">WhatsApp</Label>
                       <Input
                         type="tel"
+                        name="tel"
+                        autoComplete="tel"
                         placeholder="(00) 00000-0000"
                         value={formData.whatsapp}
                         onChange={(e) => handleInputChange("whatsapp", e.target.value)}
@@ -328,6 +334,8 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
                       <Label className="text-white/70 text-sm">Nome da Empresa/Construtora</Label>
                       <Input
                         type="text"
+                        name="organization"
+                        autoComplete="organization"
                         placeholder="Digite o nome da empresa"
                         value={formData.empresa}
                         onChange={(e) => handleInputChange("empresa", e.target.value)}
@@ -338,6 +346,8 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
                       <Label className="text-white/70 text-sm">Seu Cargo</Label>
                       <Input
                         type="text"
+                        name="organization-title"
+                        autoComplete="organization-title"
                         placeholder="Ex: Diretor, Sócio, Engenheiro"
                         value={formData.cargo}
                         onChange={(e) => handleInputChange("cargo", e.target.value)}

@@ -282,6 +282,8 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             >
               <InputLine
                 ref={inputRef}
+                name="name"
+                autoComplete="name"
                 value={formData.full_name}
                 onChange={(e: any) => handleChange("full_name", e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -300,6 +302,8 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             >
               <InputLine
                 ref={inputRef}
+                name="tel"
+                autoComplete="tel"
                 value={formData.phone}
                 onChange={(e: any) => handleChange("phone", e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -319,6 +323,8 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             >
               <InputLine
                 ref={inputRef}
+                name="email"
+                autoComplete="email"
                 value={formData.email}
                 onChange={(e: any) => handleChange("email", e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -338,6 +344,8 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             >
               <InputLine
                 ref={inputRef}
+                name="organization"
+                autoComplete="organization"
                 value={formData.company_name}
                 onChange={(e: any) => handleChange("company_name", e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -530,7 +538,7 @@ function QuestionCard({ children, icon, number, question, subtext }: any) {
   );
 }
 
-const InputLine = ({ value, onChange, placeholder, type = "text", onKeyDown, ref }: any) => (
+const InputLine = ({ value, onChange, placeholder, type = "text", onKeyDown, ref, autoComplete = "on", name }: any) => (
   <div className="relative w-full">
     {/* CSS Hack para remover fundo branco do Autocomplete do navegador */}
     <style>
@@ -548,12 +556,13 @@ const InputLine = ({ value, onChange, placeholder, type = "text", onKeyDown, ref
     <input
       ref={ref}
       type={type}
+      name={name}
       value={value}
       onChange={onChange}
       onKeyDown={onKeyDown}
       placeholder={placeholder}
       spellCheck="false"
-      autoComplete="off"
+      autoComplete={autoComplete}
       className="w-full bg-transparent border-0 border-b-2 border-[#E1D8CF]/20 text-[#E1D8CF] text-2xl md:text-3xl py-4 focus:ring-0 focus:outline-none focus:border-[#A47428] transition-all placeholder:text-[#E1D8CF]/30 appearance-none rounded-none"
     />
   </div>
