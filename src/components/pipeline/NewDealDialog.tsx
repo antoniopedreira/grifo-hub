@@ -295,6 +295,19 @@ export function NewDealDialog({
         leadId = newLead.id;
       }
 
+      // Check if lead already exists in this pipeline
+      const { data: existingDeal } = await supabase
+        .from("deals")
+        .select("id")
+        .eq("lead_id", leadId)
+        .eq("pipeline_id", pipelineId)
+        .eq("status", "open")
+        .maybeSingle();
+
+      if (existingDeal) {
+        throw new Error("LEAD_ALREADY_IN_PIPELINE");
+      }
+
       // Usar o preço do produto como valor do deal
       const product = products?.find((p) => p.id === selectedProductId);
       const value = product?.price || null;
@@ -321,26 +334,47 @@ export function NewDealDialog({
       resetForm();
       onOpenChange(false);
     },
-    onError: () => {
-      toast({
-        title: "Erro ao criar negócio",
-        description: "Não foi possível criar o card.",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      if (error?.message === "LEAD_ALREADY_IN_PIPELINE") {
+        toast({
+          title: "Lead já existe neste pipeline",
+          description: "Este lead já possui um negócio aberto neste pipeline.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro ao criar negócio",
+          description: "Não foi possível criar o card.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
   // Import multiple deals mutation
   const importDeals = useMutation({
     mutationFn: async () => {
+      // Get existing leads in this pipeline
+      const { data: existingDeals } = await supabase
+        .from("deals")
+        .select("lead_id")
+        .eq("pipeline_id", pipelineId)
+        .eq("status", "open");
+
+      const existingLeadIds = new Set(existingDeals?.map(d => d.lead_id) || []);
+
+      // Filter out leads that already exist in this pipeline
+      const leadsToImport = Array.from(selectedLeadIds).filter(id => !existingLeadIds.has(id));
+      const skippedCount = selectedLeadIds.size - leadsToImport.length;
+
+      if (leadsToImport.length === 0) {
+        throw new Error("ALL_LEADS_ALREADY_IN_PIPELINE");
+      }
+
       const selectedProduct = products?.find((p) => p.id === importProductId);
-      const productName = selectedProduct?.name || "Oportunidade de Upsell";
       const productPrice = selectedProduct?.price || null;
 
-      const dealsToInsert = Array.from(selectedLeadIds).map((leadId) => {
-        const lead = searchResults.find((l) => l.id === leadId);
-        const leadName = lead?.full_name || lead?.email || "Lead";
-
+      const dealsToInsert = leadsToImport.map((leadId) => {
         return {
           lead_id: leadId,
           product_id: importProductId || null,
@@ -355,23 +389,32 @@ export function NewDealDialog({
       const { error } = await supabase.from("deals").insert(dealsToInsert);
       if (error) throw error;
 
-      return dealsToInsert.length;
+      return { imported: dealsToInsert.length, skipped: skippedCount };
     },
-    onSuccess: (count) => {
+    onSuccess: ({ imported, skipped }) => {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
+      const skippedMsg = skipped > 0 ? ` (${skipped} já existiam no pipeline)` : "";
       toast({
         title: "Importação concluída!",
-        description: `${count} negócio(s) foram criados no pipeline.`,
+        description: `${imported} negócio(s) foram criados no pipeline.${skippedMsg}`,
       });
       resetForm();
       onOpenChange(false);
     },
-    onError: () => {
-      toast({
-        title: "Erro na importação",
-        description: "Não foi possível importar os leads.",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      if (error?.message === "ALL_LEADS_ALREADY_IN_PIPELINE") {
+        toast({
+          title: "Leads já existem",
+          description: "Todos os leads selecionados já possuem negócios abertos neste pipeline.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro na importação",
+          description: "Não foi possível importar os leads.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
