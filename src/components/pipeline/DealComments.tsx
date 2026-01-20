@@ -19,7 +19,7 @@ interface Comment {
   content: string;
   created_at: string;
   user_id: string;
-  user_email?: string; // Vamos tentar buscar o email via join ou função auxiliar
+  user_email?: string;
 }
 
 export function DealComments({ dealId }: DealCommentsProps) {
@@ -39,9 +39,9 @@ export function DealComments({ dealId }: DealCommentsProps) {
   const { data: comments, isLoading } = useQuery({
     queryKey: ["deal-comments", dealId],
     queryFn: async () => {
-      // Nota: Idealmente faríamos um join com uma tabela de perfis.
-      // Aqui vamos buscar os dados brutos e podemos tratar o display do nome depois.
-      const { data, error } = await supabase
+      // CORREÇÃO: Usamos (supabase as any) para contornar o erro de tipagem TS2769
+      // já que a tabela deal_comments é nova e não está no types.ts
+      const { data, error } = await (supabase as any)
         .from("deal_comments")
         .select("*")
         .eq("deal_id", dealId)
@@ -57,7 +57,8 @@ export function DealComments({ dealId }: DealCommentsProps) {
     mutationFn: async (content: string) => {
       if (!currentUser) throw new Error("Usuário não logado");
 
-      const { error } = await supabase.from("deal_comments").insert({
+      // CORREÇÃO: Usamos (supabase as any) aqui também
+      const { error } = await (supabase as any).from("deal_comments").insert({
         deal_id: dealId,
         user_id: currentUser.id,
         content: content,
@@ -101,29 +102,27 @@ export function DealComments({ dealId }: DealCommentsProps) {
           <div className="space-y-4">
             {comments?.map((comment) => {
               const isMe = currentUser?.id === comment.user_id;
-              
+
               return (
-                <div
-                  key={comment.id}
-                  className={`flex gap-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}
-                >
+                <div key={comment.id} className={`flex gap-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
                   <Avatar className="h-8 w-8 mt-1 border">
                     <AvatarFallback className={isMe ? "bg-primary text-primary-foreground" : ""}>
                       <User className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
-                  
+
                   <div
                     className={`
                       max-w-[80%] rounded-lg p-3 text-sm
-                      ${isMe 
-                        ? "bg-primary text-primary-foreground rounded-tr-none" 
-                        : "bg-muted text-foreground rounded-tl-none border"
+                      ${
+                        isMe
+                          ? "bg-primary text-primary-foreground rounded-tr-none"
+                          : "bg-muted text-foreground rounded-tl-none border"
                       }
                     `}
                   >
                     <p className="whitespace-pre-wrap">{comment.content}</p>
-                    <div 
+                    <div
                       className={`text-[10px] mt-1 opacity-70 flex justify-end gap-2
                       ${isMe ? "text-primary-foreground" : "text-muted-foreground"}`}
                     >
@@ -151,23 +150,19 @@ export function DealComments({ dealId }: DealCommentsProps) {
             onChange={(e) => setNewComment(e.target.value)}
             className="min-h-[60px] resize-none"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSubmit(e);
               }
             }}
           />
-          <Button 
-            type="submit" 
-            size="icon" 
+          <Button
+            type="submit"
+            size="icon"
             disabled={addComment.isPending || !newComment.trim()}
             className="h-[60px] w-[60px]"
           >
-            {addComment.isPending ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
+            {addComment.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
           </Button>
         </form>
       </div>
