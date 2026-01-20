@@ -87,13 +87,13 @@ export function NewDealDialog({
     enabled: open,
   });
 
-  // Fetch products
+  // Fetch products with categories
   const { data: products } = useQuery({
-    queryKey: ["products-active"],
+    queryKey: ["products-active-with-categories"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, price")
+        .select("id, name, price, category_id, product_categories(slug, name)")
         .eq("active", true)
         .order("name");
       if (error) throw error;
@@ -101,6 +101,36 @@ export function NewDealDialog({
     },
     enabled: open,
   });
+
+  // Category hierarchy: avancados > intermediarios > basicos
+  const CATEGORY_HIERARCHY: Record<string, number> = {
+    avancados: 3,
+    intermediarios: 2,
+    basicos: 1,
+  };
+
+  // Get higher tier categories for exclusion
+  const getHigherTierCategories = (categorySlug: string): string[] => {
+    const level = CATEGORY_HIERARCHY[categorySlug] || 0;
+    return Object.entries(CATEGORY_HIERARCHY)
+      .filter(([_, lvl]) => lvl > level)
+      .map(([slug]) => slug);
+  };
+
+  // Get categories that should be excluded based on selected products
+  const getCategoryExclusionLevel = (): number => {
+    if (!products || selectedProductFilters.length === 0) return 0;
+    
+    let maxLevel = 0;
+    for (const productId of selectedProductFilters) {
+      const product = products.find(p => p.id === productId);
+      const categorySlug = (product?.product_categories as any)?.slug;
+      if (categorySlug && CATEGORY_HIERARCHY[categorySlug] > maxLevel) {
+        maxLevel = CATEGORY_HIERARCHY[categorySlug];
+      }
+    }
+    return maxLevel;
+  };
 
   // Check if product filter is required
   const canSearch = selectedProductFilters.length > 0;
@@ -121,13 +151,33 @@ export function NewDealDialog({
     setSelectedLeadIds(new Set());
 
     try {
+      // Get the highest category level from selected products
+      const targetLevel = getCategoryExclusionLevel();
+      
+      // Get all products from categories at or above the target level (for hierarchy exclusion)
+      const productsInHigherTiers = products?.filter(p => {
+        const categorySlug = (p.product_categories as any)?.slug;
+        return categorySlug && CATEGORY_HIERARCHY[categorySlug] >= targetLevel;
+      }).map(p => p.id) || [];
+
       // Get leads who bought the selected products (via sales table)
       const { data: salesData } = await supabase
         .from("sales")
         .select("lead_id")
         .in("product_id", selectedProductFilters);
 
-      const leadIdsWhoBought = new Set(salesData?.map((s) => s.lead_id).filter(Boolean) || []);
+      const leadIdsWhoBoughtSelected = new Set(salesData?.map((s) => s.lead_id).filter(Boolean) || []);
+
+      // Get leads who bought products from higher or equal tier categories
+      let leadIdsWhoBoughtHigherTier = new Set<string>();
+      if (productsInHigherTiers.length > 0) {
+        const { data: higherTierSales } = await supabase
+          .from("sales")
+          .select("lead_id")
+          .in("product_id", productsInHigherTiers);
+        
+        leadIdsWhoBoughtHigherTier = new Set(higherTierSales?.map((s) => s.lead_id).filter(Boolean) || []);
+      }
 
       // Fetch all leads with basic filters
       let query = supabase
@@ -148,16 +198,17 @@ export function NewDealDialog({
 
       let filteredLeads = leadsData || [];
 
-      // Smart filter based on status + product
+      // Smart filter based on status + product + hierarchy
       if (statusFilter === "Cliente") {
-        // Cliente + Produto = apenas quem COMPROU esse produto
-        filteredLeads = filteredLeads.filter((lead) => leadIdsWhoBought.has(lead.id));
+        // Cliente + Produto = apenas quem COMPROU esse produto específico
+        filteredLeads = filteredLeads.filter((lead) => leadIdsWhoBoughtSelected.has(lead.id));
       } else if (statusFilter === "Novo") {
-        // Novo + Produto = apenas quem NÃO comprou esse produto
-        filteredLeads = filteredLeads.filter((lead) => !leadIdsWhoBought.has(lead.id));
+        // Novo + Produto = apenas quem NÃO comprou produtos da mesma categoria ou superior
+        // Isso aplica a hierarquia: se buscar Básico, exclui quem tem Básico, Intermediário ou Avançado
+        filteredLeads = filteredLeads.filter((lead) => !leadIdsWhoBoughtHigherTier.has(lead.id));
       } else {
-        // "Todos" = mostra ambos (quem comprou e quem não comprou)
-        // Não aplica filtro adicional por produto
+        // "Todos" = aplica hierarquia também - exclui quem já está em tier igual ou superior
+        filteredLeads = filteredLeads.filter((lead) => !leadIdsWhoBoughtHigherTier.has(lead.id));
       }
 
       setSearchResults(filteredLeads);
@@ -544,27 +595,51 @@ export function NewDealDialog({
                     </div>
                   </div>
 
-                  {/* Product Filter - Required */}
+                  {/* Product Filter - Required - Grouped by Category */}
                   {products && products.length > 0 && (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <Label className="text-[10px] text-muted-foreground">
                         Produto <span className="text-destructive">*</span>
                       </Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {products.map((product) => (
-                          <Badge
-                            key={product.id}
-                            variant={selectedProductFilters.includes(product.id) ? "default" : "outline"}
-                            className="cursor-pointer hover:bg-secondary/80 transition-colors text-xs py-0 h-5"
-                            onClick={() => toggleProductFilter(product.id)}
-                          >
-                            {product.name}
-                          </Badge>
-                        ))}
-                      </div>
+                      
+                      {/* Group products by category in hierarchy order */}
+                      {['avancados', 'intermediarios', 'basicos'].map((categorySlug) => {
+                        const categoryProducts = products.filter(
+                          p => (p.product_categories as any)?.slug === categorySlug
+                        );
+                        if (categoryProducts.length === 0) return null;
+                        
+                        const categoryName = (categoryProducts[0]?.product_categories as any)?.name || categorySlug;
+                        
+                        return (
+                          <div key={categorySlug} className="space-y-1">
+                            <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">
+                              {categoryName}
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {categoryProducts.map((product) => (
+                                <Badge
+                                  key={product.id}
+                                  variant={selectedProductFilters.includes(product.id) ? "default" : "outline"}
+                                  className="cursor-pointer hover:bg-secondary/80 transition-colors text-xs py-0 h-5"
+                                  onClick={() => toggleProductFilter(product.id)}
+                                >
+                                  {product.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
                       {selectedProductFilters.length === 0 && (
                         <p className="text-[10px] text-muted-foreground">
                           Selecione pelo menos 1 produto para buscar
+                        </p>
+                      )}
+                      {selectedProductFilters.length > 0 && (
+                        <p className="text-[10px] text-amber-600">
+                          ⚠️ Leads com produtos de categorias superiores serão excluídos automaticamente
                         </p>
                       )}
                     </div>
