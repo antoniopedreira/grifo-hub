@@ -78,7 +78,8 @@ export function DealComments({ dealId }: DealCommentsProps) {
       <div className="border rounded-xl p-4 bg-card">
         <form onSubmit={handleSubmit} className="space-y-3">
           <Textarea
-            placeholder="    Escrever um comentário..."
+            placeholder="   
+               Escrever um comentário..."
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             className="min-h-[100px] resize-y border-0 shadow-none focus-visible:ring-0 p-0 text-sm"
