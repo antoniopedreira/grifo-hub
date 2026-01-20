@@ -144,29 +144,27 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
       // 1. Create new pipeline with "(Cópia)" suffix
       const { data: newPipeline, error: pipelineError } = await supabase
         .from("pipelines")
-        .insert({ name: `${pipeline.name} (Cópia)` })
+        .insert({ name: `${pipeline.name} (Cópia)`, archived: false })
         .select()
         .single();
+      
       if (pipelineError) throw pipelineError;
 
       // 2. Fetch all stages from the original pipeline
       const { data: originalStages, error: stagesError } = await supabase
         .from("pipeline_stages")
-        .select("id, name, order_index, type, pipeline_id")
+        .select("name, order_index, type")
         .eq("pipeline_id", pipeline.id)
         .order("order_index", { ascending: true });
       
-      if (stagesError) {
-        console.error("Error fetching stages:", stagesError);
-        throw stagesError;
-      }
+      if (stagesError) throw stagesError;
 
       // 3. Create copies of stages for the new pipeline
       if (originalStages && originalStages.length > 0) {
         const newStages = originalStages.map((stage) => ({
           name: stage.name,
           order_index: stage.order_index,
-          type: stage.type || null,
+          type: stage.type,
           pipeline_id: newPipeline.id,
         }));
 
@@ -174,10 +172,7 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
           .from("pipeline_stages")
           .insert(newStages);
         
-        if (insertStagesError) {
-          console.error("Error inserting stages:", insertStagesError);
-          throw insertStagesError;
-        }
+        if (insertStagesError) throw insertStagesError;
       }
 
       return newPipeline;
@@ -190,8 +185,9 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
         description: `"${newPipeline.name}" foi criado com todos os estágios.` 
       });
     },
-    onError: () => {
-      toast({ title: "Erro", description: "Não foi possível duplicar o pipeline.", variant: "destructive" });
+    onError: (error: Error) => {
+      console.error("Duplicate error:", error);
+      toast({ title: "Erro", description: error.message || "Não foi possível duplicar o pipeline.", variant: "destructive" });
     },
   });
 
