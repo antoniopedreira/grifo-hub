@@ -46,9 +46,9 @@ type SortField = "mission" | "status" | "department" | "deadline" | "owner";
 type SortDirection = "asc" | "desc";
 
 interface AgendaListProps {
-  ownerFilter: string | null;
-  departmentFilter: string | null;
-  statusFilter: string | null;
+  ownerFilter: string[] | null;
+  departmentFilter: string[] | null;
+  statusFilter: string[] | null;
   searchTerm?: string;
 }
 
@@ -111,9 +111,9 @@ export function AgendaList({ ownerFilter, departmentFilter, statusFilter, search
 
   // Filter missions
   const filteredMissions = missions.filter((m) => {
-    const matchesOwner = ownerFilter ? m.owner_id === ownerFilter : true;
-    const matchesDepartment = departmentFilter ? m.department === departmentFilter : true;
-    const matchesStatus = statusFilter ? m.status === statusFilter : true;
+    const matchesOwner = ownerFilter && ownerFilter.length > 0 ? ownerFilter.includes(m.owner_id || "") : true;
+    const matchesDepartment = departmentFilter && departmentFilter.length > 0 ? departmentFilter.includes(m.department || "") : true;
+    const matchesStatus = statusFilter && statusFilter.length > 0 ? statusFilter.includes(m.status || "") : true;
     const matchesSearch = searchTerm
       ? m.mission?.toLowerCase().includes(searchTerm.toLowerCase())
       : true;

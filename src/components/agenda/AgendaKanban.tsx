@@ -34,8 +34,8 @@ const departmentColors: Record<string, string> = {
 };
 
 interface AgendaKanbanProps {
-  ownerFilter: string | null;
-  departmentFilter?: string | null;
+  ownerFilter: string[] | null;
+  departmentFilter?: string[] | null;
   searchTerm?: string;
 }
 
@@ -151,8 +151,8 @@ export function AgendaKanban({ ownerFilter, departmentFilter, searchTerm = "" }:
 
   // Filter missions by owner, department and search term
   const filteredMissions = missions.filter((m) => {
-    const matchesOwner = ownerFilter ? m.owner_id === ownerFilter : true;
-    const matchesDepartment = departmentFilter ? m.department === departmentFilter : true;
+    const matchesOwner = ownerFilter && ownerFilter.length > 0 ? ownerFilter.includes(m.owner_id || "") : true;
+    const matchesDepartment = departmentFilter && departmentFilter.length > 0 ? departmentFilter.includes(m.department || "") : true;
     const matchesSearch = searchTerm ? m.mission?.toLowerCase().includes(searchTerm.toLowerCase()) : true;
     return matchesOwner && matchesDepartment && matchesSearch;
   });
