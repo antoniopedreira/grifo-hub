@@ -5,7 +5,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription 
 } from "@/components/ui/sheet";
 import { 
-  CheckCircle2, FileText, Calendar, Loader2, Paperclip, ExternalLink, X, Pencil
+  CheckCircle2, FileText, Calendar, Loader2, Paperclip, ExternalLink, X, Pencil, Trash2
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -257,6 +257,24 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
     },
   });
 
+  // Mutation para excluir observação
+  const deleteObservation = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { error } = await (supabase as any)
+        .from("crm_checklist_items")
+        .update({ observations: null })
+        .eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-checklist"] });
+      toast.success("Observação excluída!");
+    },
+    onError: () => {
+      toast.error("Erro ao excluir observação");
+    },
+  });
+
   const handleStartEditObs = (item: ChecklistItem) => {
     setEditingObsItemId(item.id);
     setObsText(item.observations || "");
@@ -403,55 +421,67 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
                                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                                       {/* Anexar - só para "Upload do contrato" */}
                                       {isContractUploadItem(item.title) && (
-                                        <>
-                                          {item.attachment_url ? (
-                                            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded px-2 py-1">
-                                              <Paperclip className="h-3 w-3 text-green-600" />
-                                              <a 
-                                                href={item.attachment_url} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="text-[10px] text-green-700 hover:underline flex items-center gap-1"
-                                              >
-                                                Ver contrato <ExternalLink className="h-2.5 w-2.5" />
-                                              </a>
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                onClick={() => removeAttachment.mutate(item.id)}
-                                              >
-                                                <X className="h-3 w-3" />
-                                              </Button>
-                                            </div>
-                                          ) : (
-                                            <Button 
-                                              variant="outline" 
-                                              size="sm" 
-                                              className="h-6 text-[10px] px-2 gap-1 bg-white hover:bg-slate-50"
-                                              onClick={() => handleFileSelect(item.id)}
-                                              disabled={uploadAttachment.isPending && uploadingItemId === item.id}
-                                            >
-                                              {uploadAttachment.isPending && uploadingItemId === item.id ? (
-                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                              ) : (
-                                                <Paperclip className="h-3 w-3" />
-                                              )}
-                                              Anexar
-                                            </Button>
-                                          )}
-                                        </>
-                                      )}
-
-                                      {/* Botão Obs */}
-                                      {editingObsItemId !== item.id && !item.observations && (
                                         <Button 
                                           variant="outline" 
                                           size="sm" 
-                                          className="h-6 text-[10px] px-2 gap-1 bg-white hover:bg-slate-50"
+                                          className={`h-6 text-[10px] px-2 gap-1 relative ${
+                                            item.attachment_url 
+                                              ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100' 
+                                              : 'bg-white hover:bg-slate-50'
+                                          }`}
+                                          onClick={() => handleFileSelect(item.id)}
+                                          disabled={uploadAttachment.isPending && uploadingItemId === item.id}
+                                        >
+                                          {uploadAttachment.isPending && uploadingItemId === item.id ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <Paperclip className="h-3 w-3" />
+                                          )}
+                                          Anexar
+                                          {item.attachment_url && (
+                                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" />
+                                          )}
+                                        </Button>
+                                      )}
+
+                                      {/* Link para ver anexo se existir */}
+                                      {isContractUploadItem(item.title) && item.attachment_url && (
+                                        <div className="flex items-center gap-1">
+                                          <a 
+                                            href={item.attachment_url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] text-green-700 hover:underline flex items-center gap-1"
+                                          >
+                                            Ver <ExternalLink className="h-2.5 w-2.5" />
+                                          </a>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                            onClick={() => removeAttachment.mutate(item.id)}
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      )}
+
+                                      {/* Botão Obs - sempre visível quando não está editando */}
+                                      {editingObsItemId !== item.id && (
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          className={`h-6 text-[10px] px-2 gap-1 relative ${
+                                            item.observations 
+                                              ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100' 
+                                              : 'bg-white hover:bg-slate-50'
+                                          }`}
                                           onClick={() => handleStartEditObs(item)}
                                         >
                                           <FileText className="h-3 w-3" /> Obs
+                                          {item.observations && (
+                                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" />
+                                          )}
                                         </Button>
                                       )}
                                     </div>
@@ -492,14 +522,24 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
                                       <div className="mt-2 bg-slate-50 border border-slate-200 rounded p-2">
                                         <div className="flex items-start justify-between gap-2">
                                           <p className="text-[11px] text-slate-600 whitespace-pre-wrap flex-1">{item.observations}</p>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-5 w-5 p-0 text-slate-400 hover:text-slate-600 shrink-0"
-                                            onClick={() => handleStartEditObs(item)}
-                                          >
-                                            <Pencil className="h-3 w-3" />
-                                          </Button>
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 w-5 p-0 text-slate-400 hover:text-slate-600"
+                                              onClick={() => handleStartEditObs(item)}
+                                            >
+                                              <Pencil className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 w-5 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                              onClick={() => deleteObservation.mutate(item.id)}
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          </div>
                                         </div>
                                       </div>
                                     )}
