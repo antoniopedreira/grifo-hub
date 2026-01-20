@@ -138,8 +138,17 @@ export default function Leads() {
     leadsData
       ?.filter((lead) => {
         const query = searchQuery.toLowerCase();
+        const queryDigits = searchQuery.replace(/\D/g, "");
+        const leadPhone = lead.phone?.replace(/\D/g, "") || "";
+        
+        // Se busca contém apenas números (2+ dígitos), pesquisa por telefone (inclusive últimos dígitos)
+        const isPhoneSearch = /^\d+$/.test(queryDigits) && queryDigits.length >= 2;
+        const matchesPhone = isPhoneSearch && leadPhone.endsWith(queryDigits);
+        
         const matchesSearch =
-          lead.full_name?.toLowerCase().includes(query) || lead.email?.toLowerCase().includes(query);
+          lead.full_name?.toLowerCase().includes(query) || 
+          lead.email?.toLowerCase().includes(query) ||
+          matchesPhone;
 
         const matchesProduct = productFilter === "all" || lead.sales?.some((sale) => sale.product_id === productFilter);
 
@@ -257,7 +266,7 @@ export default function Leads() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome ou email..."
+            placeholder="Buscar por nome, email ou telefone..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);

@@ -2,7 +2,7 @@ import { Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarDays, Clock, User, TrendingUp } from "lucide-react";
+import { CalendarDays, Clock, User, TrendingUp, Phone } from "lucide-react";
 import type { Deal } from "./types";
 
 interface DealCardProps {
@@ -77,6 +77,14 @@ export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
             <p className="font-semibold text-foreground truncate text-sm">
               {deal.lead?.full_name || "Lead desconhecido"}
             </p>
+
+            {/* Phone Number */}
+            {deal.lead?.phone && (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Phone className="h-3 w-3" />
+                <span className="text-xs">{deal.lead.phone}</span>
+              </div>
+            )}
 
             {/* Product Name */}
             <p className="text-sm text-muted-foreground truncate">

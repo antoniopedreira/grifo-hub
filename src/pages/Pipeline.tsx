@@ -242,8 +242,15 @@ export default function Pipeline() {
   const filteredDeals = deals.filter((deal) => {
     const leadName = deal.lead?.full_name?.toLowerCase() || "";
     const productName = deal.product?.name?.toLowerCase() || "";
-    const search = searchTerm.toLowerCase();
-    return leadName.includes(search) || productName.includes(search);
+    const leadPhone = deal.lead?.phone?.replace(/\D/g, "") || "";
+    const search = searchTerm.toLowerCase().replace(/\D/g, "");
+    const searchRaw = searchTerm.toLowerCase();
+    
+    // Se busca contém apenas números, pesquisa por telefone (inclusive últimos dígitos)
+    const isPhoneSearch = /^\d+$/.test(search) && search.length >= 2;
+    const matchesPhone = isPhoneSearch && leadPhone.endsWith(search);
+    
+    return leadName.includes(searchRaw) || productName.includes(searchRaw) || matchesPhone;
   });
 
   const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
@@ -342,7 +349,7 @@ export default function Pipeline() {
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por lead ou produto..."
+                placeholder="Buscar por lead, produto ou telefone..."
                 className="pl-9 bg-white"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
