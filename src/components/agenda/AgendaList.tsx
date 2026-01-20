@@ -294,7 +294,7 @@ export function AgendaList({ ownerFilter, departmentFilter, statusFilter, search
                     <TableCell>
                       <Badge
                         variant="secondary"
-                        className={cn("text-xs border", statusColors[mission.status || "Pendente"])}
+                        className={cn("text-xs border whitespace-nowrap", statusColors[mission.status || "Pendente"])}
                       >
                         {mission.status || "Pendente"}
                       </Badge>
