@@ -152,24 +152,32 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
       // 2. Fetch all stages from the original pipeline
       const { data: originalStages, error: stagesError } = await supabase
         .from("pipeline_stages")
-        .select("*")
+        .select("id, name, order_index, type, pipeline_id")
         .eq("pipeline_id", pipeline.id)
-        .order("order_index");
-      if (stagesError) throw stagesError;
+        .order("order_index", { ascending: true });
+      
+      if (stagesError) {
+        console.error("Error fetching stages:", stagesError);
+        throw stagesError;
+      }
 
       // 3. Create copies of stages for the new pipeline
       if (originalStages && originalStages.length > 0) {
         const newStages = originalStages.map((stage) => ({
           name: stage.name,
           order_index: stage.order_index,
-          type: stage.type,
+          type: stage.type || null,
           pipeline_id: newPipeline.id,
         }));
 
         const { error: insertStagesError } = await supabase
           .from("pipeline_stages")
           .insert(newStages);
-        if (insertStagesError) throw insertStagesError;
+        
+        if (insertStagesError) {
+          console.error("Error inserting stages:", insertStagesError);
+          throw insertStagesError;
+        }
       }
 
       return newPipeline;
