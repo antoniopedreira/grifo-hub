@@ -5,7 +5,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription 
 } from "@/components/ui/sheet";
 import { 
-  CheckCircle2, Upload, FileText, Calendar, Lock, Loader2 
+  CheckCircle2, FileText, Calendar, Lock, Loader2, Paperclip, ExternalLink, X
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ interface ChecklistItem {
   status: string;
   completed_at: string | null;
   order_index: number | null;
+  attachment_url: string | null;
 }
 
 interface ChecklistTemplate {
@@ -50,7 +51,9 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
   const queryClient = useQueryClient();
   const [activeQuarter, setActiveQuarter] = useState<string>("Q1");
   const [isPopulating, setIsPopulating] = useState(false);
+  const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const populatedJourneys = useRef<Set<string>>(new Set());
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Busca dados da jornada
   const { data: journey } = useQuery({
@@ -169,6 +172,79 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
       queryClient.invalidateQueries({ queryKey: ["crm-journeys"] });
     },
   });
+
+  // Função para verificar se é item de upload de contrato
+  const isContractUploadItem = (title: string) => 
+    title.toLowerCase().includes("upload do contrato") || 
+    title.toLowerCase().includes("upload contrato");
+
+  // Mutation para upload de arquivo
+  const uploadAttachment = useMutation({
+    mutationFn: async ({ itemId, file }: { itemId: string; file: File }) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${journeyId}/${itemId}-${Date.now()}.${fileExt}`;
+      
+      // Upload para o Storage
+      const { error: uploadError } = await supabase.storage
+        .from('crm-attachments')
+        .upload(fileName, file);
+      
+      if (uploadError) throw uploadError;
+
+      // Pega URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('crm-attachments')
+        .getPublicUrl(fileName);
+
+      // Atualiza o item com a URL
+      const { error: updateError } = await (supabase as any)
+        .from("crm_checklist_items")
+        .update({ attachment_url: publicUrl })
+        .eq("id", itemId);
+      
+      if (updateError) throw updateError;
+      
+      return publicUrl;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-checklist"] });
+      toast.success("Contrato anexado com sucesso!");
+      setUploadingItemId(null);
+    },
+    onError: (error: any) => {
+      console.error("Erro ao anexar:", error);
+      toast.error("Erro ao anexar arquivo");
+      setUploadingItemId(null);
+    },
+  });
+
+  // Remove anexo
+  const removeAttachment = useMutation({
+    mutationFn: async (itemId: string) => {
+      const { error } = await (supabase as any)
+        .from("crm_checklist_items")
+        .update({ attachment_url: null })
+        .eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-checklist"] });
+      toast.success("Anexo removido!");
+    },
+  });
+
+  const handleFileSelect = (itemId: string) => {
+    setUploadingItemId(itemId);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && uploadingItemId) {
+      uploadAttachment.mutate({ itemId: uploadingItemId, file });
+    }
+    e.target.value = '';
+  };
 
   const quarters: Quarter[] = ['Q1', 'Q2', 'Q3', 'Q4'];
 
@@ -294,12 +370,51 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
                                       </p>
                                     )}
 
-                                    {/* Ações (Upload/Obs) só aparecem se não estiver bloqueado */}
+                                    {/* Anexar - só para "Upload do contrato" e se não bloqueado */}
+                                    {!isLocked && isContractUploadItem(item.title) && (
+                                      <div className="flex items-center gap-2 mt-2">
+                                        {item.attachment_url ? (
+                                          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded px-2 py-1">
+                                            <Paperclip className="h-3 w-3 text-green-600" />
+                                            <a 
+                                              href={item.attachment_url} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="text-[10px] text-green-700 hover:underline flex items-center gap-1"
+                                            >
+                                              Ver contrato <ExternalLink className="h-2.5 w-2.5" />
+                                            </a>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                              onClick={() => removeAttachment.mutate(item.id)}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        ) : (
+                                          <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="h-6 text-[10px] px-2 gap-1 bg-white hover:bg-slate-50"
+                                            onClick={() => handleFileSelect(item.id)}
+                                            disabled={uploadAttachment.isPending && uploadingItemId === item.id}
+                                          >
+                                            {uploadAttachment.isPending && uploadingItemId === item.id ? (
+                                              <Loader2 className="h-3 w-3 animate-spin" />
+                                            ) : (
+                                              <Paperclip className="h-3 w-3" />
+                                            )}
+                                            Anexar
+                                          </Button>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Botão Obs - sempre aparece se não bloqueado */}
                                     {!isLocked && (
                                       <div className="flex items-center gap-2 mt-2">
-                                        <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 bg-white hover:bg-slate-50">
-                                          <Upload className="h-3 w-3" /> Anexar
-                                        </Button>
                                         <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 bg-white hover:bg-slate-50">
                                           <FileText className="h-3 w-3" /> Obs
                                         </Button>
@@ -319,6 +434,15 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
             </div>
           </ScrollArea>
         )}
+
+        {/* Input hidden para upload de arquivo */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+          className="hidden"
+          onChange={handleFileChange}
+        />
       </SheetContent>
     </Sheet>
   );

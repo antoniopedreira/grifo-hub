@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       crm_checklist_items: {
         Row: {
+          attachment_url: string | null
           completed_at: string | null
           created_at: string | null
           due_date: string | null
@@ -29,6 +30,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          attachment_url?: string | null
           completed_at?: string | null
           created_at?: string | null
           due_date?: string | null
@@ -42,6 +44,7 @@ export type Database = {
           title: string
         }
         Update: {
+          attachment_url?: string | null
           completed_at?: string | null
           created_at?: string | null
           due_date?: string | null
