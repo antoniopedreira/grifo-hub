@@ -11,6 +11,7 @@ import { NewDealDialog } from "@/components/pipeline/NewDealDialog";
 import { ScheduleMeetingDialog } from "@/components/pipeline/ScheduleMeetingDialog";
 import { CloseSaleDialog } from "@/components/pipeline/CloseSaleDialog";
 import { NegotiationDialog } from "@/components/pipeline/NegotiationDialog";
+import { LostDealDialog } from "@/components/pipeline/LostDealDialog";
 import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { toast } from "sonner";
 import type { Deal, Pipeline as PipelineType, PipelineStage } from "@/components/pipeline/types";
@@ -54,6 +55,11 @@ export default function Pipeline() {
     targetStageId: null,
   });
   const [negotiationDialog, setNegotiationDialog] = useState<{ open: boolean; deal: Deal | null; targetStageId: string | null }>({
+    open: false,
+    deal: null,
+    targetStageId: null,
+  });
+  const [lostDialog, setLostDialog] = useState<{ open: boolean; deal: Deal | null; targetStageId: string | null }>({
     open: false,
     deal: null,
     targetStageId: null,
@@ -221,6 +227,12 @@ export default function Pipeline() {
       return;
     }
 
+    // Lógica de Interceptação: Perdido
+    if (targetStage?.type === "lost" && source.droppableId !== targetStageId) {
+      setLostDialog({ open: true, deal, targetStageId });
+      return;
+    }
+
     // Movimento Padrão
     moveDealMutation.mutate({
       dealId: draggableId,
@@ -254,6 +266,11 @@ export default function Pipeline() {
   const handleNegotiationSuccess = () => {
     // A mutation já moveu o deal no NegotiationDialog
     setNegotiationDialog({ open: false, deal: null, targetStageId: null });
+  };
+
+  const handleLostSuccess = () => {
+    // A mutation já moveu o deal no LostDealDialog
+    setLostDialog({ open: false, deal: null, targetStageId: null });
   };
 
   const filteredDeals = deals.filter((deal) => {
@@ -454,6 +471,17 @@ export default function Pipeline() {
           targetStageId={negotiationDialog.targetStageId}
           onCancel={() => setNegotiationDialog((prev) => ({ ...prev, open: false }))}
           onSuccess={handleNegotiationSuccess}
+        />
+      )}
+
+      {lostDialog.deal && (
+        <LostDealDialog
+          open={lostDialog.open}
+          onOpenChange={(open) => !open && setLostDialog((prev) => ({ ...prev, open: false }))}
+          deal={lostDialog.deal}
+          targetStageId={lostDialog.targetStageId}
+          onCancel={() => setLostDialog((prev) => ({ ...prev, open: false }))}
+          onSuccess={handleLostSuccess}
         />
       )}
 

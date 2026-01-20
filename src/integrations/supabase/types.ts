@@ -174,6 +174,7 @@ export type Database = {
           id: string
           installments: number | null
           lead_id: string | null
+          loss_reason: string | null
           meeting_date: string | null
           meeting_owner_id: string | null
           order_index: number | null
@@ -192,6 +193,7 @@ export type Database = {
           id?: string
           installments?: number | null
           lead_id?: string | null
+          loss_reason?: string | null
           meeting_date?: string | null
           meeting_owner_id?: string | null
           order_index?: number | null
@@ -210,6 +212,7 @@ export type Database = {
           id?: string
           installments?: number | null
           lead_id?: string | null
+          loss_reason?: string | null
           meeting_date?: string | null
           meeting_owner_id?: string | null
           order_index?: number | null
