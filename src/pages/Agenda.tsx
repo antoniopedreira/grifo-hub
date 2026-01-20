@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, LayoutGrid, List, Plus, User, Search, Building2, CircleDot } from "lucide-react";
+import { CalendarDays, LayoutGrid, List, Plus, User, Search, Building2, CircleDot, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { AgendaCalendar } from "@/components/agenda/AgendaCalendar";
 import { AgendaKanban } from "@/components/agenda/AgendaKanban";
 import { AgendaList } from "@/components/agenda/AgendaList";
@@ -22,9 +24,9 @@ const statuses: MissionStatus[] = ["Pendente", "Em Andamento", "Em Revisão", "C
 export default function Agenda() {
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [ownerFilter, setOwnerFilter] = useState<string>("all");
-  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+  const [departmentFilter, setDepartmentFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Executa automação Stand-by → Pendente ao carregar
@@ -55,6 +57,10 @@ export default function Agenda() {
     },
   });
 
+  const toggleArrayFilter = (arr: string[], value: string): string[] => {
+    return arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value];
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -77,54 +83,111 @@ export default function Agenda() {
           </div>
 
           {/* Department Filter */}
-          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-            <SelectTrigger className="w-[130px] bg-background">
-              <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Setor" />
-            </SelectTrigger>
-            <SelectContent className="min-w-[--radix-select-trigger-width]">
-              <SelectItem value="all">Todos</SelectItem>
-              {departments.map((dept) => (
-                <SelectItem key={dept} value={dept}>
-                  {dept}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-[130px] justify-start bg-background">
+                <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="truncate">
+                  {departmentFilter.length === 0 ? "Setor" : departmentFilter.length === 1 ? departmentFilter[0] : `${departmentFilter.length} setores`}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-2" align="start">
+              <div className="space-y-1">
+                {departments.map((dept) => (
+                  <label key={dept} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                    <Checkbox
+                      checked={departmentFilter.includes(dept)}
+                      onCheckedChange={() => setDepartmentFilter(toggleArrayFilter(departmentFilter, dept))}
+                    />
+                    <span className="text-sm">{dept}</span>
+                  </label>
+                ))}
+                {departmentFilter.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full mt-1 text-xs"
+                    onClick={() => setDepartmentFilter([])}
+                  >
+                    Limpar
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Status Filter - Only visible in List view */}
           {viewMode === "list" && (
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px] bg-background">
-                <CircleDot className="h-4 w-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent className="min-w-[--radix-select-trigger-width]">
-                <SelectItem value="all">Todos</SelectItem>
-                {statuses.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-[140px] justify-start bg-background">
+                  <CircleDot className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span className="truncate">
+                    {statusFilter.length === 0 ? "Status" : statusFilter.length === 1 ? statusFilter[0] : `${statusFilter.length} status`}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[180px] p-2" align="start">
+                <div className="space-y-1">
+                  {statuses.map((status) => (
+                    <label key={status} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                      <Checkbox
+                        checked={statusFilter.includes(status)}
+                        onCheckedChange={() => setStatusFilter(toggleArrayFilter(statusFilter, status))}
+                      />
+                      <span className="text-sm">{status}</span>
+                    </label>
+                  ))}
+                  {statusFilter.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-1 text-xs"
+                      onClick={() => setStatusFilter([])}
+                    >
+                      Limpar
+                    </Button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           )}
 
           {/* Owner Filter */}
-          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-            <SelectTrigger className="w-[130px] bg-background">
-              <User className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Responsável" />
-            </SelectTrigger>
-            <SelectContent className="min-w-[--radix-select-trigger-width]">
-              <SelectItem value="all">Todos</SelectItem>
-              {members.map((member) => (
-                <SelectItem key={member.id} value={member.id}>
-                  {member.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-[130px] justify-start bg-background">
+                <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="truncate">
+                  {ownerFilter.length === 0 ? "Responsável" : ownerFilter.length === 1 ? members.find(m => m.id === ownerFilter[0])?.name || "1 pessoa" : `${ownerFilter.length} pessoas`}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-2" align="start">
+              <div className="space-y-1">
+                {members.map((member) => (
+                  <label key={member.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+                    <Checkbox
+                      checked={ownerFilter.includes(member.id)}
+                      onCheckedChange={() => setOwnerFilter(toggleArrayFilter(ownerFilter, member.id))}
+                    />
+                    <span className="text-sm">{member.name}</span>
+                  </label>
+                ))}
+                {ownerFilter.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full mt-1 text-xs"
+                    onClick={() => setOwnerFilter([])}
+                  >
+                    Limpar
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <ToggleGroup
             type="single"
@@ -159,19 +222,19 @@ export default function Agenda() {
       {/* Content */}
       {viewMode === "calendar" ? (
         <AgendaCalendar 
-          ownerFilter={ownerFilter === "all" ? null : ownerFilter} 
+          ownerFilter={ownerFilter.length > 0 ? ownerFilter : null} 
         />
       ) : viewMode === "list" ? (
         <AgendaList
-          ownerFilter={ownerFilter === "all" ? null : ownerFilter}
-          departmentFilter={departmentFilter === "all" ? null : departmentFilter}
-          statusFilter={statusFilter === "all" ? null : statusFilter}
+          ownerFilter={ownerFilter.length > 0 ? ownerFilter : null}
+          departmentFilter={departmentFilter.length > 0 ? departmentFilter : null}
+          statusFilter={statusFilter.length > 0 ? statusFilter : null}
           searchTerm={searchTerm}
         />
       ) : (
         <AgendaKanban 
-          ownerFilter={ownerFilter === "all" ? null : ownerFilter}
-          departmentFilter={departmentFilter === "all" ? null : departmentFilter} 
+          ownerFilter={ownerFilter.length > 0 ? ownerFilter : null}
+          departmentFilter={departmentFilter.length > 0 ? departmentFilter : null} 
           searchTerm={searchTerm} 
         />
       )}

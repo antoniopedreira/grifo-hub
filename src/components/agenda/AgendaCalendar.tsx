@@ -34,7 +34,7 @@ const statusLabels: Record<string, string> = {
 };
 
 interface AgendaCalendarProps {
-  ownerFilter: string | null;
+  ownerFilter: string[] | null;
 }
 
 export function AgendaCalendar({ ownerFilter }: AgendaCalendarProps) {
@@ -70,8 +70,8 @@ export function AgendaCalendar({ ownerFilter }: AgendaCalendarProps) {
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   // Filter missions by owner if filter is active
-  const filteredMissions = ownerFilter 
-    ? missions.filter((m) => m.owner_id === ownerFilter)
+  const filteredMissions = ownerFilter && ownerFilter.length > 0
+    ? missions.filter((m) => ownerFilter.includes(m.owner_id || ""))
     : missions;
 
   const getMissionsForDay = (date: Date) => {
