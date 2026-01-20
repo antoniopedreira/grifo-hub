@@ -40,6 +40,7 @@ interface ProductForm {
   slug: string;
   create_deal: boolean;
   external_id: string;
+  lead_origin: string;
 }
 
 const initialForm: ProductForm = {
@@ -52,6 +53,7 @@ const initialForm: ProductForm = {
   slug: "",
   create_deal: false,
   external_id: "",
+  lead_origin: "",
 };
 
 export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
@@ -115,6 +117,7 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
         slug: form.slug || null,
         create_deal: form.create_deal,
         external_id: form.external_id || null,
+        lead_origin: form.funnel_type === "internal_form" ? (form.lead_origin || null) : null,
         active: true,
       };
 
@@ -339,32 +342,47 @@ export function ProductWizard({ open, onOpenChange }: ProductWizardProps) {
               )}
               
               {form.funnel_type === "internal_form" && (
-                <div className="space-y-2">
-                  <Label htmlFor="template">Template do Formulário *</Label>
-                  <Select
-                    value={form.template_id}
-                    onValueChange={(value) => setForm({ ...form, template_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um formulário" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {formTemplates?.map((tpl) => (
-                        <SelectItem key={tpl.id} value={tpl.id}>
-                          {tpl.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formTemplates?.length === 0 && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="template">Template do Formulário *</Label>
+                    <Select
+                      value={form.template_id}
+                      onValueChange={(value) => setForm({ ...form, template_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um formulário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {formTemplates?.map((tpl) => (
+                          <SelectItem key={tpl.id} value={tpl.id}>
+                            {tpl.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formTemplates?.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Nenhum template de Formulário disponível. Crie um em Templates.
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
-                      Nenhum template de Formulário disponível. Crie um em Templates.
+                      Os leads serão capturados diretamente no CRM interno.
                     </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Os leads serão capturados diretamente no CRM interno.
-                  </p>
-                </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="lead_origin">Origem do Lead</Label>
+                    <Input
+                      id="lead_origin"
+                      placeholder="Ex: Mentoria 360, Webinar VIP..."
+                      value={form.lead_origin}
+                      onChange={(e) => setForm({ ...form, lead_origin: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Texto gravado na coluna "Origem" do lead ao preencher este formulário.
+                    </p>
+                  </div>
+                </>
               )}
 
               {/* Create Deal Switch - Always visible */}
