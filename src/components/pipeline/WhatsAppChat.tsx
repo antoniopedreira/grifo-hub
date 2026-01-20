@@ -100,28 +100,54 @@ export function WhatsAppChat({ dealId, leadId, phone }: WhatsAppChatProps) {
     }
   }, [messages]);
 
-  // Send message mutation
+  // Send message mutation - sends to n8n webhook first, then saves to DB
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!phone) throw new Error("Telefone não disponível");
 
       const cleanPhone = phone.replace(/\D/g, "");
+      const trimmedContent = content.trim();
       
-      const { data, error } = await supabase
+      // 1. Salva no banco com status "pending"
+      const { data: savedMessage, error: dbError } = await supabase
         .from("whatsapp_messages")
         .insert({
           deal_id: dealId,
           lead_id: leadId,
           phone: cleanPhone,
           direction: "outgoing",
-          content: content.trim(),
+          content: trimmedContent,
           status: "pending",
         })
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (dbError) throw dbError;
+
+      // 2. Envia para o webhook do n8n
+      try {
+        const webhookResponse = await fetch("https://grifoworkspace.app.n8n.cloud/webhook/grifohub-wpp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          mode: "no-cors", // Handle CORS
+          body: JSON.stringify({
+            message_id: savedMessage.id,
+            phone: cleanPhone,
+            content: trimmedContent,
+            deal_id: dealId,
+            lead_id: leadId,
+          }),
+        });
+
+        console.log("Webhook enviado para n8n:", { message_id: savedMessage.id, phone: cleanPhone });
+      } catch (webhookError) {
+        console.error("Erro ao enviar para webhook n8n:", webhookError);
+        // Não falha a operação, a mensagem já foi salva
+      }
+
+      return savedMessage;
     },
     onSuccess: () => {
       setMessage("");
