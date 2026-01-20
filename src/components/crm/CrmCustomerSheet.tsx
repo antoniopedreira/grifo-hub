@@ -5,8 +5,9 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription 
 } from "@/components/ui/sheet";
 import { 
-  CheckCircle2, FileText, Calendar, Loader2, Paperclip, ExternalLink, X
+  CheckCircle2, FileText, Calendar, Loader2, Paperclip, ExternalLink, X, Pencil
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,6 +32,7 @@ interface ChecklistItem {
   completed_at: string | null;
   order_index: number | null;
   attachment_url: string | null;
+  observations: string | null;
 }
 
 interface ChecklistTemplate {
@@ -52,6 +54,8 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
   const [activeQuarter, setActiveQuarter] = useState<string>("Q1");
   const [isPopulating, setIsPopulating] = useState(false);
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
+  const [editingObsItemId, setEditingObsItemId] = useState<string | null>(null);
+  const [obsText, setObsText] = useState<string>("");
   const populatedJourneys = useRef<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -233,6 +237,40 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
     },
   });
 
+  // Mutation para salvar observação
+  const saveObservation = useMutation({
+    mutationFn: async ({ itemId, observations }: { itemId: string; observations: string }) => {
+      const { error } = await (supabase as any)
+        .from("crm_checklist_items")
+        .update({ observations: observations || null })
+        .eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-checklist"] });
+      setEditingObsItemId(null);
+      setObsText("");
+      toast.success("Observação salva!");
+    },
+    onError: () => {
+      toast.error("Erro ao salvar observação");
+    },
+  });
+
+  const handleStartEditObs = (item: ChecklistItem) => {
+    setEditingObsItemId(item.id);
+    setObsText(item.observations || "");
+  };
+
+  const handleSaveObs = (itemId: string) => {
+    saveObservation.mutate({ itemId, observations: obsText });
+  };
+
+  const handleCancelObs = () => {
+    setEditingObsItemId(null);
+    setObsText("");
+  };
+
   const handleFileSelect = (itemId: string) => {
     setUploadingItemId(itemId);
     fileInputRef.current?.click();
@@ -361,54 +399,110 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
                                       </p>
                                     )}
 
-                                    {/* Anexar - só para "Upload do contrato" */}
-                                    {isContractUploadItem(item.title) && (
-                                      <div className="flex items-center gap-2 mt-2">
-                                        {item.attachment_url ? (
-                                          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded px-2 py-1">
-                                            <Paperclip className="h-3 w-3 text-green-600" />
-                                            <a 
-                                              href={item.attachment_url} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              className="text-[10px] text-green-700 hover:underline flex items-center gap-1"
+                                    {/* Botões Anexar e Obs na mesma linha */}
+                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                      {/* Anexar - só para "Upload do contrato" */}
+                                      {isContractUploadItem(item.title) && (
+                                        <>
+                                          {item.attachment_url ? (
+                                            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded px-2 py-1">
+                                              <Paperclip className="h-3 w-3 text-green-600" />
+                                              <a 
+                                                href={item.attachment_url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-[10px] text-green-700 hover:underline flex items-center gap-1"
+                                              >
+                                                Ver contrato <ExternalLink className="h-2.5 w-2.5" />
+                                              </a>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                onClick={() => removeAttachment.mutate(item.id)}
+                                              >
+                                                <X className="h-3 w-3" />
+                                              </Button>
+                                            </div>
+                                          ) : (
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm" 
+                                              className="h-6 text-[10px] px-2 gap-1 bg-white hover:bg-slate-50"
+                                              onClick={() => handleFileSelect(item.id)}
+                                              disabled={uploadAttachment.isPending && uploadingItemId === item.id}
                                             >
-                                              Ver contrato <ExternalLink className="h-2.5 w-2.5" />
-                                            </a>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-5 w-5 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                              onClick={() => removeAttachment.mutate(item.id)}
-                                            >
-                                              <X className="h-3 w-3" />
+                                              {uploadAttachment.isPending && uploadingItemId === item.id ? (
+                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                              ) : (
+                                                <Paperclip className="h-3 w-3" />
+                                              )}
+                                              Anexar
                                             </Button>
-                                          </div>
-                                        ) : (
+                                          )}
+                                        </>
+                                      )}
+
+                                      {/* Botão Obs */}
+                                      {editingObsItemId !== item.id && !item.observations && (
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          className="h-6 text-[10px] px-2 gap-1 bg-white hover:bg-slate-50"
+                                          onClick={() => handleStartEditObs(item)}
+                                        >
+                                          <FileText className="h-3 w-3" /> Obs
+                                        </Button>
+                                      )}
+                                    </div>
+
+                                    {/* Campo de edição de observação */}
+                                    {editingObsItemId === item.id && (
+                                      <div className="mt-2 space-y-2">
+                                        <Textarea 
+                                          value={obsText}
+                                          onChange={(e) => setObsText(e.target.value)}
+                                          placeholder="Digite a observação..."
+                                          className="text-xs min-h-[60px] resize-none"
+                                          autoFocus
+                                        />
+                                        <div className="flex gap-2">
                                           <Button 
-                                            variant="outline" 
                                             size="sm" 
-                                            className="h-6 text-[10px] px-2 gap-1 bg-white hover:bg-slate-50"
-                                            onClick={() => handleFileSelect(item.id)}
-                                            disabled={uploadAttachment.isPending && uploadingItemId === item.id}
+                                            className="h-6 text-[10px] px-3"
+                                            onClick={() => handleSaveObs(item.id)}
+                                            disabled={saveObservation.isPending}
                                           >
-                                            {uploadAttachment.isPending && uploadingItemId === item.id ? (
-                                              <Loader2 className="h-3 w-3 animate-spin" />
-                                            ) : (
-                                              <Paperclip className="h-3 w-3" />
-                                            )}
-                                            Anexar
+                                            {saveObservation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar"}
                                           </Button>
-                                        )}
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-6 text-[10px] px-3"
+                                            onClick={handleCancelObs}
+                                          >
+                                            Cancelar
+                                          </Button>
+                                        </div>
                                       </div>
                                     )}
 
-                                    {/* Botão Obs - sempre aparece */}
-                                    <div className="flex items-center gap-2 mt-2">
-                                      <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 bg-white hover:bg-slate-50">
-                                        <FileText className="h-3 w-3" /> Obs
-                                      </Button>
-                                    </div>
+                                    {/* Exibição da observação salva */}
+                                    {item.observations && editingObsItemId !== item.id && (
+                                      <div className="mt-2 bg-slate-50 border border-slate-200 rounded p-2">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <p className="text-[11px] text-slate-600 whitespace-pre-wrap flex-1">{item.observations}</p>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-5 w-5 p-0 text-slate-400 hover:text-slate-600 shrink-0"
+                                            onClick={() => handleStartEditObs(item)}
+                                          >
+                                            <Pencil className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               );
