@@ -110,8 +110,14 @@ export default function Leads() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("leads").delete().eq("id", id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (deletedId) => {
+      // Fecha o sheet se o lead excluído estava selecionado
+      if (selectedLead?.id === deletedId) {
+        setSheetOpen(false);
+        setSelectedLead(null);
+      }
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       toast.success("Lead excluído com sucesso!");
     },
