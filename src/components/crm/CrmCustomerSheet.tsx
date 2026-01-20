@@ -486,17 +486,17 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
                                       )}
                                     </div>
 
-                                    {/* Campo de edição de observação */}
+                                    {/* Campo de edição/visualização de observação - só aparece ao clicar */}
                                     {editingObsItemId === item.id && (
-                                      <div className="mt-2 space-y-2">
+                                      <div className="mt-2 space-y-2 bg-slate-50 border border-slate-200 rounded p-2">
                                         <Textarea 
                                           value={obsText}
                                           onChange={(e) => setObsText(e.target.value)}
                                           placeholder="Digite a observação..."
-                                          className="text-xs min-h-[60px] resize-none"
+                                          className="text-xs min-h-[60px] resize-none bg-white"
                                           autoFocus
                                         />
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 items-center">
                                           <Button 
                                             size="sm" 
                                             className="h-6 text-[10px] px-3"
@@ -513,36 +513,23 @@ export function CrmCustomerSheet({ journeyId, open, onOpenChange }: CrmCustomerS
                                           >
                                             Cancelar
                                           </Button>
+                                          {item.observations && (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 text-[10px] px-2 text-red-500 hover:text-red-700 hover:bg-red-50 ml-auto"
+                                              onClick={() => {
+                                                deleteObservation.mutate(item.id);
+                                                handleCancelObs();
+                                              }}
+                                            >
+                                              <Trash2 className="h-3 w-3 mr-1" /> Excluir
+                                            </Button>
+                                          )}
                                         </div>
                                       </div>
                                     )}
 
-                                    {/* Exibição da observação salva */}
-                                    {item.observations && editingObsItemId !== item.id && (
-                                      <div className="mt-2 bg-slate-50 border border-slate-200 rounded p-2">
-                                        <div className="flex items-start justify-between gap-2">
-                                          <p className="text-[11px] text-slate-600 whitespace-pre-wrap flex-1">{item.observations}</p>
-                                          <div className="flex items-center gap-1 shrink-0">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-5 w-5 p-0 text-slate-400 hover:text-slate-600"
-                                              onClick={() => handleStartEditObs(item)}
-                                            >
-                                              <Pencil className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-5 w-5 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
-                                              onClick={() => deleteObservation.mutate(item.id)}
-                                            >
-                                              <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
                                   </div>
                                 </div>
                               );
