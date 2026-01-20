@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, Mail, Phone, User, Package, DollarSign, FileText, Trash2, Pencil, Check, X, ShoppingBag, TrendingUp, Flag } from "lucide-react";
+import { MessageCircle, Mail, Phone, User, Package, DollarSign, FileText, Trash2, Pencil, Check, X, ShoppingBag, TrendingUp, Flag, ArrowRightLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -64,6 +64,8 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isEditingPriority, setIsEditingPriority] = useState(false);
   const [selectedPriority, setSelectedPriority] = useState<string>("Medium");
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
 
   // Fetch products for the selector
   const { data: products = [] } = useQuery({
@@ -80,7 +82,20 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
     enabled: open,
   });
 
-  // Fetch form submission for this lead/product
+  // Fetch pipelines for transfer
+  const { data: pipelines = [] } = useQuery({
+    queryKey: ["pipelines-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pipelines")
+        .select("id, name")
+        .eq("archived", false)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: open,
+  });
   const { data: formSubmission } = useQuery({
     queryKey: ["form-submission", deal?.lead_id, deal?.product_id],
     queryFn: async () => {
@@ -190,6 +205,50 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
       toast({
         title: "Erro ao excluir",
         description: "Não foi possível excluir o deal. Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Transfer deal to another pipeline mutation
+  const transferPipelineMutation = useMutation({
+    mutationFn: async ({ dealId, pipelineId }: { dealId: string; pipelineId: string }) => {
+      // Get first stage of the target pipeline
+      const { data: firstStage, error: stageError } = await supabase
+        .from("pipeline_stages")
+        .select("id")
+        .eq("pipeline_id", pipelineId)
+        .order("order_index", { ascending: true })
+        .limit(1)
+        .single();
+      
+      if (stageError || !firstStage) throw new Error("Pipeline sem etapas configuradas");
+
+      const { error } = await supabase
+        .from("deals")
+        .update({
+          pipeline_id: pipelineId,
+          stage_id: firstStage.id,
+        })
+        .eq("id", dealId);
+      
+      if (error) throw error;
+      
+      return pipelines.find(p => p.id === pipelineId)?.name || "Nova Pipeline";
+    },
+    onSuccess: (pipelineName) => {
+      toast({
+        title: "Deal transferido",
+        description: `O deal foi movido para "${pipelineName}" com sucesso.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      setIsTransferring(false);
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao transferir",
+        description: error.message || "Não foi possível transferir o deal.",
         variant: "destructive",
       });
     },
@@ -505,6 +564,81 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
                 <span className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-semibold ${priorityConfig.className}`}>
                   {priorityConfig.label}
                 </span>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Transfer Pipeline */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-primary flex items-center gap-2">
+                  <ArrowRightLeft className="h-4 w-4" />
+                  Pipeline
+                </h4>
+                {!isTransferring && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedPipelineId(deal.pipeline_id ?? null);
+                      setIsTransferring(true);
+                    }}
+                    className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              
+              {isTransferring ? (
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={selectedPipelineId ?? ""}
+                    onValueChange={setSelectedPipelineId}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecione uma pipeline" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pipelines
+                        .filter(p => p.id !== deal.pipeline_id)
+                        .map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      if (selectedPipelineId && selectedPipelineId !== deal.pipeline_id) {
+                        transferPipelineMutation.mutate({ dealId: deal.id, pipelineId: selectedPipelineId });
+                      }
+                    }}
+                    disabled={transferPipelineMutation.isPending || !selectedPipelineId || selectedPipelineId === deal.pipeline_id}
+                    className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setIsTransferring(false);
+                      setSelectedPipelineId(null);
+                    }}
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {pipelines.find(p => p.id === deal.pipeline_id)?.name || "Pipeline atual"}
+                </p>
               )}
             </div>
 
