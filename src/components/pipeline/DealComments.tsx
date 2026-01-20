@@ -78,22 +78,14 @@ export function DealComments({ dealId }: DealCommentsProps) {
       <div className="border rounded-xl p-4 bg-card">
         <form onSubmit={handleSubmit} className="space-y-3">
           <Textarea
-            placeholder="Escrever um comentário..."
+            placeholder="    Escrever um comentário..."
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             className="min-h-[100px] resize-y border-0 shadow-none focus-visible:ring-0 p-0 text-sm"
           />
           <div className="flex justify-end">
-            <Button
-              type="submit"
-              disabled={addComment.isPending || !newComment.trim()}
-              className="gap-2"
-            >
-              {addComment.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
+            <Button type="submit" disabled={addComment.isPending || !newComment.trim()} className="gap-2">
+              {addComment.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Enviar
             </Button>
           </div>
