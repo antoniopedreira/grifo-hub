@@ -31,7 +31,8 @@ interface ProductForm {
   active: boolean;
   external_id: string;
   pipeline_id: string;
-  is_crm_trigger: boolean; // ADICIONADO AQUI
+  is_crm_trigger: boolean;
+  lead_origin: string;
 }
 
 export function ProductEditSheet({ product, open, onOpenChange }: ProductEditSheetProps) {
@@ -47,7 +48,8 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
     active: true,
     external_id: "",
     pipeline_id: "",
-    is_crm_trigger: false, // VALOR INICIAL
+    is_crm_trigger: false,
+    lead_origin: "",
   });
 
   const queryClient = useQueryClient();
@@ -67,7 +69,8 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         active: product.active ?? true,
         external_id: product.external_id || "",
         pipeline_id: (product as any).pipeline_id || "",
-        is_crm_trigger: (product as any).is_crm_trigger ?? false, // CARREGA DO BANCO
+        is_crm_trigger: (product as any).is_crm_trigger ?? false,
+        lead_origin: (product as any).lead_origin || "",
       });
     }
   }, [product]);
@@ -137,7 +140,8 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         active: form.active,
         external_id: form.external_id || null,
         pipeline_id: form.create_deal && form.pipeline_id ? form.pipeline_id : null,
-        is_crm_trigger: form.is_crm_trigger, // ENVIA PARA O BANCO
+        is_crm_trigger: form.is_crm_trigger,
+        lead_origin: form.funnel_type === "internal_form" ? (form.lead_origin || null) : null,
       };
 
       const { data, error } = await supabase
@@ -315,21 +319,36 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
             )}
 
             {form.funnel_type === "internal_form" && (
-              <div className="space-y-2">
-                <Label htmlFor="template">Template do Formulário</Label>
-                <Select value={form.template_id} onValueChange={(value) => setForm({ ...form, template_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um formulário" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formTemplates?.map((tpl) => (
-                      <SelectItem key={tpl.id} value={tpl.id}>
-                        {tpl.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="template">Template do Formulário</Label>
+                  <Select value={form.template_id} onValueChange={(value) => setForm({ ...form, template_id: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um formulário" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {formTemplates?.map((tpl) => (
+                        <SelectItem key={tpl.id} value={tpl.id}>
+                          {tpl.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lead_origin">Origem do Lead</Label>
+                  <Input
+                    id="lead_origin"
+                    placeholder="Ex: Mentoria 360, Webinar VIP..."
+                    value={form.lead_origin}
+                    onChange={(e) => setForm({ ...form, lead_origin: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Texto gravado na coluna "Origem" do lead ao preencher este formulário.
+                  </p>
+                </div>
+              </>
             )}
 
             {/* Create Deal Switch */}
