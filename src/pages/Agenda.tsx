@@ -17,7 +17,6 @@ type ViewMode = "calendar" | "kanban" | "list";
 type TeamMember = Tables<"team_members">;
 type MissionStatus = Enums<"mission_status">;
 
-const departments = ["Marketing", "Comercial", "Produto", "Admin", "Financeiro", "Obras", "RH", "TI"];
 const statuses: MissionStatus[] = ["Pendente", "Em Andamento", "Em Revisão", "Concluído", "Stand-by"];
 
 export default function Agenda() {
@@ -37,6 +36,22 @@ export default function Agenda() {
       const { data, error } = await supabase.from("team_members").select("*").eq("active", true).order("name");
       if (error) throw error;
       return data as TeamMember[];
+    },
+  });
+
+  // Busca departamentos únicos das missões
+  const { data: departments = [] } = useQuery({
+    queryKey: ["mission_departments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("team_missions")
+        .select("department")
+        .not("department", "is", null);
+      if (error) throw error;
+      
+      // Extrai departamentos únicos e ordena
+      const uniqueDepts = [...new Set(data.map(m => m.department).filter(Boolean))] as string[];
+      return uniqueDepts.sort((a, b) => a.localeCompare(b));
     },
   });
 
