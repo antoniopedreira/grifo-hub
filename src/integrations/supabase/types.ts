@@ -297,6 +297,7 @@ export type Database = {
           ltv: number | null
           origin: string | null
           phone: string | null
+          social_media: string | null
           status: string | null
         }
         Insert: {
@@ -308,6 +309,7 @@ export type Database = {
           ltv?: number | null
           origin?: string | null
           phone?: string | null
+          social_media?: string | null
           status?: string | null
         }
         Update: {
@@ -319,6 +321,7 @@ export type Database = {
           ltv?: number | null
           origin?: string | null
           phone?: string | null
+          social_media?: string | null
           status?: string | null
         }
         Relationships: []

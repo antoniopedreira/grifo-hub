@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Flag,
   MessageSquare,
+  Globe,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -37,9 +38,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import type { Deal } from "./types";
-import { DealComments } from "./DealComments"; // Importação adicionada
+import { DealComments } from "./DealComments";
 
 interface DealDetailSheetProps {
   deal: Deal | null;
@@ -70,6 +72,12 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isEditingPriority, setIsEditingPriority] = useState(false);
   const [selectedPriority, setSelectedPriority] = useState<string>("Medium");
+  
+  // Contact editing state
+  const [isEditingContact, setIsEditingContact] = useState(false);
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editSocialMedia, setEditSocialMedia] = useState("");
 
   // Fetch products for the selector
   const { data: products = [] } = useQuery({
@@ -228,6 +236,60 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
     setSelectedPriority("Medium");
   };
 
+  // Update lead contact mutation
+  const updateContactMutation = useMutation({
+    mutationFn: async ({ leadId, email, phone, socialMedia }: { leadId: string; email: string; phone: string; socialMedia: string }) => {
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          email: email || null,
+          phone: phone || null,
+          social_media: socialMedia || null,
+        })
+        .eq("id", leadId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Contato atualizado",
+        description: "Os dados de contato foram atualizados com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      setIsEditingContact(false);
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar os dados de contato.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStartEditContact = () => {
+    setEditEmail(deal?.lead?.email || "");
+    setEditPhone(deal?.lead?.phone || "");
+    setEditSocialMedia((deal?.lead as any)?.social_media || "");
+    setIsEditingContact(true);
+  };
+
+  const handleSaveContact = () => {
+    if (!deal?.lead_id) return;
+    updateContactMutation.mutate({
+      leadId: deal.lead_id,
+      email: editEmail,
+      phone: editPhone,
+      socialMedia: editSocialMedia,
+    });
+  };
+
+  const handleCancelEditContact = () => {
+    setIsEditingContact(false);
+    setEditEmail("");
+    setEditPhone("");
+    setEditSocialMedia("");
+  };
+
   if (!deal) return null;
 
   const lead = deal.lead;
@@ -334,34 +396,104 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
           <TabsContent value="dados" className="space-y-6 mt-4">
             {/* Contact Info */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-primary flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Contato
-              </h4>
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-primary flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Contato
+                </h4>
+                {!isEditingContact && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleStartEditContact}
+                    className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span>{lead?.email || "—"}</span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{lead?.phone || "—"}</span>
-                  {whatsappLink && (
+              {isEditingContact ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Input
+                      type="email"
+                      placeholder="Email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Input
+                      type="tel"
+                      placeholder="Telefone"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Input
+                      placeholder="Rede Social (Instagram, LinkedIn...)"
+                      value={editSocialMedia}
+                      onChange={(e) => setEditSocialMedia(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 justify-end">
                     <Button
                       variant="ghost"
-                      size="sm"
-                      asChild
-                      className="h-6 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      size="icon"
+                      onClick={handleSaveContact}
+                      disabled={updateContactMutation.isPending}
+                      className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
                     >
-                      <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                        <MessageCircle className="h-4 w-4" />
-                      </a>
+                      <Check className="h-4 w-4" />
                     </Button>
-                  )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleCancelEditContact}
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span>{lead?.email || "—"}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span>{lead?.phone || "—"}</span>
+                    {whatsappLink && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                        className="h-6 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      >
+                        <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                          <MessageCircle className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <span>{(lead as any)?.social_media || "—"}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <Separator />
