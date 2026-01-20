@@ -1,22 +1,27 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, Mail, Phone, User, Package, DollarSign, FileText, Trash2, Pencil, Check, X, ShoppingBag, TrendingUp, Flag, ArrowRightLeft } from "lucide-react";
+import {
+  MessageCircle,
+  Mail,
+  Phone,
+  User,
+  Package,
+  DollarSign,
+  FileText,
+  Trash2,
+  Pencil,
+  Check,
+  X,
+  ShoppingBag,
+  TrendingUp,
+  Flag,
+  MessageSquare,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +39,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import type { Deal } from "./types";
+import { DealComments } from "./DealComments"; // Importação adicionada
 
 interface DealDetailSheetProps {
   deal: Deal | null;
@@ -64,8 +70,6 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isEditingPriority, setIsEditingPriority] = useState(false);
   const [selectedPriority, setSelectedPriority] = useState<string>("Medium");
-  const [isTransferring, setIsTransferring] = useState(false);
-  const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
 
   // Fetch products for the selector
   const { data: products = [] } = useQuery({
@@ -82,31 +86,18 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
     enabled: open,
   });
 
-  // Fetch pipelines for transfer
-  const { data: pipelines = [] } = useQuery({
-    queryKey: ["pipelines-list"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pipelines")
-        .select("id, name")
-        .eq("archived", false)
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
-    enabled: open,
-  });
+  // Fetch form submission for this lead/product
   const { data: formSubmission } = useQuery({
     queryKey: ["form-submission", deal?.lead_id, deal?.product_id],
     queryFn: async () => {
       if (!deal?.lead_id) return null;
-      
+
       const { data, error } = await supabase
         .from("form_submissions")
         .select("*")
         .eq("lead_id", deal.lead_id)
         .maybeSingle();
-      
+
       if (error) throw error;
       return data;
     },
@@ -118,13 +109,13 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
     queryKey: ["lead-sales-pipeline", deal?.lead_id],
     queryFn: async () => {
       if (!deal?.lead_id) return [];
-      
+
       const { data, error } = await supabase
         .from("sales")
         .select("*, products(name)")
         .eq("lead_id", deal.lead_id)
         .order("transaction_date", { ascending: false });
-      
+
       if (error) throw error;
       return data as Sale[];
     },
@@ -164,10 +155,7 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
   // Update deal priority mutation
   const updatePriorityMutation = useMutation({
     mutationFn: async ({ dealId, priority }: { dealId: string; priority: string }) => {
-      const { error } = await supabase
-        .from("deals")
-        .update({ priority })
-        .eq("id", dealId);
+      const { error } = await supabase.from("deals").update({ priority }).eq("id", dealId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -205,50 +193,6 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
       toast({
         title: "Erro ao excluir",
         description: "Não foi possível excluir o deal. Tente novamente.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Transfer deal to another pipeline mutation
-  const transferPipelineMutation = useMutation({
-    mutationFn: async ({ dealId, pipelineId }: { dealId: string; pipelineId: string }) => {
-      // Get first stage of the target pipeline
-      const { data: firstStage, error: stageError } = await supabase
-        .from("pipeline_stages")
-        .select("id")
-        .eq("pipeline_id", pipelineId)
-        .order("order_index", { ascending: true })
-        .limit(1)
-        .single();
-      
-      if (stageError || !firstStage) throw new Error("Pipeline sem etapas configuradas");
-
-      const { error } = await supabase
-        .from("deals")
-        .update({
-          pipeline_id: pipelineId,
-          stage_id: firstStage.id,
-        })
-        .eq("id", dealId);
-      
-      if (error) throw error;
-      
-      return pipelines.find(p => p.id === pipelineId)?.name || "Nova Pipeline";
-    },
-    onSuccess: (pipelineName) => {
-      toast({
-        title: "Deal transferido",
-        description: `O deal foi movido para "${pipelineName}" com sucesso.`,
-      });
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
-      setIsTransferring(false);
-      onOpenChange(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao transferir",
-        description: error.message || "Não foi possível transferir o deal.",
         variant: "destructive",
       });
     },
@@ -304,9 +248,7 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
   }).format(totalLtv);
 
   // Format phone for WhatsApp link
-  const whatsappLink = lead?.phone
-    ? `https://wa.me/55${lead.phone.replace(/\D/g, "")}`
-    : null;
+  const whatsappLink = lead?.phone ? `https://wa.me/55${lead.phone.replace(/\D/g, "")}` : null;
 
   const currentPriority = deal.priority || "Medium";
   const priorityConfig = priorityOptions.find((p) => p.value === currentPriority) || priorityOptions[1];
@@ -314,23 +256,17 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
   // Parse answers JSON
   const renderAnswers = () => {
     if (!formSubmission?.answers) {
-      return (
-        <p className="text-muted-foreground text-center py-8">
-          Nenhuma aplicação encontrada para este lead.
-        </p>
-      );
+      return <p className="text-muted-foreground text-center py-8">Nenhuma aplicação encontrada para este lead.</p>;
     }
 
     const answers = formSubmission.answers as Record<string, string | number | boolean>;
-    
+
     return (
       <div className="space-y-4">
         {Object.entries(answers).map(([question, answer], index) => (
           <div key={index} className="space-y-1">
             <p className="font-semibold text-primary text-sm">{question}</p>
-            <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
-              {String(answer)}
-            </p>
+            <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2">{String(answer)}</p>
           </div>
         ))}
       </div>
@@ -339,24 +275,15 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
 
   const renderSalesHistory = () => {
     if (salesHistory.length === 0) {
-      return (
-        <p className="text-muted-foreground text-center py-8">
-          Nenhuma compra registrada para este lead.
-        </p>
-      );
+      return <p className="text-muted-foreground text-center py-8">Nenhuma compra registrada para este lead.</p>;
     }
 
     return (
       <div className="space-y-3">
         {salesHistory.map((sale) => (
-          <div
-            key={sale.id}
-            className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border"
-          >
+          <div key={sale.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
             <div className="flex-1">
-              <p className="font-medium text-sm">
-                {sale.products?.name || sale.product_name || "Produto"}
-              </p>
+              <p className="font-medium text-sm">{sale.products?.name || sale.product_name || "Produto"}</p>
               <p className="text-xs text-muted-foreground">
                 {sale.transaction_date
                   ? format(new Date(sale.transaction_date), "dd/MM/yyyy", { locale: ptBR })
@@ -391,8 +318,14 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
         </SheetHeader>
 
         <Tabs defaultValue="dados" className="mt-6">
-          <TabsList className="grid w-full grid-cols-3">
+          {/* Atualizado para 4 colunas para acomodar Comentários */}
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="dados">Dados</TabsTrigger>
+            <TabsTrigger value="comentarios" className="flex items-center gap-1">
+              <MessageSquare className="h-3 w-3 sm:hidden" />
+              <span className="hidden sm:inline">Comentários</span>
+              <span className="sm:hidden">Chat</span>
+            </TabsTrigger>
             <TabsTrigger value="compras">Compras</TabsTrigger>
             <TabsTrigger value="aplicacao">Aplicação</TabsTrigger>
           </TabsList>
@@ -405,13 +338,13 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
                 <Mail className="h-4 w-4" />
                 Contato
               </h4>
-              
+
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-muted-foreground" />
                   <span>{lead?.email || "—"}</span>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
                   <span>{lead?.phone || "—"}</span>
@@ -451,7 +384,7 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
                   </Button>
                 )}
               </div>
-              
+
               {isEditingProduct ? (
                 <div className="flex items-center gap-2">
                   <Select
@@ -524,13 +457,10 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
                   </Button>
                 )}
               </div>
-              
+
               {isEditingPriority ? (
                 <div className="flex items-center gap-2">
-                  <Select
-                    value={selectedPriority}
-                    onValueChange={setSelectedPriority}
-                  >
+                  <Select value={selectedPriority} onValueChange={setSelectedPriority}>
                     <SelectTrigger className="flex-1">
                       <SelectValue placeholder="Selecione a prioridade" />
                     </SelectTrigger>
@@ -561,84 +491,11 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
                   </Button>
                 </div>
               ) : (
-                <span className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-semibold ${priorityConfig.className}`}>
+                <span
+                  className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-semibold ${priorityConfig.className}`}
+                >
                   {priorityConfig.label}
                 </span>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Transfer Pipeline */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-primary flex items-center gap-2">
-                  <ArrowRightLeft className="h-4 w-4" />
-                  Pipeline
-                </h4>
-                {!isTransferring && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedPipelineId(deal.pipeline_id ?? null);
-                      setIsTransferring(true);
-                    }}
-                    className="h-7 px-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-              
-              {isTransferring ? (
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={selectedPipelineId ?? ""}
-                    onValueChange={setSelectedPipelineId}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Selecione uma pipeline" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pipelines
-                        .filter(p => p.id !== deal.pipeline_id)
-                        .map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      if (selectedPipelineId && selectedPipelineId !== deal.pipeline_id) {
-                        transferPipelineMutation.mutate({ dealId: deal.id, pipelineId: selectedPipelineId });
-                      }
-                    }}
-                    disabled={transferPipelineMutation.isPending || !selectedPipelineId || selectedPipelineId === deal.pipeline_id}
-                    className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                  >
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setIsTransferring(false);
-                      setSelectedPipelineId(null);
-                    }}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {pipelines.find(p => p.id === deal.pipeline_id)?.name || "Pipeline atual"}
-                </p>
               )}
             </div>
 
@@ -649,6 +506,11 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
               <h4 className="font-semibold text-primary">Status</h4>
               <span className="capitalize">{deal.status || "open"}</span>
             </div>
+          </TabsContent>
+
+          {/* Tab: Comentários (NOVA) */}
+          <TabsContent value="comentarios" className="mt-4">
+            <DealComments dealId={deal.id} />
           </TabsContent>
 
           {/* Tab: Compras */}
@@ -699,8 +561,8 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
               <AlertDialogHeader>
                 <AlertDialogTitle>Excluir este deal?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta ação removerá apenas o deal do pipeline. O lead e todas as vendas 
-                  associadas serão mantidos no sistema.
+                  Esta ação removerá apenas o deal do pipeline. O lead e todas as vendas associadas serão mantidos no
+                  sistema.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
