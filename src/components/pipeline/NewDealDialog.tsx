@@ -154,10 +154,10 @@ export function NewDealDialog({
       // Get the highest category level from selected products
       const targetLevel = getCategoryExclusionLevel();
       
-      // Get all products from categories at or above the target level (for hierarchy exclusion)
-      const productsInHigherTiers = products?.filter(p => {
+      // Get all products from categories STRICTLY ABOVE the target level (for hierarchy exclusion)
+      const productsInStrictlyHigherTiers = products?.filter(p => {
         const categorySlug = (p.product_categories as any)?.slug;
-        return categorySlug && CATEGORY_HIERARCHY[categorySlug] >= targetLevel;
+        return categorySlug && CATEGORY_HIERARCHY[categorySlug] > targetLevel;
       }).map(p => p.id) || [];
 
       // Get leads who bought the selected products (via sales table)
@@ -168,15 +168,31 @@ export function NewDealDialog({
 
       const leadIdsWhoBoughtSelected = new Set(salesData?.map((s) => s.lead_id).filter(Boolean) || []);
 
-      // Get leads who bought products from higher or equal tier categories
-      let leadIdsWhoBoughtHigherTier = new Set<string>();
-      if (productsInHigherTiers.length > 0) {
+      // Get leads who bought products from STRICTLY HIGHER tier categories
+      let leadIdsWhoBoughtStrictlyHigherTier = new Set<string>();
+      if (productsInStrictlyHigherTiers.length > 0) {
         const { data: higherTierSales } = await supabase
           .from("sales")
           .select("lead_id")
-          .in("product_id", productsInHigherTiers);
+          .in("product_id", productsInStrictlyHigherTiers);
         
-        leadIdsWhoBoughtHigherTier = new Set(higherTierSales?.map((s) => s.lead_id).filter(Boolean) || []);
+        leadIdsWhoBoughtStrictlyHigherTier = new Set(higherTierSales?.map((s) => s.lead_id).filter(Boolean) || []);
+      }
+
+      // Get leads who bought products from same or higher tier (for "Novo" filter)
+      const productsInSameOrHigherTiers = products?.filter(p => {
+        const categorySlug = (p.product_categories as any)?.slug;
+        return categorySlug && CATEGORY_HIERARCHY[categorySlug] >= targetLevel;
+      }).map(p => p.id) || [];
+
+      let leadIdsWhoBoughtSameOrHigherTier = new Set<string>();
+      if (productsInSameOrHigherTiers.length > 0) {
+        const { data: sameOrHigherTierSales } = await supabase
+          .from("sales")
+          .select("lead_id")
+          .in("product_id", productsInSameOrHigherTiers);
+        
+        leadIdsWhoBoughtSameOrHigherTier = new Set(sameOrHigherTierSales?.map((s) => s.lead_id).filter(Boolean) || []);
       }
 
       // Fetch all leads with basic filters
@@ -200,15 +216,16 @@ export function NewDealDialog({
 
       // Smart filter based on status + product + hierarchy
       if (statusFilter === "Cliente") {
-        // Cliente + Produto = apenas quem COMPROU esse produto específico
-        filteredLeads = filteredLeads.filter((lead) => leadIdsWhoBoughtSelected.has(lead.id));
+        // Cliente + Produto = quem COMPROU esse produto específico, MAS exclui quem tem produto de tier SUPERIOR
+        filteredLeads = filteredLeads.filter((lead) => 
+          leadIdsWhoBoughtSelected.has(lead.id) && !leadIdsWhoBoughtStrictlyHigherTier.has(lead.id)
+        );
       } else if (statusFilter === "Novo") {
         // Novo + Produto = apenas quem NÃO comprou produtos da mesma categoria ou superior
-        // Isso aplica a hierarquia: se buscar Básico, exclui quem tem Básico, Intermediário ou Avançado
-        filteredLeads = filteredLeads.filter((lead) => !leadIdsWhoBoughtHigherTier.has(lead.id));
+        filteredLeads = filteredLeads.filter((lead) => !leadIdsWhoBoughtSameOrHigherTier.has(lead.id));
       } else {
-        // "Todos" = aplica hierarquia também - exclui quem já está em tier igual ou superior
-        filteredLeads = filteredLeads.filter((lead) => !leadIdsWhoBoughtHigherTier.has(lead.id));
+        // "Todos" = mostra quem ainda não tem tier superior, mas pode ou não ter comprado o produto
+        filteredLeads = filteredLeads.filter((lead) => !leadIdsWhoBoughtStrictlyHigherTier.has(lead.id));
       }
 
       setSearchResults(filteredLeads);
@@ -595,51 +612,52 @@ export function NewDealDialog({
                     </div>
                   </div>
 
-                  {/* Product Filter - Required - Grouped by Category */}
+                  {/* Product Filter - Required - Compact Collapsible */}
                   {products && products.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-[10px] text-muted-foreground">
-                        Produto <span className="text-destructive">*</span>
-                      </Label>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] text-muted-foreground">
+                          Produto <span className="text-destructive">*</span>
+                          {selectedProductFilters.length > 0 && (
+                            <span className="ml-1 text-primary">({selectedProductFilters.length} selecionado{selectedProductFilters.length > 1 ? 's' : ''})</span>
+                          )}
+                        </Label>
+                      </div>
                       
-                      {/* Group products by category in hierarchy order */}
-                      {['avancados', 'intermediarios', 'basicos'].map((categorySlug) => {
-                        const categoryProducts = products.filter(
-                          p => (p.product_categories as any)?.slug === categorySlug
-                        );
-                        if (categoryProducts.length === 0) return null;
-                        
-                        const categoryName = (categoryProducts[0]?.product_categories as any)?.name || categorySlug;
-                        
-                        return (
-                          <div key={categorySlug} className="space-y-1">
-                            <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">
-                              {categoryName}
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {categoryProducts.map((product) => (
-                                <Badge
-                                  key={product.id}
-                                  variant={selectedProductFilters.includes(product.id) ? "default" : "outline"}
-                                  className="cursor-pointer hover:bg-secondary/80 transition-colors text-xs py-0 h-5"
-                                  onClick={() => toggleProductFilter(product.id)}
-                                >
-                                  {product.name}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {/* Compact inline display */}
+                      <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto p-1.5 border rounded bg-background/50">
+                        {['avancados', 'intermediarios', 'basicos'].map((categorySlug) => {
+                          const categoryProducts = products.filter(
+                            p => (p.product_categories as any)?.slug === categorySlug
+                          );
+                          if (categoryProducts.length === 0) return null;
+                          
+                          const categoryName = (categoryProducts[0]?.product_categories as any)?.name || categorySlug;
+                          const shortName = categoryName.charAt(0).toUpperCase(); // A, I, B
+                          
+                          return categoryProducts.map((product) => (
+                            <Badge
+                              key={product.id}
+                              variant={selectedProductFilters.includes(product.id) ? "default" : "outline"}
+                              className="cursor-pointer hover:bg-secondary/80 transition-colors text-[10px] py-0 h-4 px-1.5"
+                              onClick={() => toggleProductFilter(product.id)}
+                              title={`${categoryName}: ${product.name}`}
+                            >
+                              <span className="text-[8px] opacity-60 mr-0.5">{shortName}</span>
+                              {product.name.length > 15 ? product.name.slice(0, 15) + '…' : product.name}
+                            </Badge>
+                          ));
+                        })}
+                      </div>
                       
                       {selectedProductFilters.length === 0 && (
-                        <p className="text-[10px] text-muted-foreground">
-                          Selecione pelo menos 1 produto para buscar
+                        <p className="text-[9px] text-muted-foreground">
+                          Selecione pelo menos 1 produto
                         </p>
                       )}
                       {selectedProductFilters.length > 0 && (
-                        <p className="text-[10px] text-amber-600">
-                          ⚠️ Leads com produtos de categorias superiores serão excluídos automaticamente
+                        <p className="text-[9px] text-amber-600">
+                          ⚠️ Leads com categorias superiores serão excluídos
                         </p>
                       )}
                     </div>
