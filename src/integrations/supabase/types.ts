@@ -169,12 +169,15 @@ export type Database = {
       }
       deals: {
         Row: {
+          cash_value: number | null
           created_at: string | null
           id: string
+          installments: number | null
           lead_id: string | null
           meeting_date: string | null
           meeting_owner_id: string | null
           order_index: number | null
+          payment_date: string | null
           payment_method: string | null
           pipeline_id: string | null
           priority: string | null
@@ -184,12 +187,15 @@ export type Database = {
           value: number | null
         }
         Insert: {
+          cash_value?: number | null
           created_at?: string | null
           id?: string
+          installments?: number | null
           lead_id?: string | null
           meeting_date?: string | null
           meeting_owner_id?: string | null
           order_index?: number | null
+          payment_date?: string | null
           payment_method?: string | null
           pipeline_id?: string | null
           priority?: string | null
@@ -199,12 +205,15 @@ export type Database = {
           value?: number | null
         }
         Update: {
+          cash_value?: number | null
           created_at?: string | null
           id?: string
+          installments?: number | null
           lead_id?: string | null
           meeting_date?: string | null
           meeting_owner_id?: string | null
           order_index?: number | null
+          payment_date?: string | null
           payment_method?: string | null
           pipeline_id?: string | null
           priority?: string | null

@@ -9,7 +9,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -21,6 +20,8 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Trophy } from "lucide-react";
+import { PaymentForm, PaymentData } from "./PaymentForm";
 import { Deal } from "./types";
 
 interface CloseSaleDialogProps {
@@ -42,7 +43,7 @@ export function CloseSaleDialog({
 }: CloseSaleDialogProps) {
   const queryClient = useQueryClient();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(deal.product_id || null);
-  const [value, setValue] = useState(deal.value?.toString() || "0");
+  const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -65,34 +66,40 @@ export function CloseSaleDialog({
   useEffect(() => {
     if (open) {
       setSelectedProductId(deal.product_id || null);
-      setValue(deal.value?.toString() || "0");
       setNotes("");
     }
   }, [open, deal]);
 
-  // Update value when product changes
-  useEffect(() => {
+  // Get initial value from product or deal
+  const getInitialValue = () => {
     if (selectedProductId && products.length > 0) {
       const selectedProduct = products.find((p) => p.id === selectedProductId);
-      if (selectedProduct?.price) {
-        setValue(selectedProduct.price.toString());
-      }
+      return selectedProduct?.price || deal.value || 0;
     }
-  }, [selectedProductId, products]);
+    return deal.value || 0;
+  };
 
   const handleSave = async () => {
+    if (!paymentData) return;
+
     setLoading(true);
-    const finalAmount = parseFloat(value) || 0;
+    const finalAmount = paymentData.value;
     const selectedProduct = products.find((p) => p.id === selectedProductId);
-    
+
     try {
-      // 1. Atualiza o Deal (Valor, Produto e Status para "won")
+      // 1. Atualiza o Deal (Valor, Produto, Pagamento e Status para "won")
       const { error: dealError } = await supabase
         .from("deals")
         .update({
           value: finalAmount,
           status: "won",
           product_id: selectedProductId,
+          payment_method: paymentData.paymentMethod,
+          payment_date: paymentData.paymentDate.toISOString().split("T")[0],
+          installments: paymentData.isSplitPayment
+            ? paymentData.cardInstallments
+            : paymentData.installments,
+          cash_value: paymentData.cashValue,
           ...(targetStageId ? { stage_id: targetStageId } : {}),
         })
         .eq("id", deal.id);
@@ -132,7 +139,7 @@ export function CloseSaleDialog({
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["lead-sales"] });
-      
+
       toast.success("Venda registrada com sucesso! 🚀");
       onSuccess();
       onOpenChange(false);
@@ -151,14 +158,20 @@ export function CloseSaleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Fechar Venda</DialogTitle>
-          <DialogDescription>Parabéns! Confirme os detalhes finais para registrar a vitória.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-green-600" />
+            Fechar Venda
+          </DialogTitle>
+          <DialogDescription>
+            Parabéns! 🎉 Confirme os detalhes finais para registrar a vitória.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
+        <div className="space-y-4 py-4">
+          {/* Produto */}
+          <div className="space-y-2">
             <Label>Produto da Venda</Label>
             <Select
               value={selectedProductId || "none"}
@@ -171,22 +184,36 @@ export function CloseSaleDialog({
                 <SelectItem value="none">Sem produto específico</SelectItem>
                 {products.map((product) => (
                   <SelectItem key={product.id} value={product.id}>
-                    {product.name} - {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(product.price || 0)}
+                    {product.name} -{" "}
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+                      product.price || 0
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-2">
-            <Label>Valor Final Negociado (R$)</Label>
-            <Input type="number" value={value} onChange={(e) => setValue(e.target.value)} />
-          </div>
-          <div className="grid gap-2">
+
+          {/* Payment Form */}
+          {open && (
+            <PaymentForm
+              key={selectedProductId || "default"}
+              initialValue={getInitialValue()}
+              initialPaymentMethod={(deal as any)?.payment_method || ""}
+              initialInstallments={(deal as any)?.installments}
+              initialCashValue={(deal as any)?.cash_value}
+              onChange={setPaymentData}
+            />
+          )}
+
+          {/* Observações */}
+          <div className="space-y-2">
             <Label>Observações (Opcional)</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Algum detalhe importante sobre o fechamento?"
+              rows={2}
             />
           </div>
         </div>
@@ -195,7 +222,11 @@ export function CloseSaleDialog({
           <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={loading} className="bg-green-600 hover:bg-green-700">
+          <Button
+            onClick={handleSave}
+            disabled={loading || !paymentData?.value}
+            className="bg-green-600 hover:bg-green-700"
+          >
             {loading ? "Registrando..." : "Confirmar Venda! 🏆"}
           </Button>
         </DialogFooter>
