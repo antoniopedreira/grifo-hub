@@ -86,6 +86,21 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
     },
   });
 
+  // Busca departamentos únicos das missões
+  const { data: existingDepartments = [] } = useQuery({
+    queryKey: ["mission_departments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("team_missions")
+        .select("department")
+        .not("department", "is", null);
+      if (error) throw error;
+      
+      const uniqueDepts = [...new Set(data.map(m => m.department).filter(Boolean))] as string[];
+      return uniqueDepts.sort((a, b) => a.localeCompare(b));
+    },
+  });
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -417,7 +432,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {["Marketing", "Comercial", "Produto", "Admin", "Financeiro", "Obras", "RH", "TI"].map((dept) => (
+                  {existingDepartments.map((dept) => (
                     <SelectItem key={dept} value={dept}>
                       {dept}
                     </SelectItem>
