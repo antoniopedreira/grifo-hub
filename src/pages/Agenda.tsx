@@ -11,6 +11,7 @@ import { AgendaCalendar } from "@/components/agenda/AgendaCalendar";
 import { AgendaKanban } from "@/components/agenda/AgendaKanban";
 import { AgendaList } from "@/components/agenda/AgendaList";
 import { MissionSheet } from "@/components/agenda/MissionSheet";
+import { TeamDelayRanking } from "@/components/agenda/TeamDelayRanking";
 import { useStandbyAutomation } from "@/hooks/useStandbyAutomation";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, Enums } from "@/integrations/supabase/types";
@@ -219,25 +220,36 @@ export default function Agenda() {
         </div>
       </div>
 
-      {/* Content */}
-      {viewMode === "calendar" ? (
-        <AgendaCalendar 
-          ownerFilter={ownerFilter.length > 0 ? ownerFilter : null} 
-        />
-      ) : viewMode === "list" ? (
-        <AgendaList
-          ownerFilter={ownerFilter.length > 0 ? ownerFilter : null}
-          departmentFilter={departmentFilter.length > 0 ? departmentFilter : null}
-          statusFilter={statusFilter.length > 0 ? statusFilter : null}
-          searchTerm={searchTerm}
-        />
-      ) : (
-        <AgendaKanban 
-          ownerFilter={ownerFilter.length > 0 ? ownerFilter : null}
-          departmentFilter={departmentFilter.length > 0 ? departmentFilter : null} 
-          searchTerm={searchTerm} 
-        />
-      )}
+      {/* Content with optional ranking sidebar */}
+      <div className="flex gap-6">
+        <div className="flex-1 min-w-0">
+          {viewMode === "calendar" ? (
+            <AgendaCalendar 
+              ownerFilter={ownerFilter.length > 0 ? ownerFilter : null} 
+            />
+          ) : viewMode === "list" ? (
+            <AgendaList
+              ownerFilter={ownerFilter.length > 0 ? ownerFilter : null}
+              departmentFilter={departmentFilter.length > 0 ? departmentFilter : null}
+              statusFilter={statusFilter.length > 0 ? statusFilter : null}
+              searchTerm={searchTerm}
+            />
+          ) : (
+            <AgendaKanban 
+              ownerFilter={ownerFilter.length > 0 ? ownerFilter : null}
+              departmentFilter={departmentFilter.length > 0 ? departmentFilter : null} 
+              searchTerm={searchTerm} 
+            />
+          )}
+        </div>
+
+        {/* Ranking Sidebar - Only show in Kanban view */}
+        {viewMode === "kanban" && (
+          <div className="hidden xl:block w-72 flex-shrink-0">
+            <TeamDelayRanking />
+          </div>
+        )}
+      </div>
 
       {/* Mission Sheet */}
       <MissionSheet open={sheetOpen} onOpenChange={setSheetOpen} mission={null} />

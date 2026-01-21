@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { MissionSheet } from "./MissionSheet";
 import { toast } from "sonner";
+import { getDelayIndicator } from "@/hooks/useMissionDelayIndicator";
 import type { Tables, Enums } from "@/integrations/supabase/types";
 
 type Mission = Tables<"team_missions">;
@@ -255,6 +256,7 @@ export function AgendaList({ ownerFilter, departmentFilter, statusFilter, search
                   !isToday(deadlineDate) &&
                   mission.status !== "Concluído";
                 const missionData = mission as any;
+                const delayIndicator = getDelayIndicator(mission);
 
                 return (
                   <TableRow
@@ -286,6 +288,11 @@ export function AgendaList({ ownerFilter, departmentFilter, statusFilter, search
                         >
                           {mission.mission}
                         </span>
+                        {delayIndicator.level !== "none" && (
+                          <span className="text-lg" title={delayIndicator.label}>
+                            {delayIndicator.emoji}
+                          </span>
+                        )}
                         {missionData.is_recurring && (
                           <Repeat className="h-3.5 w-3.5 text-muted-foreground" />
                         )}

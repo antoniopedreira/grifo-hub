@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Target, X, Pencil, User, Clock, Building2, Crosshair, FileText, Users, Trash2, Repeat } from "lucide-react";
+import { CalendarIcon, Target, X, Pencil, User, Clock, Building2, Crosshair, FileText, Users, Trash2, Repeat, Flag, CalendarClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -22,6 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRecurringMissions } from "@/hooks/useRecurringMissions";
+import { getDelayIndicator } from "@/hooks/useMissionDelayIndicator";
 import type { Tables, Enums } from "@/integrations/supabase/types";
 
 type Mission = Tables<"team_missions">;
@@ -51,7 +52,8 @@ const formSchema = z.object({
   target_goal: z.string().optional(),
   owner_id: z.string().optional(),
   support_ids: z.array(z.string()).optional(),
-  deadline: z.date().optional(),
+  milestone_date: z.date().optional(), // Data Marco (imutável após criação)
+  deadline: z.date().optional(), // Data Variável (editável sempre)
   status: z.enum(["Pendente", "Em Andamento", "Em Revisão", "Concluído", "Stand-by"]),
   notes: z.string().optional(),
   is_recurring: z.boolean().optional(),
@@ -109,6 +111,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
       target_goal: "",
       owner_id: "",
       support_ids: [],
+      milestone_date: undefined,
       deadline: undefined,
       status: "Pendente",
       notes: "",
@@ -130,6 +133,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
         target_goal: mission.target_goal || "",
         owner_id: mission.owner_id || "",
         support_ids: missionData.support_ids || [],
+        milestone_date: missionData.milestone_date ? new Date(missionData.milestone_date) : undefined,
         deadline: mission.deadline ? new Date(mission.deadline) : undefined,
         status: mission.status || "Pendente",
         notes: mission.notes || "",
@@ -144,6 +148,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
         target_goal: "",
         owner_id: "",
         support_ids: [],
+        milestone_date: undefined,
         deadline: undefined,
         status: "Pendente",
         notes: "",
@@ -183,6 +188,11 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
         recurrence_type: data.is_recurring ? data.recurrence_type || null : null,
         recurrence_day: data.is_recurring && data.recurrence_type === "specific_day" ? data.recurrence_day : null,
       };
+
+      // Para novas missões, define milestone_date igual ao deadline inicial
+      if (!isExistingMission && data.milestone_date) {
+        payload.milestone_date = data.milestone_date.toISOString().split("T")[0];
+      }
 
       if (isExistingMission) {
         // Preserve order_index when editing (only status changes via drag should modify it)
@@ -262,6 +272,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
     if (!mission) return null;
     const missionData = mission as any;
     const supportNames = getSupportNames(missionData.support_ids);
+    const delayIndicator = getDelayIndicator(mission);
 
     return (
       <div className="space-y-6 mt-6">
@@ -271,6 +282,11 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
             <h3 className="text-lg font-semibold text-primary leading-tight flex-1">
               {mission.mission}
             </h3>
+            {delayIndicator.level !== "none" && (
+              <span className="text-2xl" title={delayIndicator.label}>
+                {delayIndicator.emoji}
+              </span>
+            )}
             {missionData.is_recurring && (
               <Badge variant="outline" className="gap-1 flex-shrink-0">
                 <Repeat className="h-3 w-3" />
@@ -331,11 +347,33 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
             </div>
           )}
 
+          {missionData.milestone_date && (
+            <div className="flex items-start gap-3">
+              <Flag className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div>
+                <p className="text-sm text-muted-foreground">Data Marco</p>
+                <p className="font-medium">
+                  {format(new Date(missionData.milestone_date), "PPP", { locale: ptBR })}
+                </p>
+                {delayIndicator.level !== "none" && (
+                  <p className={cn(
+                    "text-xs mt-1",
+                    delayIndicator.level === "critical" && "text-purple-600",
+                    delayIndicator.level === "danger" && "text-red-600",
+                    delayIndicator.level === "warning" && "text-amber-600"
+                  )}>
+                    {delayIndicator.emoji} {delayIndicator.label}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {mission.deadline && (
             <div className="flex items-start gap-3">
-              <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <CalendarClock className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-sm text-muted-foreground">Prazo Final</p>
+                <p className="text-sm text-muted-foreground">Data Variável</p>
                 <p className="font-medium">
                   {format(new Date(mission.deadline), "PPP", { locale: ptBR })}
                 </p>
@@ -542,12 +580,90 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
           />
         </div>
 
+        {/* Data Marco - Apenas para novas missões */}
+        {!isExistingMission && (
+          <FormField
+            control={form.control}
+            name="milestone_date"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel className="flex items-center gap-2">
+                  <Flag className="h-4 w-4" />
+                  Data Marco
+                </FormLabel>
+                <p className="text-xs text-muted-foreground">
+                  Data correta para conclusão (não pode ser alterada depois)
+                </p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "PPP", { locale: ptBR })
+                        ) : (
+                          <span>Selecione a data marco</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={(date) => {
+                        field.onChange(date);
+                        // Sincroniza com deadline se ainda não definido
+                        if (!form.getValues("deadline")) {
+                          form.setValue("deadline", date);
+                        }
+                      }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {/* Data Marco - Somente leitura para missões existentes */}
+        {isExistingMission && (mission as any).milestone_date && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Flag className="h-4 w-4" />
+              Data Marco
+            </label>
+            <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md border">
+              <span className="text-sm">
+                {format(new Date((mission as any).milestone_date), "PPP", { locale: ptBR })}
+              </span>
+              <Badge variant="outline" className="text-xs">Fixa</Badge>
+            </div>
+          </div>
+        )}
+
+        {/* Data Variável */}
         <FormField
           control={form.control}
           name="deadline"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Prazo Final</FormLabel>
+              <FormLabel className="flex items-center gap-2">
+                <CalendarClock className="h-4 w-4" />
+                Data Variável
+              </FormLabel>
+              <p className="text-xs text-muted-foreground">
+                Pode ser ajustada se necessário
+              </p>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>

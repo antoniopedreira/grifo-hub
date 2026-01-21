@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { MissionSheet } from "./MissionSheet";
 import { toast } from "sonner";
+import { getDelayIndicator } from "@/hooks/useMissionDelayIndicator";
 import type { Tables, Enums } from "@/integrations/supabase/types";
 
 type Mission = Tables<"team_missions">;
@@ -263,6 +264,7 @@ export function AgendaKanban({ ownerFilter, departmentFilter, searchTerm = "" }:
                             isBefore(deadlineDate, new Date()) &&
                             !isToday(deadlineDate) &&
                             mission.status !== "Concluído";
+                          const delayIndicator = getDelayIndicator(mission);
 
                           return (
                             <Draggable key={mission.id} draggableId={mission.id} index={index}>
@@ -277,7 +279,14 @@ export function AgendaKanban({ ownerFilter, departmentFilter, searchTerm = "" }:
                                     snapshot.isDragging && "shadow-lg rotate-2",
                                   )}
                                 >
-                                  <h4 className="font-medium text-sm mb-2 line-clamp-2">{mission.mission}</h4>
+                                  <div className="flex items-start gap-2">
+                                    <h4 className="font-medium text-sm mb-2 line-clamp-2 flex-1">{mission.mission}</h4>
+                                    {delayIndicator.level !== "none" && (
+                                      <span className="text-lg flex-shrink-0" title={delayIndicator.label}>
+                                        {delayIndicator.emoji}
+                                      </span>
+                                    )}
+                                  </div>
 
                                   {mission.department && (
                                     <Badge
