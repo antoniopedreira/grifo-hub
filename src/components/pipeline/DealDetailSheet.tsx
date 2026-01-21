@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  MessageCircle,
   Mail,
   Phone,
   User,
@@ -17,6 +16,7 @@ import {
   Flag,
   MessageSquare,
   Globe,
+  Calendar,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -39,10 +39,12 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import type { Deal } from "./types";
 import { DealComments } from "./DealComments";
 import { WhatsAppChat } from "./WhatsAppChat";
+import { FormAnswersPanel } from "./FormAnswersPanel";
 
 interface DealDetailSheetProps {
   deal: Deal | null;
@@ -93,24 +95,6 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
       return data;
     },
     enabled: open,
-  });
-
-  // Fetch form submission for this lead/product
-  const { data: formSubmission } = useQuery({
-    queryKey: ["form-submission", deal?.lead_id, deal?.product_id],
-    queryFn: async () => {
-      if (!deal?.lead_id) return null;
-
-      const { data, error } = await supabase
-        .from("form_submissions")
-        .select("*")
-        .eq("lead_id", deal.lead_id)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: open && !!deal?.lead_id,
   });
 
   // Fetch sales history for this lead
@@ -207,36 +191,6 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
     },
   });
 
-  const handleStartEditProduct = () => {
-    setSelectedProductId(deal?.product_id ?? null);
-    setIsEditingProduct(true);
-  };
-
-  const handleSaveProduct = () => {
-    if (!deal) return;
-    updateProductMutation.mutate({ dealId: deal.id, productId: selectedProductId });
-  };
-
-  const handleCancelEditProduct = () => {
-    setIsEditingProduct(false);
-    setSelectedProductId(null);
-  };
-
-  const handleStartEditPriority = () => {
-    setSelectedPriority(deal?.priority || "Medium");
-    setIsEditingPriority(true);
-  };
-
-  const handleSavePriority = () => {
-    if (!deal) return;
-    updatePriorityMutation.mutate({ dealId: deal.id, priority: selectedPriority });
-  };
-
-  const handleCancelEditPriority = () => {
-    setIsEditingPriority(false);
-    setSelectedPriority("Medium");
-  };
-
   // Update lead contact mutation
   const updateContactMutation = useMutation({
     mutationFn: async ({ leadId, email, phone, socialMedia }: { leadId: string; email: string; phone: string; socialMedia: string }) => {
@@ -266,6 +220,36 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
       });
     },
   });
+
+  const handleStartEditProduct = () => {
+    setSelectedProductId(deal?.product_id ?? null);
+    setIsEditingProduct(true);
+  };
+
+  const handleSaveProduct = () => {
+    if (!deal) return;
+    updateProductMutation.mutate({ dealId: deal.id, productId: selectedProductId });
+  };
+
+  const handleCancelEditProduct = () => {
+    setIsEditingProduct(false);
+    setSelectedProductId(null);
+  };
+
+  const handleStartEditPriority = () => {
+    setSelectedPriority(deal?.priority || "Medium");
+    setIsEditingPriority(true);
+  };
+
+  const handleSavePriority = () => {
+    if (!deal) return;
+    updatePriorityMutation.mutate({ dealId: deal.id, priority: selectedPriority });
+  };
+
+  const handleCancelEditPriority = () => {
+    setIsEditingPriority(false);
+    setSelectedPriority("Medium");
+  };
 
   const handleStartEditContact = () => {
     setEditEmail(deal?.lead?.email || "");
@@ -316,29 +300,15 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
   const currentPriority = deal.priority || "Medium";
   const priorityConfig = priorityOptions.find((p) => p.value === currentPriority) || priorityOptions[1];
 
-  // Parse answers JSON
-  const renderAnswers = () => {
-    if (!formSubmission?.answers) {
-      return <p className="text-muted-foreground text-center py-8">Nenhuma aplicação encontrada para este lead.</p>;
-    }
-
-    const answers = formSubmission.answers as Record<string, string | number | boolean>;
-
-    return (
-      <div className="space-y-4">
-        {Object.entries(answers).map(([question, answer], index) => (
-          <div key={index} className="space-y-1">
-            <p className="font-semibold text-primary text-sm">{question}</p>
-            <p className="text-muted-foreground bg-muted/50 rounded-md px-3 py-2">{String(answer)}</p>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   const renderSalesHistory = () => {
     if (salesHistory.length === 0) {
-      return <p className="text-muted-foreground text-center py-8">Nenhuma compra registrada para este lead.</p>;
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <ShoppingBag className="h-12 w-12 mb-3 opacity-30" />
+          <p className="text-sm font-medium">Nenhuma compra registrada</p>
+          <p className="text-xs mt-1">O lead ainda não realizou nenhuma compra.</p>
+        </div>
+      );
     }
 
     return (
@@ -372,363 +342,383 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="text-primary flex items-center gap-2">
-            <User className="h-5 w-5" />
-            {lead?.full_name || "Lead desconhecido"}
-          </SheetTitle>
+      <SheetContent className="w-full sm:max-w-lg p-0 flex flex-col">
+        {/* Header */}
+        <SheetHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-br from-background to-muted/30">
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center shrink-0">
+              <User className="h-6 w-6 text-secondary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <SheetTitle className="text-lg font-bold text-primary truncate">
+                {lead?.full_name || "Lead desconhecido"}
+              </SheetTitle>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="outline" className={priorityConfig.className}>
+                  {priorityConfig.label}
+                </Badge>
+                <span className="text-xl font-bold text-secondary">{formattedValue}</span>
+              </div>
+            </div>
+          </div>
         </SheetHeader>
 
-        <Tabs defaultValue="dados" className="mt-6">
-          {/* 5 colunas para incluir WhatsApp */}
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="dados">Dados</TabsTrigger>
-            <TabsTrigger value="whatsapp" className="flex items-center gap-1">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
+        {/* Tabs Content */}
+        <Tabs defaultValue="whatsapp" className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-4 px-4 py-2 h-auto gap-1 bg-transparent">
+            <TabsTrigger 
+              value="whatsapp" 
+              className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700 gap-1.5 py-2"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
               </svg>
-              <span className="hidden sm:inline">WhatsApp</span>
+              <span className="hidden sm:inline">Chat</span>
             </TabsTrigger>
-            <TabsTrigger value="comentarios" className="flex items-center gap-1">
-              <MessageSquare className="h-3 w-3 sm:hidden" />
+            <TabsTrigger 
+              value="respostas" 
+              className="data-[state=active]:bg-secondary/10 data-[state=active]:text-secondary gap-1.5 py-2"
+            >
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Respostas</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="dados" 
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary gap-1.5 py-2"
+            >
+              <User className="h-4 w-4" />
+              <span className="hidden sm:inline">Dados</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="notas" 
+              className="data-[state=active]:bg-muted gap-1.5 py-2"
+            >
+              <MessageSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Notas</span>
-              <span className="sm:hidden">Notas</span>
             </TabsTrigger>
-            <TabsTrigger value="compras">Compras</TabsTrigger>
-            <TabsTrigger value="aplicacao">Aplicação</TabsTrigger>
           </TabsList>
 
-          {/* Tab: Dados */}
-          <TabsContent value="dados" className="space-y-6 mt-4">
-            {/* Contact Info */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-primary flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Contato
-                </h4>
-                {!isEditingContact && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleStartEditContact}
-                    className="h-7 px-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-
-              {isEditingContact ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <Input
-                      type="email"
-                      placeholder="Email"
-                      value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <Input
-                      type="tel"
-                      placeholder="Telefone"
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <Input
-                      placeholder="Rede Social (Instagram, LinkedIn...)"
-                      value={editSocialMedia}
-                      onChange={(e) => setEditSocialMedia(e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 justify-end">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleSaveContact}
-                      disabled={updateContactMutation.isPending}
-                      className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleCancelEditContact}
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{lead?.email || "—"}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{lead?.phone || "—"}</span>
-                    {whatsappLink && (
-                      <a 
-                        href={whatsappLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center h-6 w-6 rounded-md text-green-600 hover:text-green-700 hover:bg-green-50 transition-colors"
-                      >
-                        <svg 
-                          viewBox="0 0 24 24" 
-                          fill="currentColor" 
-                          className="h-4 w-4"
-                        >
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                        </svg>
-                      </a>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <span>{(lead as any)?.social_media || "—"}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Product Info */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-primary flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  Produto
-                </h4>
-                {!isEditingProduct && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleStartEditProduct}
-                    className="h-7 px-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-
-              {isEditingProduct ? (
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={selectedProductId ?? "none"}
-                    onValueChange={(value) => setSelectedProductId(value === "none" ? null : value)}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Selecione um produto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sem produto</SelectItem>
-                      {products.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleSaveProduct}
-                    disabled={updateProductMutation.isPending}
-                    className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                  >
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleCancelEditProduct}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-sm">{product?.name || "Sem produto associado"}</p>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Deal Value */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-primary flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Valor Estimado
-              </h4>
-              <p className="text-2xl font-bold text-secondary">{formattedValue}</p>
-            </div>
-
-            <Separator />
-
-            {/* Priority */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-primary flex items-center gap-2">
-                  <Flag className="h-4 w-4" />
-                  Prioridade
-                </h4>
-                {!isEditingPriority && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleStartEditPriority}
-                    className="h-7 px-2 text-muted-foreground hover:text-foreground"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-
-              {isEditingPriority ? (
-                <div className="flex items-center gap-2">
-                  <Select value={selectedPriority} onValueChange={setSelectedPriority}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Selecione a prioridade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {priorityOptions.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleSavePriority}
-                    disabled={updatePriorityMutation.isPending}
-                    className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                  >
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleCancelEditPriority}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <span
-                  className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-semibold ${priorityConfig.className}`}
-                >
-                  {priorityConfig.label}
-                </span>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Status */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-primary">Status</h4>
-              <span className="capitalize">{deal.status || "open"}</span>
-            </div>
-          </TabsContent>
-
           {/* Tab: WhatsApp */}
-          <TabsContent value="whatsapp" className="mt-4">
+          <TabsContent value="whatsapp" className="flex-1 overflow-hidden mt-0 px-4 pb-4">
             <WhatsAppChat
               dealId={deal.id}
               leadId={deal.lead_id || null}
               phone={lead?.phone || null}
+              leadName={lead?.full_name}
             />
           </TabsContent>
 
-          {/* Tab: Comentários/Notas */}
-          <TabsContent value="comentarios" className="mt-4">
+          {/* Tab: Respostas do Formulário */}
+          <TabsContent value="respostas" className="flex-1 overflow-hidden mt-0 px-4 pb-4">
+            <div className="h-full">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-4 w-4 text-secondary" />
+                <h4 className="font-semibold text-primary">Respostas do Formulário</h4>
+              </div>
+              <FormAnswersPanel 
+                leadId={deal.lead_id || null} 
+                productId={deal.product_id || null} 
+              />
+            </div>
+          </TabsContent>
+
+          {/* Tab: Dados */}
+          <TabsContent value="dados" className="flex-1 overflow-hidden mt-0">
+            <ScrollArea className="h-full">
+              <div className="space-y-5 px-4 pb-4">
+                {/* Contact Info */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-primary flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Contato
+                    </h4>
+                    {!isEditingContact && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleStartEditContact}
+                        className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+
+                  {isEditingContact ? (
+                    <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Input
+                          type="email"
+                          placeholder="Email"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Input
+                          type="tel"
+                          placeholder="Telefone"
+                          value={editPhone}
+                          onChange={(e) => setEditPhone(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Input
+                          placeholder="Rede Social"
+                          value={editSocialMedia}
+                          onChange={(e) => setEditSocialMedia(e.target.value)}
+                          className="flex-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 justify-end pt-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleSaveContact}
+                          disabled={updateContactMutation.isPending}
+                          className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleCancelEditContact}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 text-sm p-3 rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span className="truncate">{lead?.email || "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span>{lead?.phone || "—"}</span>
+                        {whatsappLink && (
+                          <a 
+                            href={whatsappLink} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center h-6 w-6 rounded-md text-green-600 hover:text-green-700 hover:bg-green-50"
+                          >
+                            <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                        <span>{(lead as any)?.social_media || "—"}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Product Info */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-primary flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Produto
+                    </h4>
+                    {!isEditingProduct && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleStartEditProduct}
+                        className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+
+                  {isEditingProduct ? (
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={selectedProductId ?? "none"}
+                        onValueChange={(value) => setSelectedProductId(value === "none" ? null : value)}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Selecione um produto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sem produto</SelectItem>
+                          {products.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleSaveProduct}
+                        disabled={updateProductMutation.isPending}
+                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleCancelEditProduct}
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm p-3 rounded-lg bg-muted/30">{product?.name || "Sem produto associado"}</p>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Value & Priority Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Deal Value */}
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-primary flex items-center gap-2 text-sm">
+                      <DollarSign className="h-4 w-4" />
+                      Valor
+                    </h4>
+                    <p className="text-xl font-bold text-secondary">{formattedValue}</p>
+                  </div>
+
+                  {/* Priority */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-primary flex items-center gap-2 text-sm">
+                        <Flag className="h-4 w-4" />
+                        Prioridade
+                      </h4>
+                      {!isEditingPriority && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleStartEditPriority}
+                          className="h-6 px-1.5 text-muted-foreground hover:text-foreground"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {isEditingPriority ? (
+                      <div className="flex items-center gap-1">
+                        <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+                          <SelectTrigger className="flex-1 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {priorityOptions.map((p) => (
+                              <SelectItem key={p.value} value={p.value}>
+                                {p.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleSavePriority}
+                          disabled={updatePriorityMutation.isPending}
+                          className="h-7 w-7 text-green-600"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleCancelEditPriority}
+                          className="h-7 w-7"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Badge className={`${priorityConfig.className} font-semibold`}>
+                        {priorityConfig.label}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Sales History */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-primary flex items-center gap-2">
+                      <ShoppingBag className="h-4 w-4" />
+                      Compras
+                    </h4>
+                    {salesHistory.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <TrendingUp className="h-3.5 w-3.5 text-green-600" />
+                        <span className="text-sm font-semibold text-green-600">{formattedLtv}</span>
+                      </div>
+                    )}
+                  </div>
+                  {renderSalesHistory()}
+                </div>
+
+                {/* Delete Button */}
+                <div className="pt-4">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir Deal
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir este deal?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta ação removerá apenas o deal do pipeline. O lead e todas as vendas associadas serão mantidos no sistema.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteDealMutation.mutate(deal.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Tab: Notas/Comentários */}
+          <TabsContent value="notas" className="flex-1 overflow-hidden mt-0 px-4 pb-4">
             <DealComments dealId={deal.id} />
           </TabsContent>
-
-          {/* Tab: Compras */}
-          <TabsContent value="compras" className="mt-4">
-            <div className="space-y-4">
-              {/* LTV Summary */}
-              <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium text-green-700">LTV Total</span>
-                </div>
-                <p className="text-2xl font-bold text-green-600">{formattedLtv}</p>
-              </div>
-
-              <h4 className="font-semibold text-primary flex items-center gap-2">
-                <ShoppingBag className="h-4 w-4" />
-                Histórico de Compras
-              </h4>
-              {renderSalesHistory()}
-            </div>
-          </TabsContent>
-
-          {/* Tab: Aplicação */}
-          <TabsContent value="aplicacao" className="mt-4">
-            <div className="space-y-4">
-              <h4 className="font-semibold text-primary flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Respostas do Formulário
-              </h4>
-              {renderAnswers()}
-            </div>
-          </TabsContent>
         </Tabs>
-
-        {/* Delete Deal Button */}
-        <div className="mt-8 pt-6 border-t">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Excluir Deal
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir este deal?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta ação removerá apenas o deal do pipeline. O lead e todas as vendas associadas serão mantidos no
-                  sistema.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => deleteDealMutation.mutate(deal.id)}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
       </SheetContent>
     </Sheet>
   );
