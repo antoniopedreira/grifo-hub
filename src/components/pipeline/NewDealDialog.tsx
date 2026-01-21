@@ -67,6 +67,7 @@ export function NewDealDialog({
   const [ltvMin, setLtvMin] = useState("");
   const [ltvMax, setLtvMax] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dealStatusFilter, setDealStatusFilter] = useState<string>("none");
   const [selectedProductFilters, setSelectedProductFilters] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<LeadResult[]>([]);
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
@@ -196,6 +197,19 @@ export function NewDealDialog({
         leadIdsWhoBoughtSameOrHigherTier = new Set(sameOrHigherTierSales?.map((s) => s.lead_id).filter(Boolean) || []);
       }
 
+      // Get leads by deal status filter (for recovery functionality)
+      let leadIdsByDealStatus = new Set<string>();
+      if (dealStatusFilter !== "none") {
+        const dealStatusValue = dealStatusFilter as "open" | "won" | "lost" | "abandoned" | "archived";
+        const { data: dealsData } = await supabase
+          .from("deals")
+          .select("lead_id")
+          .in("product_id", selectedProductFilters)
+          .eq("status", dealStatusValue);
+        
+        leadIdsByDealStatus = new Set(dealsData?.map((d) => d.lead_id).filter(Boolean) || []);
+      }
+
       // Fetch all leads with basic filters
       let query = supabase
         .from("leads")
@@ -214,6 +228,11 @@ export function NewDealDialog({
       if (leadsError) throw leadsError;
 
       let filteredLeads = leadsData || [];
+
+      // Apply deal status filter first (if active)
+      if (dealStatusFilter !== "none") {
+        filteredLeads = filteredLeads.filter((lead) => leadIdsByDealStatus.has(lead.id));
+      }
 
       // Smart filter based on status + product + hierarchy
       if (statusFilter === "Cliente") {
@@ -434,6 +453,7 @@ export function NewDealDialog({
     setLtvMin("");
     setLtvMax("");
     setStatusFilter("all");
+    setDealStatusFilter("none");
     setSelectedProductFilters([]);
     setSearchResults([]);
     setSelectedLeadIds(new Set());
@@ -620,9 +640,9 @@ export function NewDealDialog({
                     </Button>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Status</Label>
+                      <Label className="text-[10px] text-muted-foreground">Status Lead</Label>
                       <Select value={statusFilter} onValueChange={setStatusFilter}>
                         <SelectTrigger className="h-8 text-sm">
                           <SelectValue />
@@ -631,6 +651,25 @@ export function NewDealDialog({
                           <SelectItem value="all">Todos</SelectItem>
                           <SelectItem value="Novo">Novo</SelectItem>
                           <SelectItem value="Cliente">Cliente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Status Deal</Label>
+                      <Select 
+                        value={dealStatusFilter} 
+                        onValueChange={setDealStatusFilter}
+                        disabled={selectedProductFilters.length === 0}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="Nenhum" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          <SelectItem value="lost">Perdido</SelectItem>
+                          <SelectItem value="won">Ganho</SelectItem>
+                          <SelectItem value="open">Aberto</SelectItem>
+                          <SelectItem value="abandoned">Abandonado</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
