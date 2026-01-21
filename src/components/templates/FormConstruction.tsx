@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { CountryCodeSelect } from "@/components/ui/country-code-select";
 
 // --- CORES DA MARCA ---
 // Principal (Fundo): #112232
@@ -30,6 +31,7 @@ interface FormConstructionProps {
 type StepData = {
   full_name: string;
   phone: string;
+  countryCode: string;
   email: string;
   company_name: string;
   role: string;
@@ -41,6 +43,7 @@ type StepData = {
 const INITIAL_DATA: StepData = {
   full_name: "",
   phone: "",
+  countryCode: "+55",
   email: "",
   company_name: "",
   role: "",
@@ -101,7 +104,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
       toast.error("Por favor, digite seu nome completo.");
       return false;
     }
-    if (currentStep === 1 && formData.phone.length < 10) {
+    if (currentStep === 1 && formData.phone.replace(/\D/g, "").length < 10) {
       toast.error("Telefone inválido.");
       return false;
     }
@@ -138,6 +141,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     setIsSubmitting(true);
     try {
       const finalData = { ...formData, investment: finalValue || formData.investment };
+      const fullPhone = `${finalData.countryCode} ${finalData.phone}`;
       const companyRevenue = mapRevenueToNumber(finalData.revenue);
 
       // 1. Criar ou atualizar Lead
@@ -153,7 +157,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
         // Update existing lead
         const updateData: Record<string, unknown> = {
           full_name: finalData.full_name,
-          phone: finalData.phone,
+          phone: fullPhone,
         };
         if (companyRevenue !== null) {
           updateData.company_revenue = companyRevenue;
@@ -179,7 +183,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
         const insertData: Record<string, unknown> = {
           full_name: finalData.full_name,
           email: finalData.email,
-          phone: finalData.phone,
+          phone: fullPhone,
           status: "Novo",
           origin: leadOrigin,
         };
@@ -312,16 +316,30 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
               question="Qual seu WhatsApp para contato?"
               subtext="Nossos especialistas entrarão em contato por aqui."
             >
-              <InputLine
-                ref={inputRef}
-                name="tel"
-                autoComplete="tel"
-                value={formData.phone}
-                onChange={(e: any) => handleChange("phone", e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="(00) 00000-0000"
-                type="tel"
-              />
+              <div className="flex items-end gap-3">
+                <CountryCodeSelect
+                  value={formData.countryCode}
+                  onChange={(dialCode) => handleChange("countryCode", dialCode)}
+                  variant="dark"
+                  className="flex-shrink-0"
+                />
+                <div className="flex-1">
+                  <InputLine
+                    ref={inputRef}
+                    name="tel"
+                    autoComplete="tel-national"
+                    value={formData.phone}
+                    onChange={(e: any) => {
+                      // Remove country code if user tries to type it
+                      let val = e.target.value.replace(/^\+\d{1,3}\s?/, "");
+                      handleChange("phone", val);
+                    }}
+                    onKeyDown={handleKeyDown}
+                    placeholder="(00) 00000-0000"
+                    type="tel"
+                  />
+                </div>
+              </div>
             </QuestionCard>
           )}
 
