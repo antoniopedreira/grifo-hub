@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Globe,
   Calendar,
+  XCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -659,6 +660,22 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
                     )}
                   </div>
                 </div>
+
+                {/* Loss Reason - only show if deal has a loss_reason */}
+                {deal.loss_reason && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-destructive flex items-center gap-2">
+                        <XCircle className="h-4 w-4" />
+                        Motivo da Perda
+                      </h4>
+                      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                        <p className="text-sm text-destructive font-medium">{deal.loss_reason}</p>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <Separator />
 
