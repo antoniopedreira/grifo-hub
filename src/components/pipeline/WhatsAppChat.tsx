@@ -111,16 +111,39 @@ const DocumentMessage = ({ url, fileName, isOutgoing }: { url: string; fileName?
   </a>
 );
 
+// Helper to check if content is a media placeholder that should be hidden
+const isMediaPlaceholder = (content: string | undefined | null): boolean => {
+  if (!content) return true;
+  const trimmed = content.trim();
+  // Common placeholder patterns from n8n/automation
+  const placeholderPatterns = [
+    /^🎤\s*Áudio/i,
+    /^🎙\s*Áudio/i,
+    /^📷\s*Imagem/i,
+    /^📹\s*Vídeo/i,
+    /^📄\s*Documento/i,
+    /^📎\s*Arquivo/i,
+    /^\[Áudio\]/i,
+    /^\[Imagem\]/i,
+    /^\[Documento\]/i,
+    /^\[Vídeo\]/i,
+  ];
+  return placeholderPatterns.some(pattern => pattern.test(trimmed));
+};
+
 const MessageContent = ({ message }: { message: WhatsAppMessage }) => {
   const isOutgoing = message.direction === "outgoing";
   const mediaType = message.media_type || "text";
+  
+  // Check if content should be displayed (not a placeholder)
+  const hasRealContent = message.content && message.content.trim() && !isMediaPlaceholder(message.content);
 
   // Audio or PTT (Push-to-Talk voice message)
   if ((mediaType === "audio" || mediaType === "ptt") && message.media_url) {
     return (
       <div className="space-y-1">
         <AudioMessage url={message.media_url} isOutgoing={isOutgoing} />
-        {message.content && message.content.trim() && (
+        {hasRealContent && (
           <p className="whitespace-pre-wrap break-words leading-relaxed text-sm mt-2">{message.content}</p>
         )}
       </div>
@@ -132,7 +155,7 @@ const MessageContent = ({ message }: { message: WhatsAppMessage }) => {
     return (
       <div className="space-y-1">
         <ImageMessage url={message.media_url} />
-        {message.content && message.content.trim() && (
+        {hasRealContent && (
           <p className="whitespace-pre-wrap break-words leading-relaxed text-sm mt-2">{message.content}</p>
         )}
       </div>
@@ -144,7 +167,7 @@ const MessageContent = ({ message }: { message: WhatsAppMessage }) => {
     return (
       <div className="space-y-1">
         <DocumentMessage url={message.media_url} fileName={message.file_name} isOutgoing={isOutgoing} />
-        {message.content && message.content.trim() && (
+        {hasRealContent && (
           <p className="whitespace-pre-wrap break-words leading-relaxed text-sm mt-2">{message.content}</p>
         )}
       </div>
