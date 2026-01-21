@@ -39,16 +39,25 @@ export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
       }).format(deal.lead.ltv)
     : null;
 
-  // Parse meeting date preservando horário local
+  // Parse meeting date preservando horário local (sem conversão UTC)
   const meetingInfo = deal.meeting_date
     ? (() => {
-        const dateStr = deal.meeting_date.includes("T") 
-          ? deal.meeting_date 
-          : `${deal.meeting_date}T00:00:00`;
-        const date = parseISO(dateStr);
+        // Extrai data e hora diretamente do string para evitar conversão UTC
+        const dateStr = deal.meeting_date;
+        if (dateStr.includes("T")) {
+          const [datePart, timePart] = dateStr.split("T");
+          const [year, month, day] = datePart.split("-").map(Number);
+          const time = timePart.split(":").slice(0, 2).join(":");
+          return {
+            date: `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`,
+            time,
+          };
+        }
+        // Fallback para datas sem horário
+        const [year, month, day] = dateStr.split("-").map(Number);
         return {
-          date: format(date, "dd/MM", { locale: ptBR }),
-          time: format(date, "HH:mm"),
+          date: `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`,
+          time: "00:00",
         };
       })()
     : null;
