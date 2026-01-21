@@ -116,7 +116,7 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
     enabled: open && !!deal?.lead_id,
   });
 
-  // Update deal product mutation
+  // Update deal product mutation with optimistic updates
   const updateProductMutation = useMutation({
     mutationFn: async ({ dealId, productId }: { dealId: string; productId: string | null }) => {
       const selectedProduct = products.find((p) => p.id === productId);
@@ -128,44 +128,84 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
         })
         .eq("id", dealId);
       if (error) throw error;
+      return { productId, product: selectedProduct };
     },
-    onSuccess: () => {
-      toast({
-        title: "Produto atualizado",
-        description: "O produto do deal foi atualizado com sucesso.",
+    onMutate: async ({ dealId, productId }) => {
+      await queryClient.cancelQueries({ queryKey: ["deals"] });
+      const previousDeals = queryClient.getQueryData(["deals"]);
+      const selectedProduct = products.find((p) => p.id === productId);
+
+      queryClient.setQueryData(["deals"], (old: any) => {
+        if (!old || !Array.isArray(old)) return old;
+        return old.map((d: any) =>
+          d.id === dealId
+            ? { ...d, product_id: productId, product: selectedProduct || null, value: selectedProduct?.price ?? null }
+            : d
+        );
       });
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
-      setIsEditingProduct(false);
+
+      return { previousDeals };
     },
-    onError: () => {
+    onError: (_, __, context) => {
+      if (context?.previousDeals) {
+        queryClient.setQueryData(["deals"], context.previousDeals);
+      }
       toast({
         title: "Erro ao atualizar",
         description: "Não foi possível atualizar o produto.",
         variant: "destructive",
       });
     },
+    onSuccess: () => {
+      toast({
+        title: "Produto atualizado",
+        description: "O produto do deal foi atualizado com sucesso.",
+      });
+      setIsEditingProduct(false);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+    },
   });
 
-  // Update deal priority mutation
+  // Update deal priority mutation with optimistic updates
   const updatePriorityMutation = useMutation({
     mutationFn: async ({ dealId, priority }: { dealId: string; priority: string }) => {
       const { error } = await supabase.from("deals").update({ priority }).eq("id", dealId);
       if (error) throw error;
+    },
+    onMutate: async ({ dealId, priority }) => {
+      await queryClient.cancelQueries({ queryKey: ["deals"] });
+      const previousDeals = queryClient.getQueryData(["deals"]);
+
+      queryClient.setQueryData(["deals"], (old: any) => {
+        if (!old || !Array.isArray(old)) return old;
+        return old.map((d: any) =>
+          d.id === dealId ? { ...d, priority } : d
+        );
+      });
+
+      return { previousDeals };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousDeals) {
+        queryClient.setQueryData(["deals"], context.previousDeals);
+      }
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar a prioridade.",
+        variant: "destructive",
+      });
     },
     onSuccess: () => {
       toast({
         title: "Prioridade atualizada",
         description: "A prioridade do deal foi atualizada com sucesso.",
       });
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
       setIsEditingPriority(false);
     },
-    onError: () => {
-      toast({
-        title: "Erro ao atualizar",
-        description: "Não foi possível atualizar a prioridade.",
-        variant: "destructive",
-      });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
     },
   });
 
@@ -192,7 +232,7 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
     },
   });
 
-  // Update lead contact mutation
+  // Update lead contact mutation with optimistic updates
   const updateContactMutation = useMutation({
     mutationFn: async ({ leadId, email, phone, socialMedia }: { leadId: string; email: string; phone: string; socialMedia: string }) => {
       const { error } = await supabase
@@ -205,20 +245,62 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
         .eq("id", leadId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast({
-        title: "Contato atualizado",
-        description: "Os dados de contato foram atualizados com sucesso.",
+    onMutate: async ({ leadId, email, phone, socialMedia }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["deals"] });
+      await queryClient.cancelQueries({ queryKey: ["leads"] });
+
+      // Snapshot previous values
+      const previousDeals = queryClient.getQueryData(["deals"]);
+      const previousLeads = queryClient.getQueryData(["leads"]);
+
+      // Optimistically update deals cache
+      queryClient.setQueryData(["deals"], (old: any) => {
+        if (!old || !Array.isArray(old)) return old;
+        return old.map((d: any) =>
+          d.lead_id === leadId
+            ? { ...d, lead: { ...d.lead, email: email || null, phone: phone || null, social_media: socialMedia || null } }
+            : d
+        );
       });
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
-      setIsEditingContact(false);
+
+      // Optimistically update leads cache
+      queryClient.setQueryData(["leads"], (old: any) => {
+        if (!old || !Array.isArray(old)) return old;
+        return old.map((l: any) =>
+          l.id === leadId
+            ? { ...l, email: email || null, phone: phone || null, social_media: socialMedia || null }
+            : l
+        );
+      });
+
+      return { previousDeals, previousLeads };
     },
-    onError: () => {
+    onError: (error, _, context) => {
+      // Rollback on error
+      if (context?.previousDeals) {
+        queryClient.setQueryData(["deals"], context.previousDeals);
+      }
+      if (context?.previousLeads) {
+        queryClient.setQueryData(["leads"], context.previousLeads);
+      }
       toast({
         title: "Erro ao atualizar",
         description: "Não foi possível atualizar os dados de contato.",
         variant: "destructive",
       });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Contato atualizado",
+        description: "Os dados de contato foram atualizados com sucesso.",
+      });
+      setIsEditingContact(false);
+    },
+    onSettled: () => {
+      // Always refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
   });
 

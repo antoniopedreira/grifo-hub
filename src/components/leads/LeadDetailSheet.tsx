@@ -226,7 +226,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
   // Calculate total LTV from sales
   const calculatedLtv = sales?.reduce((sum, sale) => sum + (sale.amount || 0), 0) || 0;
 
-  // Update contact info mutation
+  // Update contact info mutation with optimistic updates
   const updateLead = useMutation({
     mutationFn: async () => {
       if (!lead?.id) return;
@@ -240,13 +240,55 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
         .eq("id", lead.id);
       if (error) throw error;
     },
+    onMutate: async () => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["leads"] });
+      await queryClient.cancelQueries({ queryKey: ["deals"] });
+
+      // Snapshot previous values
+      const previousLeads = queryClient.getQueryData(["leads"]);
+      const previousDeals = queryClient.getQueryData(["deals"]);
+
+      // Optimistically update leads cache
+      queryClient.setQueryData(["leads"], (old: any) => {
+        if (!old || !Array.isArray(old)) return old;
+        return old.map((l: any) =>
+          l.id === lead?.id
+            ? { ...l, full_name: editName || null, email: editEmail || null, phone: editPhone || null }
+            : l
+        );
+      });
+
+      // Optimistically update deals cache (leads are nested inside deals)
+      queryClient.setQueryData(["deals"], (old: any) => {
+        if (!old || !Array.isArray(old)) return old;
+        return old.map((d: any) =>
+          d.lead_id === lead?.id
+            ? { ...d, lead: { ...d.lead, full_name: editName || null, email: editEmail || null, phone: editPhone || null } }
+            : d
+        );
+      });
+
+      return { previousLeads, previousDeals };
+    },
+    onError: (error, _, context) => {
+      // Rollback on error
+      if (context?.previousLeads) {
+        queryClient.setQueryData(["leads"], context.previousLeads);
+      }
+      if (context?.previousDeals) {
+        queryClient.setQueryData(["deals"], context.previousDeals);
+      }
+      toast.error("Erro ao atualizar: " + error.message);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
       toast.success("Contato atualizado!");
       setIsEditing(false);
     },
-    onError: (error) => {
-      toast.error("Erro ao atualizar: " + error.message);
+    onSettled: () => {
+      // Always refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
     },
   });
 
