@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { format, isBefore, isToday, parseISO } from "date-fns";
+import { format, isBefore, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Clock, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { MissionSheet } from "./MissionSheet";
 import { toast } from "sonner";
-import { getDelayIndicator } from "@/hooks/useMissionDelayIndicator";
+import { getDelayIndicator, parseDateLocal } from "@/hooks/useMissionDelayIndicator";
 import type { Tables, Enums } from "@/integrations/supabase/types";
 
 type Mission = Tables<"team_missions">;
@@ -258,7 +258,7 @@ export function AgendaKanban({ ownerFilter, departmentFilter, searchTerm = "" }:
                         {columnMissions.map((mission, index) => {
                           const owner = getMemberById(mission.owner_id);
                           const supportMembers = getSupportMembers((mission as any).support_ids);
-                          const deadlineDate = mission.deadline ? parseISO(mission.deadline) : null;
+                          const deadlineDate = mission.deadline ? parseDateLocal(mission.deadline) : null;
                           const isOverdue =
                             deadlineDate &&
                             isBefore(deadlineDate, new Date()) &&

@@ -1,4 +1,4 @@
-import { differenceInDays, parseISO, startOfDay } from "date-fns";
+import { differenceInDays, startOfDay } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Mission = Tables<"team_missions">;
@@ -10,6 +10,14 @@ export interface DelayIndicator {
   emoji: string;
   daysLate: number;
   label: string;
+}
+
+/**
+ * Parseia uma string de data (YYYY-MM-DD) como data local, sem conversão UTC
+ */
+export function parseDateLocal(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
 }
 
 /**
@@ -30,7 +38,7 @@ export function getDelayIndicator(mission: Mission): DelayIndicator {
   }
 
   const today = startOfDay(new Date());
-  const milestone = startOfDay(parseISO(referenceDate));
+  const milestone = startOfDay(parseDateLocal(referenceDate));
   const daysLate = differenceInDays(today, milestone);
 
   // Se não está atrasado em relação à data marco

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, isBefore, isToday, parseISO } from "date-fns";
+import { format, isBefore, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Clock, AlertCircle, Repeat, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { MissionSheet } from "./MissionSheet";
 import { toast } from "sonner";
-import { getDelayIndicator } from "@/hooks/useMissionDelayIndicator";
+import { getDelayIndicator, parseDateLocal } from "@/hooks/useMissionDelayIndicator";
 import type { Tables, Enums } from "@/integrations/supabase/types";
 
 type Mission = Tables<"team_missions">;
@@ -249,7 +249,7 @@ export function AgendaList({ ownerFilter, departmentFilter, statusFilter, search
             ) : (
               sortedMissions.map((mission) => {
                 const owner = getMemberById(mission.owner_id);
-                const deadlineDate = mission.deadline ? parseISO(mission.deadline) : null;
+                const deadlineDate = mission.deadline ? parseDateLocal(mission.deadline) : null;
                 const isOverdue =
                   deadlineDate &&
                   isBefore(deadlineDate, new Date()) &&
