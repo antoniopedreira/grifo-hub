@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { format, isBefore, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, AlertCircle } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -319,21 +319,26 @@ export function AgendaKanban({ ownerFilter, departmentFilter, searchTerm = "" }:
                                       )}
                                     </div>
 
-                                    {mission.deadline && (
-                                      <div
-                                        className={cn(
-                                          "flex items-center gap-1 text-xs",
-                                          isOverdue ? "text-destructive" : "text-muted-foreground",
-                                        )}
-                                      >
-                                        {isOverdue ? (
-                                          <AlertCircle className="h-3 w-3" />
-                                        ) : (
-                                          <Clock className="h-3 w-3" />
-                                        )}
-                                        {format(deadlineDate!, "dd/MM", { locale: ptBR })}
-                                      </div>
-                                    )}
+                                    {/* Date badges */}
+                                    <div className="flex flex-wrap gap-1">
+                                      {(mission as any).milestone_date && (
+                                        <div className="flex items-center gap-0.5 bg-blue-100 text-blue-700 px-1 py-0.5 rounded text-[10px]">
+                                          <CalendarDays className="h-2.5 w-2.5" />
+                                          <span>{format(parseDateLocal((mission as any).milestone_date), "dd/MM")}</span>
+                                          <span className="font-semibold">Fixo</span>
+                                        </div>
+                                      )}
+                                      {mission.deadline && (
+                                        <div className={cn(
+                                          "flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px]",
+                                          isOverdue ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
+                                        )}>
+                                          <CalendarDays className="h-2.5 w-2.5" />
+                                          <span>{format(deadlineDate!, "dd/MM")}</span>
+                                          <span className="font-semibold">Variável</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               )}

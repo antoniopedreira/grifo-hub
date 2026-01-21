@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, isBefore, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Clock, AlertCircle, Repeat, ChevronDown, ChevronUp } from "lucide-react";
+import { CalendarDays, Repeat, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -332,21 +332,25 @@ export function AgendaList({ ownerFilter, departmentFilter, statusFilter, search
                       )}
                     </TableCell>
                     <TableCell>
-                      {mission.deadline && (
-                        <div
-                          className={cn(
-                            "flex items-center gap-1 text-sm",
-                            isOverdue ? "text-destructive font-medium" : "text-muted-foreground"
-                          )}
-                        >
-                          {isOverdue ? (
-                            <AlertCircle className="h-3.5 w-3.5" />
-                          ) : (
-                            <Clock className="h-3.5 w-3.5" />
-                          )}
-                          {format(deadlineDate!, "dd/MM/yy", { locale: ptBR })}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-1">
+                        {missionData.milestone_date && (
+                          <div className="flex items-center gap-0.5 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-xs">
+                            <CalendarDays className="h-3 w-3" />
+                            <span>{format(parseDateLocal(missionData.milestone_date), "dd/MM")}</span>
+                            <span className="font-semibold">Fixo</span>
+                          </div>
+                        )}
+                        {mission.deadline && (
+                          <div className={cn(
+                            "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs",
+                            isOverdue ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
+                          )}>
+                            <CalendarDays className="h-3 w-3" />
+                            <span>{format(deadlineDate!, "dd/MM")}</span>
+                            <span className="font-semibold">Variável</span>
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
