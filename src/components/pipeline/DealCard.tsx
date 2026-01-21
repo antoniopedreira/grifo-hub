@@ -2,8 +2,9 @@ import { Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarDays, Clock, User, TrendingUp, Phone } from "lucide-react";
+import { CalendarDays, Clock, User, TrendingUp, Phone, MapPin } from "lucide-react";
 import type { Deal } from "./types";
+import { getRegionByPhone, getRegionColor } from "@/lib/ddd-regions";
 
 interface DealCardProps {
   deal: Deal;
@@ -22,6 +23,7 @@ export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
   const priority = deal.priority || "Medium";
   const config = priorityConfig[priority] || priorityConfig.Medium;
   const isMeetingStage = stageType === "meeting";
+  const regionInfo = getRegionByPhone(deal.lead?.phone || null);
 
   const formattedValue = deal.value
     ? new Intl.NumberFormat("pt-BR", {
@@ -78,11 +80,24 @@ export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
               {deal.lead?.full_name || "Lead desconhecido"}
             </p>
 
-            {/* Phone Number */}
+            {/* Phone and Region */}
             {deal.lead?.phone && (
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Phone className="h-3 w-3" />
-                <span className="text-xs">{deal.lead.phone}</span>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <Phone className="h-3 w-3" />
+                  <span className="text-xs">{deal.lead.phone}</span>
+                </div>
+                {regionInfo && (
+                  <span 
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium",
+                      getRegionColor(regionInfo.isInternational ? "Internacional" : regionInfo.region)
+                    )}
+                  >
+                    <MapPin className="h-2.5 w-2.5" />
+                    {regionInfo.isInternational ? "Int" : regionInfo.state}
+                  </span>
+                )}
               </div>
             )}
 
