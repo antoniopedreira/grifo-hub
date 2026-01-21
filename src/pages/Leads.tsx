@@ -13,13 +13,16 @@ import {
   Trash2,
   Loader2,
   UserX,
-  ArrowUpDown, // Ícone de ordenação
-  Filter, // Ícone de filtro
+  ArrowUpDown,
+  Filter,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { getRegionByPhone, getRegionColor } from "@/lib/ddd-regions";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Pagination,
@@ -346,6 +349,7 @@ export default function Leads() {
 
                   <TableHead>Email</TableHead>
                   <TableHead>Telefone</TableHead>
+                  <TableHead>Região</TableHead>
 
                   <TableHead
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -377,7 +381,9 @@ export default function Leads() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedLeads.map((lead) => (
+                {paginatedLeads.map((lead) => {
+                  const regionInfo = getRegionByPhone(lead.phone);
+                  return (
                   <TableRow
                     key={lead.id}
                     className="cursor-pointer hover:bg-muted/50"
@@ -397,6 +403,27 @@ export default function Leads() {
                           <Phone className="h-4 w-4" />
                           <span className="text-sm">{lead.phone}</span>
                         </a>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+
+                    {/* Coluna Região */}
+                    <TableCell>
+                      {regionInfo ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge className={`${getRegionColor(regionInfo.region)} cursor-default`}>
+                                {regionInfo.isInternational ? "🌍 Int" : regionInfo.state}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{regionInfo.stateName} - {regionInfo.region}</p>
+                              {regionInfo.ddd && <p className="text-xs text-muted-foreground">DDD: {regionInfo.ddd}</p>}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
@@ -464,7 +491,8 @@ export default function Leads() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
 
