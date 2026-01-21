@@ -761,8 +761,11 @@ export type Database = {
           deal_id: string | null
           direction: string
           external_id: string | null
+          file_name: string | null
           id: string
           lead_id: string | null
+          media_type: string | null
+          media_url: string | null
           phone: string
           status: string
           updated_at: string
@@ -773,8 +776,11 @@ export type Database = {
           deal_id?: string | null
           direction: string
           external_id?: string | null
+          file_name?: string | null
           id?: string
           lead_id?: string | null
+          media_type?: string | null
+          media_url?: string | null
           phone: string
           status?: string
           updated_at?: string
@@ -785,8 +791,11 @@ export type Database = {
           deal_id?: string | null
           direction?: string
           external_id?: string | null
+          file_name?: string | null
           id?: string
           lead_id?: string | null
+          media_type?: string | null
+          media_url?: string | null
           phone?: string
           status?: string
           updated_at?: string
