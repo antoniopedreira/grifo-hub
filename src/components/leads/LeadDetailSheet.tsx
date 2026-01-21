@@ -12,8 +12,10 @@ import {
   ShoppingBag,
   Plus,
   Package,
-  TrendingUp, // Ícone para Faturamento
+  TrendingUp,
+  MapPin,
 } from "lucide-react";
+import { getRegionByPhone, getRegionColor } from "@/lib/ddd-regions";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -463,13 +465,41 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                     </span>
                   </div>
 
+                  {/* Region from phone DDD */}
+                  {(() => {
+                    const regionInfo = getRegionByPhone(lead.phone);
+                    if (!regionInfo) return null;
+                    return (
+                      <>
+                        <Separator />
+                        <div className="flex items-center gap-3 text-sm">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Região</span>
+                          <div className="ml-auto flex items-center gap-2">
+                            <Badge className={getRegionColor(regionInfo.region)}>
+                              {regionInfo.isInternational ? "🌍 Internacional" : `${regionInfo.state}`}
+                            </Badge>
+                            {!regionInfo.isInternational && (
+                              <span className="text-xs text-muted-foreground">
+                                {regionInfo.region}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+
                   {/* Origin */}
                   {lead.origin && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Origem</span>
-                      <span className="text-foreground font-medium ml-auto">{lead.origin}</span>
-                    </div>
+                    <>
+                      <Separator />
+                      <div className="flex items-center gap-3 text-sm">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Origem</span>
+                        <span className="text-foreground font-medium ml-auto">{lead.origin}</span>
+                      </div>
+                    </>
                   )}
                 </div>
               </section>
