@@ -13,6 +13,7 @@ export interface Deal {
   product_id?: string;
   description?: string;
   priority?: "Low" | "Medium" | "High";
+  loss_reason?: string | null;
 
   meeting_owner_id?: string | null;
 
