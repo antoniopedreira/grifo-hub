@@ -233,11 +233,14 @@ export default function Pipeline() {
       return;
     }
 
-    // Movimento Padrão
+    // Movimento Padrão - set order_index to highest + 1 so it appears at top
+    const dealsInTargetStage = deals.filter(d => d.stage_id === targetStageId);
+    const maxOrderIndex = dealsInTargetStage.reduce((max, d) => Math.max(max, d.order_index || 0), 0);
+    
     moveDealMutation.mutate({
       dealId: draggableId,
       stageId: targetStageId,
-      orderIndex: destination.index,
+      orderIndex: maxOrderIndex + 1,
     });
   };
 
@@ -397,7 +400,8 @@ export default function Pipeline() {
                 {stages.map((stage) => {
                   const stageDeals = filteredDeals
                     .filter((d) => d.stage_id === stage.id)
-                    .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+                    // Sort by order_index descending: last moved (highest order_index) appears at top
+                    .sort((a, b) => (b.order_index || 0) - (a.order_index || 0));
 
                   return (
                     <KanbanColumn
