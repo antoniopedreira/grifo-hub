@@ -332,23 +332,30 @@ export function AgendaList({ ownerFilter, departmentFilter, statusFilter, search
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex items-center gap-3 text-sm">
                         {missionData.milestone_date && (
-                          <div className="flex items-center gap-0.5 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-xs">
-                            <CalendarDays className="h-3 w-3" />
-                            <span>{format(parseDateLocal(missionData.milestone_date), "dd/MM")}</span>
-                            <span className="font-semibold">Fixo</span>
-                          </div>
+                          <span 
+                            className="flex items-center gap-1 text-blue-600 font-medium"
+                            title="Data Marco (Fixo)"
+                          >
+                            <span className="w-2 h-2 rounded-full bg-blue-500" />
+                            {format(parseDateLocal(missionData.milestone_date), "dd/MM")}
+                          </span>
                         )}
                         {mission.deadline && (
-                          <div className={cn(
-                            "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs",
-                            isOverdue ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
-                          )}>
-                            <CalendarDays className="h-3 w-3" />
-                            <span>{format(deadlineDate!, "dd/MM")}</span>
-                            <span className="font-semibold">Variável</span>
-                          </div>
+                          <span 
+                            className={cn(
+                              "flex items-center gap-1 font-medium",
+                              isOverdue ? "text-red-600" : "text-orange-600"
+                            )}
+                            title="Prazo (Variável)"
+                          >
+                            <span className={cn(
+                              "w-2 h-2 rounded-full",
+                              isOverdue ? "bg-red-500" : "bg-orange-500"
+                            )} />
+                            {format(deadlineDate!, "dd/MM")}
+                          </span>
                         )}
                       </div>
                     </TableCell>

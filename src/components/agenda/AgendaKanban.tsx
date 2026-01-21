@@ -319,24 +319,31 @@ export function AgendaKanban({ ownerFilter, departmentFilter, searchTerm = "" }:
                                       )}
                                     </div>
 
-                                    {/* Date badges */}
-                                    <div className="flex flex-wrap gap-1">
+                                    {/* Date badges - compact design */}
+                                    <div className="flex items-center gap-1.5 text-[11px]">
                                       {(mission as any).milestone_date && (
-                                        <div className="flex items-center gap-0.5 bg-blue-100 text-blue-700 px-1 py-0.5 rounded text-[10px]">
-                                          <CalendarDays className="h-2.5 w-2.5" />
-                                          <span>{format(parseDateLocal((mission as any).milestone_date), "dd/MM")}</span>
-                                          <span className="font-semibold">Fixo</span>
-                                        </div>
+                                        <span 
+                                          className="flex items-center gap-0.5 text-blue-600 font-medium"
+                                          title="Data Marco (Fixo)"
+                                        >
+                                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                          {format(parseDateLocal((mission as any).milestone_date), "dd/MM")}
+                                        </span>
                                       )}
                                       {mission.deadline && (
-                                        <div className={cn(
-                                          "flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px]",
-                                          isOverdue ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
-                                        )}>
-                                          <CalendarDays className="h-2.5 w-2.5" />
-                                          <span>{format(deadlineDate!, "dd/MM")}</span>
-                                          <span className="font-semibold">Variável</span>
-                                        </div>
+                                        <span 
+                                          className={cn(
+                                            "flex items-center gap-0.5 font-medium",
+                                            isOverdue ? "text-red-600" : "text-orange-600"
+                                          )}
+                                          title="Prazo (Variável)"
+                                        >
+                                          <span className={cn(
+                                            "w-1.5 h-1.5 rounded-full",
+                                            isOverdue ? "bg-red-500" : "bg-orange-500"
+                                          )} />
+                                          {format(deadlineDate!, "dd/MM")}
+                                        </span>
                                       )}
                                     </div>
                                   </div>
