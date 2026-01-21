@@ -52,6 +52,7 @@ interface FormSubmission {
   answers: Record<string, unknown>;
   submitted_at: string | null;
   product_id: string | null;
+  product: { name: string } | null;
 }
 
 interface Sale {
@@ -173,14 +174,14 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
     }
   }, [lead]);
 
-  // Fetch form submissions
+  // Fetch form submissions with product join
   const { data: submissions, isLoading: loadingSubmissions } = useQuery({
     queryKey: ["lead-submissions", lead?.id],
     queryFn: async () => {
       if (!lead?.id) return [];
       const { data, error } = await supabase
         .from("form_submissions")
-        .select("*")
+        .select("*, product:products(name)")
         .eq("lead_id", lead.id)
         .order("submitted_at", { ascending: false });
       if (error) throw error;
@@ -492,12 +493,19 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                       key={submission.id}
                       className="bg-muted/30 rounded-lg p-4 space-y-3 border-l-4 border-secondary"
                     >
-                      <div className="text-xs text-muted-foreground">
-                        {submission.submitted_at
-                          ? format(new Date(submission.submitted_at), "dd/MM/yyyy 'às' HH:mm", {
-                              locale: ptBR,
-                            })
-                          : "Data não disponível"}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs text-muted-foreground">
+                          {submission.submitted_at
+                            ? format(new Date(submission.submitted_at), "dd/MM/yyyy 'às' HH:mm", {
+                                locale: ptBR,
+                              })
+                            : "Data não disponível"}
+                        </div>
+                        {submission.product?.name && (
+                          <Badge variant="outline" className="text-xs bg-secondary/10 text-secondary border-secondary/30">
+                            {submission.product.name}
+                          </Badge>
+                        )}
                       </div>
                       <div className="space-y-2">
                         {Object.entries(submission.answers as Record<string, unknown>).map(([key, value]) => (
