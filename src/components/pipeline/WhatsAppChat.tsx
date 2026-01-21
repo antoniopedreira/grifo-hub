@@ -67,8 +67,15 @@ const AudioMessage = ({ url, isOutgoing }: { url: string; isOutgoing: boolean })
     )}>
       <Mic className="h-4 w-4 text-green-700" />
     </div>
-    <audio controls className="h-10 max-w-[200px]" preload="metadata">
-      <source src={url} />
+    <audio 
+      controls 
+      className="h-10 max-w-[200px]" 
+      preload="auto"
+      controlsList="nodownload"
+    >
+      <source src={url} type="audio/mpeg" />
+      <source src={url} type="audio/ogg" />
+      <source src={url} type="audio/mp4" />
       Seu navegador não suporta áudio.
     </audio>
   </div>
