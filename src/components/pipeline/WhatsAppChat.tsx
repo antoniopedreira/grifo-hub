@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, Clock, Check, CheckCheck, AlertCircle, Loader2, Phone, Trash2, FileText, Download, Image as ImageIcon, Mic } from "lucide-react";
+import { Send, Clock, Check, CheckCheck, AlertCircle, Loader2, Phone, Trash2, FileText, Download, Image as ImageIcon, Mic, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,6 +15,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type MediaType = "text" | "audio" | "ptt" | "image" | "document";
 
@@ -82,16 +87,14 @@ const AudioMessage = ({ url, isOutgoing }: { url: string; isOutgoing: boolean })
 );
 
 const ImageMessage = ({ url, isOutgoing }: { url: string; isOutgoing: boolean }) => {
-  const [hasError, setHasError] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
   
-  if (hasError) {
-    return (
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
         className={cn(
-          "flex items-center gap-2 p-3 rounded-lg border transition-colors",
+          "flex items-center gap-2 p-3 rounded-lg border transition-colors cursor-pointer",
           isOutgoing
             ? "bg-green-100/50 border-green-200 hover:bg-green-100"
             : "bg-gray-100/50 border-gray-200 hover:bg-gray-100"
@@ -99,28 +102,48 @@ const ImageMessage = ({ url, isOutgoing }: { url: string; isOutgoing: boolean })
       >
         <ImageIcon className="h-5 w-5 text-blue-600" />
         <span className="text-sm text-blue-600 underline">Visualizar Imagem</span>
-      </a>
-    );
-  }
-  
-  return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="block">
-      <img
-        src={url}
-        alt="Imagem"
-        className="max-w-[220px] max-h-[220px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
-        loading="lazy"
-        onError={() => setHasError(true)}
-      />
-    </a>
+      </button>
+      
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden bg-black/90 border-none">
+          <DialogTitle className="sr-only">Visualizar Imagem</DialogTitle>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
+              onClick={() => setIsOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+            <img
+              src={url}
+              alt="Imagem"
+              className="w-full h-auto max-h-[80vh] object-contain"
+            />
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white text-black rounded-full text-sm font-medium transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Baixar Imagem
+              </a>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
 const DocumentMessage = ({ url, fileName, isOutgoing }: { url: string; fileName?: string | null; isOutgoing: boolean }) => (
   <a
     href={url}
-    target="_blank"
-    rel="noopener noreferrer"
+    download={fileName || "documento"}
     className={cn(
       "flex items-center gap-3 p-2 rounded-lg border transition-colors",
       isOutgoing
@@ -136,7 +159,7 @@ const DocumentMessage = ({ url, fileName, isOutgoing }: { url: string; fileName?
     </div>
     <div className="flex-1 min-w-0">
       <p className="text-sm font-medium truncate">{fileName || "Documento"}</p>
-      <p className="text-xs text-blue-600 underline">Visualizar Arquivo</p>
+      <p className="text-xs text-blue-600 underline">Baixar Arquivo</p>
     </div>
     <Download className="h-4 w-4 text-muted-foreground shrink-0" />
   </a>
