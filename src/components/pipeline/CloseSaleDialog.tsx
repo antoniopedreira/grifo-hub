@@ -135,6 +135,18 @@ export function CloseSaleDialog({
         return;
       }
 
+      // Registra nota automática no deal
+      const formattedValue = new Intl.NumberFormat("pt-BR", { 
+        style: "currency", 
+        currency: "BRL" 
+      }).format(finalAmount);
+      const noteContent = `🏆 Venda fechada: ${formattedValue} - ${productName}${notes ? ` | Obs: ${notes}` : ""}`;
+      
+      await supabase.from("deal_comments").insert({
+        deal_id: deal.id,
+        content: noteContent,
+      });
+
       // Sucesso completo
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
