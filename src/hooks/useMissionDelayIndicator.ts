@@ -14,21 +14,23 @@ export interface DelayIndicator {
 
 /**
  * Calcula o indicador de atraso baseado na data marco (milestone_date).
+ * Se milestone_date não existir, usa deadline como fallback.
  * - 3+ dias de atraso: 😐 (warning - amarelo)
  * - 7+ dias de atraso: 😔 (danger - vermelho)
  * - 15+ dias de atraso: 😵‍💫 (critical - roxo)
  */
 export function getDelayIndicator(mission: Mission): DelayIndicator {
   const missionData = mission as any;
-  const milestoneDate = missionData.milestone_date;
+  // Usa milestone_date se existir, senão usa deadline como fallback
+  const referenceDate = missionData.milestone_date || mission.deadline;
   
-  // Se não há data marco ou missão já está concluída, não há atraso
-  if (!milestoneDate || mission.status === "Concluído") {
+  // Se não há data de referência ou missão já está concluída, não há atraso
+  if (!referenceDate || mission.status === "Concluído") {
     return { level: "none", emoji: "", daysLate: 0, label: "" };
   }
 
   const today = startOfDay(new Date());
-  const milestone = startOfDay(parseISO(milestoneDate));
+  const milestone = startOfDay(parseISO(referenceDate));
   const daysLate = differenceInDays(today, milestone);
 
   // Se não está atrasado em relação à data marco
