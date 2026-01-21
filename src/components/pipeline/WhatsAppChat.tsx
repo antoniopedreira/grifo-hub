@@ -213,6 +213,7 @@ export function WhatsAppChat({ dealId, leadId, phone, leadName }: WhatsAppChatPr
     },
     onSuccess: () => {
       setMessage("");
+      setIsCleared(false); // Reset clear state to show new message
       queryClient.invalidateQueries({ queryKey: ["whatsapp-messages", dealId] });
       textareaRef.current?.focus();
     },
