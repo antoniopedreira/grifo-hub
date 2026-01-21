@@ -682,6 +682,7 @@ export type Database = {
           department: string | null
           id: string
           is_recurring: boolean | null
+          milestone_date: string | null
           mission: string
           notes: string | null
           order_index: number | null
@@ -700,6 +701,7 @@ export type Database = {
           department?: string | null
           id?: string
           is_recurring?: boolean | null
+          milestone_date?: string | null
           mission: string
           notes?: string | null
           order_index?: number | null
@@ -718,6 +720,7 @@ export type Database = {
           department?: string | null
           id?: string
           is_recurring?: boolean | null
+          milestone_date?: string | null
           mission?: string
           notes?: string | null
           order_index?: number | null
