@@ -168,16 +168,18 @@ export function WhatsAppChat({ dealId, leadId, phone, leadName }: WhatsAppChatPr
     mutationFn: async (content: string) => {
       if (!phone) throw new Error("Telefone não disponível");
 
-      const cleanPhone = phone.replace(/\D/g, "");
+      // Remove country code for webhook (only national number)
+      const fullCleanPhone = phone.replace(/\D/g, "");
+      const cleanPhone = fullCleanPhone.replace(/^55/, ""); // Remove leading 55
       const trimmedContent = content.trim();
       
-      // 1. Save to DB with "pending" status
+      // 1. Save to DB with "pending" status (store full phone with country code)
       const { data: savedMessage, error: dbError } = await supabase
         .from("whatsapp_messages")
         .insert({
           deal_id: dealId,
           lead_id: leadId,
-          phone: cleanPhone,
+          phone: fullCleanPhone, // Store with country code
           direction: "outgoing",
           content: trimmedContent,
           status: "pending",
@@ -197,14 +199,14 @@ export function WhatsAppChat({ dealId, leadId, phone, leadName }: WhatsAppChatPr
           mode: "no-cors",
           body: JSON.stringify({
             message_id: savedMessage.id,
-            phone: cleanPhone,
+            phone: cleanPhone, // Send WITHOUT country code to webhook
             content: trimmedContent,
             deal_id: dealId,
             lead_id: leadId,
           }),
         });
 
-        console.log("Webhook enviado para n8n:", { message_id: savedMessage.id, phone: cleanPhone });
+        console.log("Webhook enviado para n8n:", { message_id: savedMessage.id, phone: cleanPhone, fullPhone: fullCleanPhone });
       } catch (webhookError) {
         console.error("Erro ao enviar para webhook n8n:", webhookError);
       }
@@ -268,7 +270,7 @@ export function WhatsAppChat({ dealId, leadId, phone, leadName }: WhatsAppChatPr
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{leadName || "Lead"}</p>
-          <p className="text-xs text-muted-foreground">+55 {phone}</p>
+          <p className="text-xs text-muted-foreground">{phone?.startsWith("+") ? phone : `+${phone}`}</p>
         </div>
         <div className="flex items-center gap-2">
           {messages.length > 0 && !isCleared && (
@@ -291,7 +293,7 @@ export function WhatsAppChat({ dealId, leadId, phone, leadName }: WhatsAppChatPr
             </TooltipProvider>
           )}
           <a 
-            href={`https://wa.me/55${phone.replace(/\D/g, "")}`}
+            href={`https://wa.me/${phone.replace(/\D/g, "")}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-green-600 hover:underline"

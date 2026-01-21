@@ -141,7 +141,8 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     setIsSubmitting(true);
     try {
       const finalData = { ...formData, investment: finalValue || formData.investment };
-      const fullPhone = `${finalData.countryCode} ${finalData.phone}`;
+      // Store with country code (no space): +5571996428700
+      const fullPhone = `${finalData.countryCode}${finalData.phone.replace(/\D/g, "")}`;
       const companyRevenue = mapRevenueToNumber(finalData.revenue);
 
       // 1. Criar ou atualizar Lead
