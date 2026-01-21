@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Send, Clock, Check, CheckCheck, AlertCircle, Loader2, Phone, Trash2, FileText, Download, Image as ImageIcon, Mic } from "lucide-react";
@@ -81,16 +81,40 @@ const AudioMessage = ({ url, isOutgoing }: { url: string; isOutgoing: boolean })
   </div>
 );
 
-const ImageMessage = ({ url }: { url: string }) => (
-  <a href={url} target="_blank" rel="noopener noreferrer" className="block">
-    <img
-      src={url}
-      alt="Imagem"
-      className="max-w-[220px] max-h-[220px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
-      loading="lazy"
-    />
-  </a>
-);
+const ImageMessage = ({ url, isOutgoing }: { url: string; isOutgoing: boolean }) => {
+  const [hasError, setHasError] = React.useState(false);
+  
+  if (hasError) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          "flex items-center gap-2 p-3 rounded-lg border transition-colors",
+          isOutgoing
+            ? "bg-green-100/50 border-green-200 hover:bg-green-100"
+            : "bg-gray-100/50 border-gray-200 hover:bg-gray-100"
+        )}
+      >
+        <ImageIcon className="h-5 w-5 text-blue-600" />
+        <span className="text-sm text-blue-600 underline">Visualizar Imagem</span>
+      </a>
+    );
+  }
+  
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+      <img
+        src={url}
+        alt="Imagem"
+        className="max-w-[220px] max-h-[220px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+        loading="lazy"
+        onError={() => setHasError(true)}
+      />
+    </a>
+  );
+};
 
 const DocumentMessage = ({ url, fileName, isOutgoing }: { url: string; fileName?: string | null; isOutgoing: boolean }) => (
   <a
@@ -112,7 +136,7 @@ const DocumentMessage = ({ url, fileName, isOutgoing }: { url: string; fileName?
     </div>
     <div className="flex-1 min-w-0">
       <p className="text-sm font-medium truncate">{fileName || "Documento"}</p>
-      <p className="text-xs text-muted-foreground">Clique para abrir</p>
+      <p className="text-xs text-blue-600 underline">Visualizar Arquivo</p>
     </div>
     <Download className="h-4 w-4 text-muted-foreground shrink-0" />
   </a>
@@ -161,7 +185,7 @@ const MessageContent = ({ message }: { message: WhatsAppMessage }) => {
   if (mediaType === "image" && message.media_url) {
     return (
       <div className="space-y-1">
-        <ImageMessage url={message.media_url} />
+        <ImageMessage url={message.media_url} isOutgoing={isOutgoing} />
         {hasRealContent && (
           <p className="whitespace-pre-wrap break-words leading-relaxed text-sm mt-2">{message.content}</p>
         )}
