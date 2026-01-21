@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, Clock, Check, CheckCheck, AlertCircle, Loader2, Phone, Trash2 } from "lucide-react";
+import { Send, Clock, Check, CheckCheck, AlertCircle, Loader2, Phone, Trash2, FileText, Download, Image as ImageIcon, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,6 +16,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+type MediaType = "text" | "audio" | "ptt" | "image" | "document";
+
 interface WhatsAppMessage {
   id: string;
   deal_id: string | null;
@@ -27,6 +29,9 @@ interface WhatsAppMessage {
   external_id: string | null;
   created_at: string;
   updated_at: string;
+  media_type?: MediaType | null;
+  media_url?: string | null;
+  file_name?: string | null;
 }
 
 interface WhatsAppChatProps {
@@ -51,6 +56,103 @@ const StatusIcon = ({ status }: { status: WhatsAppMessage["status"] }) => {
     default:
       return null;
   }
+};
+
+// Media Message Components
+const AudioMessage = ({ url, isOutgoing }: { url: string; isOutgoing: boolean }) => (
+  <div className="flex items-center gap-2">
+    <div className={cn(
+      "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+      isOutgoing ? "bg-green-600/20" : "bg-gray-200"
+    )}>
+      <Mic className="h-4 w-4 text-green-700" />
+    </div>
+    <audio controls className="h-10 max-w-[200px]" preload="metadata">
+      <source src={url} />
+      Seu navegador não suporta áudio.
+    </audio>
+  </div>
+);
+
+const ImageMessage = ({ url }: { url: string }) => (
+  <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+    <img
+      src={url}
+      alt="Imagem"
+      className="max-w-[220px] max-h-[220px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+      loading="lazy"
+    />
+  </a>
+);
+
+const DocumentMessage = ({ url, fileName, isOutgoing }: { url: string; fileName?: string | null; isOutgoing: boolean }) => (
+  <a
+    href={url}
+    target="_blank"
+    rel="noopener noreferrer"
+    className={cn(
+      "flex items-center gap-3 p-2 rounded-lg border transition-colors",
+      isOutgoing
+        ? "bg-green-100/50 border-green-200 hover:bg-green-100"
+        : "bg-gray-100/50 border-gray-200 hover:bg-gray-100"
+    )}
+  >
+    <div className={cn(
+      "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+      isOutgoing ? "bg-green-600/20" : "bg-gray-200"
+    )}>
+      <FileText className="h-5 w-5 text-gray-600" />
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-sm font-medium truncate">{fileName || "Documento"}</p>
+      <p className="text-xs text-muted-foreground">Clique para abrir</p>
+    </div>
+    <Download className="h-4 w-4 text-muted-foreground shrink-0" />
+  </a>
+);
+
+const MessageContent = ({ message }: { message: WhatsAppMessage }) => {
+  const isOutgoing = message.direction === "outgoing";
+  const mediaType = message.media_type || "text";
+
+  // Audio or PTT (Push-to-Talk voice message)
+  if ((mediaType === "audio" || mediaType === "ptt") && message.media_url) {
+    return (
+      <div className="space-y-1">
+        <AudioMessage url={message.media_url} isOutgoing={isOutgoing} />
+        {message.content && message.content.trim() && (
+          <p className="whitespace-pre-wrap break-words leading-relaxed text-sm mt-2">{message.content}</p>
+        )}
+      </div>
+    );
+  }
+
+  // Image
+  if (mediaType === "image" && message.media_url) {
+    return (
+      <div className="space-y-1">
+        <ImageMessage url={message.media_url} />
+        {message.content && message.content.trim() && (
+          <p className="whitespace-pre-wrap break-words leading-relaxed text-sm mt-2">{message.content}</p>
+        )}
+      </div>
+    );
+  }
+
+  // Document
+  if (mediaType === "document" && message.media_url) {
+    return (
+      <div className="space-y-1">
+        <DocumentMessage url={message.media_url} fileName={message.file_name} isOutgoing={isOutgoing} />
+        {message.content && message.content.trim() && (
+          <p className="whitespace-pre-wrap break-words leading-relaxed text-sm mt-2">{message.content}</p>
+        )}
+      </div>
+    );
+  }
+
+  // Default: Text message
+  return <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>;
 };
 
 // Group messages by date
@@ -343,7 +445,7 @@ export function WhatsAppChat({ dealId, leadId, phone, leadName }: WhatsAppChatPr
                         : "mr-auto bg-white text-gray-900 rounded-tl-none"
                     )}
                   >
-                    <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
+                    <MessageContent message={msg} />
                     <div
                       className={cn(
                         "flex items-center gap-1 mt-1 text-[10px]",
