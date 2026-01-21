@@ -76,6 +76,15 @@ export function LostDealDialog({
 
       if (error) throw error;
 
+      // Registra nota automática no deal
+      const reasonEmoji = lossReasons.find(r => r.value === selectedReason)?.emoji || "❌";
+      const noteContent = `${reasonEmoji} Negócio perdido: ${finalReason}`;
+      
+      await supabase.from("deal_comments").insert({
+        deal_id: deal.id,
+        content: noteContent,
+      });
+
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       toast.success("Negócio marcado como perdido");
       

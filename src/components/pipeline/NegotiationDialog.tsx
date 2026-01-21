@@ -68,6 +68,23 @@ export function NegotiationDialog({
 
       if (error) throw error;
 
+      // Registra nota automática no deal
+      const formattedValue = new Intl.NumberFormat("pt-BR", { 
+        style: "currency", 
+        currency: "BRL" 
+      }).format(paymentData.value);
+      const paymentMethodLabel = paymentData.paymentMethod === "pix" ? "PIX" 
+        : paymentData.paymentMethod === "boleto" ? "Boleto" 
+        : paymentData.paymentMethod === "cartao" ? "Cartão"
+        : paymentData.paymentMethod === "split" ? "Split"
+        : paymentData.paymentMethod;
+      const noteContent = `💰 Proposta enviada: ${formattedValue} via ${paymentMethodLabel}`;
+      
+      await supabase.from("deal_comments").insert({
+        deal_id: deal.id,
+        content: noteContent,
+      });
+
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       toast.success("Proposta registrada com sucesso!");
       onSuccess();

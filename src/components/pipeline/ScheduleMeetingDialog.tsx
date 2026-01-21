@@ -101,6 +101,16 @@ export function ScheduleMeetingDialog({
 
       if (missionError) throw missionError;
 
+      // Registra nota automática no deal
+      const formattedDate = new Date(date + "T00:00:00").toLocaleDateString("pt-BR");
+      const memberName = members.find(m => m.id === selectedMember)?.name || "Responsável";
+      const noteContent = `📅 Reunião agendada para ${formattedDate} às ${time} com ${memberName}`;
+      
+      await supabase.from("deal_comments").insert({
+        deal_id: dealId,
+        content: noteContent,
+      });
+
       toast.success("Qualificação agendada com sucesso!");
       onSuccess();
       onOpenChange(false);
