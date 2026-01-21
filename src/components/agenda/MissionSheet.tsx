@@ -22,7 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRecurringMissions } from "@/hooks/useRecurringMissions";
-import { getDelayIndicator } from "@/hooks/useMissionDelayIndicator";
+import { getDelayIndicator, parseDateLocal } from "@/hooks/useMissionDelayIndicator";
 import type { Tables, Enums } from "@/integrations/supabase/types";
 
 type Mission = Tables<"team_missions">;
@@ -175,13 +175,22 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
 
   const mutation = useMutation({
     mutationFn: async (data: FormData) => {
+      // Função para formatar data local sem conversão UTC
+      const formatDateLocal = (date: Date | undefined): string | null => {
+        if (!date) return null;
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
       const payload: Record<string, any> = {
         mission: data.mission,
         department: data.department || null,
         target_goal: data.target_goal || null,
         owner_id: data.owner_id || null,
         support_ids: data.support_ids || [],
-        deadline: data.deadline ? data.deadline.toISOString().split("T")[0] : null,
+        deadline: formatDateLocal(data.deadline),
         status: data.status,
         notes: data.notes || null,
         is_recurring: data.is_recurring || false,
@@ -191,7 +200,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
 
       // Para novas missões, define milestone_date igual ao deadline inicial
       if (!isExistingMission && data.milestone_date) {
-        payload.milestone_date = data.milestone_date.toISOString().split("T")[0];
+        payload.milestone_date = formatDateLocal(data.milestone_date);
       }
 
       if (isExistingMission) {
@@ -353,7 +362,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
               <div>
                 <p className="text-sm text-muted-foreground">Data Marco</p>
                 <p className="font-medium">
-                  {format(new Date(missionData.milestone_date), "PPP", { locale: ptBR })}
+                  {format(parseDateLocal(missionData.milestone_date), "PPP", { locale: ptBR })}
                 </p>
                 {delayIndicator.level !== "none" && (
                   <p className={cn(
@@ -375,7 +384,7 @@ export function MissionSheet({ open, onOpenChange, mission }: MissionSheetProps)
               <div>
                 <p className="text-sm text-muted-foreground">Data Variável</p>
                 <p className="font-medium">
-                  {format(new Date(mission.deadline), "PPP", { locale: ptBR })}
+                  {format(parseDateLocal(mission.deadline), "PPP", { locale: ptBR })}
                 </p>
               </div>
             </div>
