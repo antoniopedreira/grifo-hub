@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, Clock, Check, CheckCheck, AlertCircle, Loader2, Phone } from "lucide-react";
+import { Send, Clock, Check, CheckCheck, AlertCircle, Loader2, Phone, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -9,6 +9,12 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { WhatsAppQuickReplies } from "./WhatsAppQuickReplies";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface WhatsAppMessage {
   id: string;
@@ -83,8 +89,30 @@ const formatDateLabel = (dateStr: string) => {
 export function WhatsAppChat({ dealId, leadId, phone, leadName }: WhatsAppChatProps) {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
+  const [isCleared, setIsCleared] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      const newHeight = Math.min(textarea.scrollHeight, 120); // Max 120px
+      textarea.style.height = `${newHeight}px`;
+    }
+  }, []);
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [message, adjustTextareaHeight]);
+
+  // Clear screen resets when new messages arrive
+  useEffect(() => {
+    if (isCleared) {
+      setIsCleared(false);
+    }
+  }, []);
 
   // Fetch messages
   const { data: messages = [], isLoading } = useQuery({
@@ -208,9 +236,13 @@ export function WhatsAppChat({ dealId, leadId, phone, leadName }: WhatsAppChatPr
     textareaRef.current?.focus();
   };
 
+  const handleClearScreen = () => {
+    setIsCleared(true);
+  };
+
   if (!phone) {
     return (
-      <div className="flex flex-col items-center justify-center h-[450px] text-muted-foreground">
+      <div className="flex flex-col items-center justify-center h-[520px] text-muted-foreground">
         <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
           <Phone className="h-8 w-8 opacity-40" />
         </div>
@@ -222,10 +254,10 @@ export function WhatsAppChat({ dealId, leadId, phone, leadName }: WhatsAppChatPr
     );
   }
 
-  const messageGroups = groupMessagesByDate(messages);
+  const messageGroups = groupMessagesByDate(isCleared ? [] : messages);
 
   return (
-    <div className="flex flex-col h-[450px] -mx-2">
+    <div className="flex flex-col h-[520px] -mx-2">
       {/* Chat Header */}
       <div className="flex items-center gap-3 px-4 py-2 border-b bg-gradient-to-r from-green-50 to-background">
         <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
@@ -237,14 +269,35 @@ export function WhatsAppChat({ dealId, leadId, phone, leadName }: WhatsAppChatPr
           <p className="font-medium text-sm truncate">{leadName || "Lead"}</p>
           <p className="text-xs text-muted-foreground">+55 {phone}</p>
         </div>
-        <a 
-          href={`https://wa.me/55${phone.replace(/\D/g, "")}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-green-600 hover:underline"
-        >
-          Abrir no app
-        </a>
+        <div className="flex items-center gap-2">
+          {messages.length > 0 && !isCleared && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={handleClearScreen}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Limpar tela</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          <a 
+            href={`https://wa.me/55${phone.replace(/\D/g, "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-green-600 hover:underline"
+          >
+            Abrir no app
+          </a>
+        </div>
       </div>
 
       {/* Chat Messages Area */}
@@ -318,19 +371,20 @@ export function WhatsAppChat({ dealId, leadId, phone, leadName }: WhatsAppChatPr
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Digite sua mensagem..."
-          className="min-h-[44px] max-h-24 resize-none bg-background rounded-2xl text-sm"
+          className="min-h-[48px] max-h-[120px] resize-none bg-background rounded-2xl text-sm overflow-y-auto"
+          style={{ height: "48px" }}
           rows={1}
         />
         <Button
           onClick={handleSend}
           disabled={!message.trim() || sendMessageMutation.isPending}
           size="icon"
-          className="shrink-0 h-11 w-11 rounded-full bg-green-600 hover:bg-green-700"
+          className="shrink-0 h-12 w-12 rounded-full bg-green-600 hover:bg-green-700"
         >
           {sendMessageMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
-            <Send className="h-4 w-4" />
+            <Send className="h-5 w-5" />
           )}
         </Button>
       </div>
