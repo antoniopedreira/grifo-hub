@@ -21,25 +21,20 @@ export function parseDateLocal(dateStr: string): Date {
 }
 
 /**
- * Calcula o indicador de atraso baseado na data marco (milestone_date).
- * Se milestone_date não existir, usa deadline como fallback.
+ * Calcula o indicador de atraso baseado no DEADLINE (data variável).
  * - 3+ dias de atraso: 😐 (warning - amarelo)
  * - 7+ dias de atraso: 😔 (danger - vermelho)
  * - 15+ dias de atraso: 😵‍💫 (critical - roxo)
  */
 export function getDelayIndicator(mission: Mission): DelayIndicator {
-  const missionData = mission as any;
-  // Usa milestone_date se existir, senão usa deadline como fallback
-  const referenceDate = missionData.milestone_date || mission.deadline;
-  
-  // Se não há data de referência ou missão já está concluída, não há atraso
-  if (!referenceDate || mission.status === "Concluído") {
+  // Delay is ALWAYS calculated based on deadline
+  if (!mission.deadline || mission.status === "Concluído") {
     return { level: "none", emoji: "", daysLate: 0, label: "" };
   }
 
   const today = startOfDay(new Date());
-  const milestone = startOfDay(parseDateLocal(referenceDate));
-  const daysLate = differenceInDays(today, milestone);
+  const deadlineDate = startOfDay(parseDateLocal(mission.deadline));
+  const daysLate = differenceInDays(today, deadlineDate);
 
   // Se não está atrasado em relação à data marco
   if (daysLate < 3) {
