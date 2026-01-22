@@ -937,7 +937,7 @@ export type Database = {
         | "Concluído"
         | "Stand-by"
       product_funnel_type: "external_link" | "internal_form"
-      sale_origin: "lastlink_auto" | "crm_manual"
+      sale_origin: "lastlink_auto" | "crm_manual" | "lastlink"
       template_type: "landing_page" | "application_form"
     }
     CompositeTypes: {
@@ -1077,7 +1077,7 @@ export const Constants = {
         "Stand-by",
       ],
       product_funnel_type: ["external_link", "internal_form"],
-      sale_origin: ["lastlink_auto", "crm_manual"],
+      sale_origin: ["lastlink_auto", "crm_manual", "lastlink"],
       template_type: ["landing_page", "application_form"],
     },
   },
