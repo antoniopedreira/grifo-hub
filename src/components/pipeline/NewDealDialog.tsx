@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, User, Package, Search, Users, Filter, Loader2 } from "lucide-react";
+import { Plus, User, Package, Search, Users, Filter, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -19,11 +19,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import type { ProductWithCategory } from "@/types/database";
 
 interface NewDealDialogProps {
@@ -76,6 +90,7 @@ export function NewDealDialog({
   const [importProductId, setImportProductId] = useState("");
   const [existingLeadSearch, setExistingLeadSearch] = useState("");
   const [importResultsSearch, setImportResultsSearch] = useState("");
+  const [leadComboboxOpen, setLeadComboboxOpen] = useState(false);
 
   // Fetch leads for existing lead selector
   const { data: leads } = useQuery({
@@ -474,6 +489,7 @@ export function NewDealDialog({
     setNewLeadEmail("");
     setNewLeadPhone("");
     setExistingLeadSearch("");
+    setLeadComboboxOpen(false);
 
     // Import tab
     setLtvMin("");
@@ -486,6 +502,13 @@ export function NewDealDialog({
     setHasSearched(false);
     setImportProductId("");
     setImportResultsSearch("");
+  };
+
+  // Get display label for selected lead
+  const getSelectedLeadLabel = () => {
+    if (!selectedLeadId) return null;
+    const lead = leads?.find((l) => l.id === selectedLeadId);
+    return lead?.full_name || lead?.email || "Lead sem nome";
   };
 
   // Filter leads for existing lead selector
@@ -566,31 +589,48 @@ export function NewDealDialog({
                     <TabsTrigger value="new">Criar Novo</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="existing" className="mt-3 space-y-2">
-                    <Input
-                      placeholder="Buscar por nome ou email..."
-                      value={existingLeadSearch}
-                      onChange={(e) => setExistingLeadSearch(e.target.value)}
-                      className="h-9"
-                    />
-                    <Select value={selectedLeadId} onValueChange={setSelectedLeadId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um lead..." />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[200px]">
-                        {filteredLeads?.length === 0 ? (
-                          <div className="py-2 px-3 text-sm text-muted-foreground text-center">
-                            Nenhum lead encontrado
-                          </div>
-                        ) : (
-                          filteredLeads?.map((lead) => (
-                            <SelectItem key={lead.id} value={lead.id}>
-                              {lead.full_name || lead.email || "Lead sem nome"}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                  <TabsContent value="existing" className="mt-3">
+                    <Popover open={leadComboboxOpen} onOpenChange={setLeadComboboxOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={leadComboboxOpen}
+                          className="w-full justify-between font-normal"
+                        >
+                          {getSelectedLeadLabel() || "Selecione um lead..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar por nome ou email..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhum lead encontrado</CommandEmpty>
+                            <CommandGroup>
+                              {leads?.map((lead) => (
+                                <CommandItem
+                                  key={lead.id}
+                                  value={`${lead.full_name || ""} ${lead.email || ""}`}
+                                  onSelect={() => {
+                                    setSelectedLeadId(lead.id);
+                                    setLeadComboboxOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedLeadId === lead.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {lead.full_name || lead.email || "Lead sem nome"}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </TabsContent>
 
                   <TabsContent value="new" className="mt-3 space-y-3">
