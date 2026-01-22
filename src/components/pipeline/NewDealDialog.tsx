@@ -74,6 +74,8 @@ export function NewDealDialog({
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [importProductId, setImportProductId] = useState("");
+  const [existingLeadSearch, setExistingLeadSearch] = useState("");
+  const [importResultsSearch, setImportResultsSearch] = useState("");
 
   // Fetch leads for existing lead selector
   const { data: leads } = useQuery({
@@ -283,12 +285,35 @@ export function NewDealDialog({
     });
   };
 
-  // Select/Deselect all
+  // Select/Deselect all (from filtered results)
   const toggleSelectAll = () => {
-    if (selectedLeadIds.size === searchResults.length) {
-      setSelectedLeadIds(new Set());
+    const filteredIds = searchResults
+      .filter((lead) => {
+        if (!importResultsSearch.trim()) return true;
+        const searchLower = importResultsSearch.toLowerCase();
+        return (
+          lead.full_name?.toLowerCase().includes(searchLower) ||
+          lead.email?.toLowerCase().includes(searchLower)
+        );
+      })
+      .map((l) => l.id);
+    
+    const allSelected = filteredIds.every((id) => selectedLeadIds.has(id));
+    
+    if (allSelected) {
+      // Deselect all filtered
+      setSelectedLeadIds((prev) => {
+        const newSet = new Set(prev);
+        filteredIds.forEach((id) => newSet.delete(id));
+        return newSet;
+      });
     } else {
-      setSelectedLeadIds(new Set(searchResults.map((l) => l.id)));
+      // Select all filtered
+      setSelectedLeadIds((prev) => {
+        const newSet = new Set(prev);
+        filteredIds.forEach((id) => newSet.add(id));
+        return newSet;
+      });
     }
   };
 
@@ -448,6 +473,7 @@ export function NewDealDialog({
     setNewLeadName("");
     setNewLeadEmail("");
     setNewLeadPhone("");
+    setExistingLeadSearch("");
 
     // Import tab
     setLtvMin("");
@@ -459,7 +485,28 @@ export function NewDealDialog({
     setSelectedLeadIds(new Set());
     setHasSearched(false);
     setImportProductId("");
+    setImportResultsSearch("");
   };
+
+  // Filter leads for existing lead selector
+  const filteredLeads = leads?.filter((lead) => {
+    if (!existingLeadSearch.trim()) return true;
+    const searchLower = existingLeadSearch.toLowerCase();
+    return (
+      lead.full_name?.toLowerCase().includes(searchLower) ||
+      lead.email?.toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Filter import search results by name
+  const filteredSearchResults = searchResults.filter((lead) => {
+    if (!importResultsSearch.trim()) return true;
+    const searchLower = importResultsSearch.toLowerCase();
+    return (
+      lead.full_name?.toLowerCase().includes(searchLower) ||
+      lead.email?.toLowerCase().includes(searchLower)
+    );
+  });
 
   const canSubmitNewDeal =
     (leadTab === "existing" && selectedLeadId) ||
@@ -519,17 +566,29 @@ export function NewDealDialog({
                     <TabsTrigger value="new">Criar Novo</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="existing" className="mt-3">
+                  <TabsContent value="existing" className="mt-3 space-y-2">
+                    <Input
+                      placeholder="Buscar por nome ou email..."
+                      value={existingLeadSearch}
+                      onChange={(e) => setExistingLeadSearch(e.target.value)}
+                      className="h-9"
+                    />
                     <Select value={selectedLeadId} onValueChange={setSelectedLeadId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um lead..." />
                       </SelectTrigger>
-                      <SelectContent>
-                        {leads?.map((lead) => (
-                          <SelectItem key={lead.id} value={lead.id}>
-                            {lead.full_name || lead.email || "Lead sem nome"}
-                          </SelectItem>
-                        ))}
+                      <SelectContent className="max-h-[200px]">
+                        {filteredLeads?.length === 0 ? (
+                          <div className="py-2 px-3 text-sm text-muted-foreground text-center">
+                            Nenhum lead encontrado
+                          </div>
+                        ) : (
+                          filteredLeads?.map((lead) => (
+                            <SelectItem key={lead.id} value={lead.id}>
+                              {lead.full_name || lead.email || "Lead sem nome"}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </TabsContent>
@@ -760,26 +819,36 @@ export function NewDealDialog({
                   {/* Results List */}
                   {!isSearching && hasSearched && (
                     <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium whitespace-nowrap">
                           {searchResults.length} lead(s) encontrado(s)
                         </span>
-                        {searchResults.length > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={toggleSelectAll}
-                            className="text-xs h-6 px-2"
-                          >
-                            {selectedLeadIds.size === searchResults.length
-                              ? "Desmarcar todos"
-                              : "Selecionar todos"}
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {searchResults.length > 0 && (
+                            <Input
+                              placeholder="Filtrar por nome..."
+                              value={importResultsSearch}
+                              onChange={(e) => setImportResultsSearch(e.target.value)}
+                              className="h-7 text-xs w-40"
+                            />
+                          )}
+                          {searchResults.length > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={toggleSelectAll}
+                              className="text-xs h-6 px-2 whitespace-nowrap"
+                            >
+                              {selectedLeadIds.size === filteredSearchResults.length
+                                ? "Desmarcar todos"
+                                : "Selecionar todos"}
+                            </Button>
+                          )}
+                        </div>
                       </div>
 
                       <div className="border rounded-lg overflow-hidden">
-                        {searchResults.length === 0 ? (
+                        {filteredSearchResults.length === 0 ? (
                           <div className="h-[120px] flex flex-col items-center justify-center text-muted-foreground bg-muted/20">
                             <Users className="h-6 w-6 mb-2 opacity-50" />
                             <p className="text-sm">Nenhum lead encontrado</p>
@@ -787,7 +856,7 @@ export function NewDealDialog({
                         ) : (
                           <ScrollArea className="h-[180px]">
                             <div className="divide-y">
-                              {searchResults.map((lead) => (
+                              {filteredSearchResults.map((lead) => (
                                 <div
                                   key={lead.id}
                                   className={`flex items-center gap-3 p-2.5 hover:bg-muted/50 cursor-pointer transition-colors ${
