@@ -185,6 +185,7 @@ export type Database = {
           product_id: string | null
           stage_id: string | null
           status: Database["public"]["Enums"]["deal_status"] | null
+          title: string | null
           value: number | null
         }
         Insert: {
@@ -204,6 +205,7 @@ export type Database = {
           product_id?: string | null
           stage_id?: string | null
           status?: Database["public"]["Enums"]["deal_status"] | null
+          title?: string | null
           value?: number | null
         }
         Update: {
@@ -223,6 +225,7 @@ export type Database = {
           product_id?: string | null
           stage_id?: string | null
           status?: Database["public"]["Enums"]["deal_status"] | null
+          title?: string | null
           value?: number | null
         }
         Relationships: [

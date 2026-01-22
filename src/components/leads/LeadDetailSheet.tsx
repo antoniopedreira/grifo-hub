@@ -13,6 +13,7 @@ import {
   Plus,
   Package,
   TrendingUp,
+  ShoppingCart,
   MapPin,
 } from "lucide-react";
 import { getRegionByPhone, getRegionColor } from "@/lib/ddd-regions";
@@ -64,6 +65,15 @@ interface Sale {
   product_id: string | null;
   product_name: string | null;
   origin: string;
+  products: { name: string } | null;
+}
+
+interface AbandonedDeal {
+  id: string;
+  title: string | null;
+  value: number | null;
+  created_at: string | null;
+  product_id: string | null;
   products: { name: string } | null;
 }
 
@@ -204,6 +214,23 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
         .order("transaction_date", { ascending: false });
       if (error) throw error;
       return data as Sale[];
+    },
+    enabled: !!lead?.id && open,
+  });
+
+  // Fetch abandoned deals for this lead
+  const { data: abandonedDeals, isLoading: loadingAbandoned } = useQuery({
+    queryKey: ["lead-abandoned-deals", lead?.id],
+    queryFn: async () => {
+      if (!lead?.id) return [];
+      const { data, error } = await supabase
+        .from("deals")
+        .select("id, title, value, created_at, product_id, products(name)")
+        .eq("lead_id", lead.id)
+        .eq("status", "abandoned")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as AbandonedDeal[];
     },
     enabled: !!lead?.id && open,
   });
@@ -672,6 +699,50 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                 </DialogContent>
               </Dialog>
 
+              {/* Abandoned Deals Section */}
+              {(loadingAbandoned || (abandonedDeals && abandonedDeals.length > 0)) && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                    <ShoppingCart className="h-4 w-4" />
+                    Carrinhos Abandonados
+                  </h3>
+
+                  {loadingAbandoned ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {abandonedDeals?.map((deal) => (
+                        <div
+                          key={deal.id}
+                          className="bg-muted/30 rounded-lg p-4 flex items-center justify-between border-l-4 border-amber-500"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                                {deal.created_at ? format(new Date(deal.created_at), "dd/MM/yyyy") : "-"}
+                              </div>
+                              <span className="font-semibold text-foreground">
+                                {deal.products?.name || deal.title || "Produto"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-bold text-amber-600">
+                              R$ {(deal.value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            </span>
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              Abandonado
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Sales List */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
@@ -711,13 +782,13 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                       </div>
                     ))}
                   </div>
-                ) : (
+                ) : !abandonedDeals?.length ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">Nenhuma compra registrada.</p>
                     <p className="text-xs mt-1">Use o botão acima para registrar vendas manuais.</p>
                   </div>
-                )}
+                ) : null}
               </div>
             </TabsContent>
           </ScrollArea>
