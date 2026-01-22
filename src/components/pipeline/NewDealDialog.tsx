@@ -180,12 +180,27 @@ export function NewDealDialog({
       }).map(p => p.id) || [];
 
       // Get leads who bought the selected products (via sales table)
-      const { data: salesData } = await supabase
+      // Include fallback for legacy data where product_id is null but product_name matches
+      const { data: salesByProductId } = await supabase
         .from("sales")
         .select("lead_id")
         .in("product_id", selectedProductFilters);
 
-      const leadIdsWhoBoughtSelected = new Set(salesData?.map((s) => s.lead_id).filter(Boolean) || []);
+      // Fallback: Get product names for selected filters
+      const selectedProductNames = products
+        ?.filter(p => selectedProductFilters.includes(p.id))
+        .map(p => p.name) || [];
+
+      const { data: salesByProductName } = await supabase
+        .from("sales")
+        .select("lead_id")
+        .is("product_id", null)
+        .in("product_name", selectedProductNames);
+
+      const leadIdsWhoBoughtSelected = new Set([
+        ...(salesByProductId?.map((s) => s.lead_id).filter(Boolean) || []),
+        ...(salesByProductName?.map((s) => s.lead_id).filter(Boolean) || []),
+      ]);
 
       // Get leads who bought products from STRICTLY HIGHER tier categories
       let leadIdsWhoBoughtStrictlyHigherTier = new Set<string>();
@@ -194,8 +209,22 @@ export function NewDealDialog({
           .from("sales")
           .select("lead_id")
           .in("product_id", productsInStrictlyHigherTiers);
+
+        // Fallback for higher tier products by name
+        const higherTierProductNames = products
+          ?.filter(p => productsInStrictlyHigherTiers.includes(p.id))
+          .map(p => p.name) || [];
+
+        const { data: higherTierSalesByName } = await supabase
+          .from("sales")
+          .select("lead_id")
+          .is("product_id", null)
+          .in("product_name", higherTierProductNames);
         
-        leadIdsWhoBoughtStrictlyHigherTier = new Set(higherTierSales?.map((s) => s.lead_id).filter(Boolean) || []);
+        leadIdsWhoBoughtStrictlyHigherTier = new Set([
+          ...(higherTierSales?.map((s) => s.lead_id).filter(Boolean) || []),
+          ...(higherTierSalesByName?.map((s) => s.lead_id).filter(Boolean) || []),
+        ]);
       }
 
       // Get leads who bought products from same or higher tier (for "Novo" filter)
@@ -210,8 +239,22 @@ export function NewDealDialog({
           .from("sales")
           .select("lead_id")
           .in("product_id", productsInSameOrHigherTiers);
+
+        // Fallback for same or higher tier products by name
+        const sameOrHigherTierProductNames = products
+          ?.filter(p => productsInSameOrHigherTiers.includes(p.id))
+          .map(p => p.name) || [];
+
+        const { data: sameOrHigherTierSalesByName } = await supabase
+          .from("sales")
+          .select("lead_id")
+          .is("product_id", null)
+          .in("product_name", sameOrHigherTierProductNames);
         
-        leadIdsWhoBoughtSameOrHigherTier = new Set(sameOrHigherTierSales?.map((s) => s.lead_id).filter(Boolean) || []);
+        leadIdsWhoBoughtSameOrHigherTier = new Set([
+          ...(sameOrHigherTierSales?.map((s) => s.lead_id).filter(Boolean) || []),
+          ...(sameOrHigherTierSalesByName?.map((s) => s.lead_id).filter(Boolean) || []),
+        ]);
       }
 
       // Get leads by deal status filter (for recovery functionality)
