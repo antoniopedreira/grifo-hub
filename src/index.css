@@ -74,42 +74,63 @@
   }
 
   .dark {
-    --background: 210 63% 8%;
-    --foreground: 210 20% 90%;
+    /* Main background: #0A1C2E */
+    --background: 210 66% 11%;
+    --foreground: 214 32% 91%;
 
-    --card: 210 55% 12%;
-    --card-foreground: 210 20% 90%;
+    /* Cards slightly elevated from background */
+    --card: 210 55% 14%;
+    --card-foreground: 214 32% 91%;
 
-    --popover: 210 55% 12%;
-    --popover-foreground: 210 20% 90%;
+    --popover: 210 55% 14%;
+    --popover-foreground: 214 32% 91%;
 
-    --primary: 210 20% 90%;
-    --primary-foreground: 210 63% 11%;
+    /* Primary inverted for dark mode */
+    --primary: 214 32% 91%;
+    --primary-foreground: 210 66% 11%;
 
-    --secondary: 39 61% 40%;
+    /* Secondary: Grifo Gold maintained */
+    --secondary: 39 61% 45%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 50% 18%;
-    --muted-foreground: 210 20% 60%;
+    /* Muted surfaces */
+    --muted: 210 45% 20%;
+    --muted-foreground: 214 20% 65%;
 
-    --accent: 39 61% 40%;
+    /* Accent: Grifo Gold */
+    --accent: 39 61% 45%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 45%;
+    /* Destructive */
+    --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 50% 18%;
-    --input: 210 50% 18%;
-    --ring: 39 61% 40%;
+    /* Borders and inputs with subtle visibility */
+    --border: 210 40% 22%;
+    --input: 210 40% 22%;
+    --ring: 39 61% 45%;
 
-    --sidebar-background: 210 63% 6%;
-    --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 39 61% 40%;
+    /* Sidebar: Slightly darker than main bg */
+    --sidebar-background: 210 66% 8%;
+    --sidebar-foreground: 214 32% 91%;
+    --sidebar-primary: 39 61% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 55% 12%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 210 50% 15%;
-    --sidebar-ring: 39 61% 40%;
+    --sidebar-accent: 210 55% 14%;
+    --sidebar-accent-foreground: 214 32% 91%;
+    --sidebar-border: 210 45% 18%;
+    --sidebar-ring: 39 61% 45%;
+
+    /* Grifo custom tokens for dark */
+    --grifo-navy: 214 32% 91%;
+    --grifo-gold: 39 61% 45%;
+    --grifo-gold-hover: 39 61% 50%;
+    --grifo-surface: 210 55% 14%;
+    --grifo-background: 210 66% 11%;
+    --grifo-kanban-column: 210 50% 16%;
+
+    /* Success state */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
   }
 }
 
