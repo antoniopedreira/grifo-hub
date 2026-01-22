@@ -579,8 +579,10 @@ export type Database = {
           id: string
           lead_id: string | null
           origin: Database["public"]["Enums"]["sale_origin"]
+          product_external_id: string | null
           product_id: string | null
           product_name: string | null
+          status: string | null
           transaction_date: string | null
           transaction_id: string | null
         }
@@ -589,8 +591,10 @@ export type Database = {
           id?: string
           lead_id?: string | null
           origin: Database["public"]["Enums"]["sale_origin"]
+          product_external_id?: string | null
           product_id?: string | null
           product_name?: string | null
+          status?: string | null
           transaction_date?: string | null
           transaction_id?: string | null
         }
@@ -599,8 +603,10 @@ export type Database = {
           id?: string
           lead_id?: string | null
           origin?: Database["public"]["Enums"]["sale_origin"]
+          product_external_id?: string | null
           product_id?: string | null
           product_name?: string | null
+          status?: string | null
           transaction_date?: string | null
           transaction_id?: string | null
         }
@@ -867,17 +873,30 @@ export type Database = {
         }
         Returns: Json
       }
-      handle_new_sale: {
-        Args: {
-          p_amount: number
-          p_email: string
-          p_name: string
-          p_phone: string
-          p_product_external_id: string
-          p_transaction_id: string
-        }
-        Returns: Json
-      }
+      handle_new_sale:
+        | {
+            Args: {
+              p_amount: number
+              p_email: string
+              p_name: string
+              p_phone: string
+              p_product_external_id: string
+              p_transaction_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_amount: number
+              p_email: string
+              p_name: string
+              p_phone: string
+              p_product_external_id: string
+              p_product_name_lastlink: string
+              p_transaction_id: string
+            }
+            Returns: Json
+          }
       handle_recovery_deal:
         | {
             Args: {
