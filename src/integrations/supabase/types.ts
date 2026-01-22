@@ -865,6 +865,17 @@ export type Database = {
         Args: { p_amount: number; p_deal_id: string; p_product_id: string }
         Returns: Json
       }
+      handle_abandoned_cart: {
+        Args: {
+          p_email: string
+          p_name: string
+          p_offer_price: number
+          p_phone: string
+          p_product_external_id: string
+          p_product_name_lastlink: string
+        }
+        Returns: Json
+      }
       handle_churn_refund: {
         Args: {
           p_email: string
