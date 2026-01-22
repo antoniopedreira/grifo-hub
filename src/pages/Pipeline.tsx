@@ -303,10 +303,10 @@ export default function Pipeline() {
 
         <div className="flex items-center gap-3">
           <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-            <SelectTrigger className="w-[180px] bg-white">
+            <SelectTrigger className="w-[180px] bg-card text-foreground">
               <SelectValue placeholder="Selecionar pipeline" />
             </SelectTrigger>
-            <SelectContent className="min-w-[--radix-select-trigger-width]">
+            <SelectContent className="min-w-[--radix-select-trigger-width] bg-card">
               {pipelines.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.name}
@@ -387,7 +387,7 @@ export default function Pipeline() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por lead, produto ou telefone..."
-                className="pl-9 bg-white"
+                className="pl-9 bg-card text-foreground"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
