@@ -187,9 +187,9 @@ export default function CRM() {
                   className="flex-1 min-w-[300px] flex flex-col bg-muted/20 rounded-xl border border-border/60"
                 >
                   {/* Header da Coluna (Limpo, sem checklists) */}
-                  <div className="p-4 border-b border-border/60 bg-white rounded-t-xl sticky top-0 z-10 shadow-sm">
+                  <div className="p-4 border-b border-border/60 bg-card rounded-t-xl sticky top-0 z-10 shadow-sm">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-bold text-lg text-primary">{quarter.label}</h3>
+                      <h3 className="font-bold text-lg text-foreground">{quarter.label}</h3>
                       <Badge variant="secondary" className="rounded-full bg-secondary/10 text-secondary">
                         {customersInQuarter.length}
                       </Badge>
@@ -207,13 +207,13 @@ export default function CRM() {
                         return (
                           <Card
                             key={journey.id}
-                            className="group relative border-l-4 border-l-secondary cursor-pointer hover:shadow-md transition-all bg-white"
+                            className="group relative border-l-4 border-l-secondary cursor-pointer hover:shadow-md transition-all bg-card"
                             onClick={() => handleCardClick(journey.id)}
                           >
                             <CardHeader className="p-4 pb-2">
                               <div className="flex justify-between items-start">
                                 <div className="space-y-1.5 flex-1 pr-2">
-                                  <CardTitle className="text-base font-bold leading-tight text-slate-800 line-clamp-1">
+                                  <CardTitle className="text-base font-bold leading-tight text-foreground line-clamp-1">
                                     {journey.leads?.full_name || "Cliente sem nome"}
                                   </CardTitle>
                                   <div className="flex items-center gap-2">
