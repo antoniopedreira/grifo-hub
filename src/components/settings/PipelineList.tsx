@@ -288,7 +288,7 @@ export function PipelineList({ onSelectPipeline }: PipelineListProps) {
                 {activePipelines.map((pipeline) => (
                   <div
                     key={pipeline.id}
-                    className="flex items-center justify-between rounded-lg border border-border bg-white p-4 hover:border-secondary/50 transition-colors"
+                    className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:border-secondary/50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <GitBranch className="h-5 w-5 text-muted-foreground" />
