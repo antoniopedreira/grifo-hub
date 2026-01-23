@@ -377,6 +377,86 @@ export type Database = {
         }
         Relationships: []
       }
+      nps_forms: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          description: string | null
+          id: string
+          product_id: string | null
+          slug: string
+          title: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          product_id?: string | null
+          slug: string
+          title?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          product_id?: string | null
+          slug?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nps_forms_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nps_responses: {
+        Row: {
+          created_at: string | null
+          feedback: string | null
+          form_id: string | null
+          id: string
+          lead_id: string | null
+          score: number
+        }
+        Insert: {
+          created_at?: string | null
+          feedback?: string | null
+          form_id?: string | null
+          id?: string
+          lead_id?: string | null
+          score: number
+        }
+        Update: {
+          created_at?: string | null
+          feedback?: string | null
+          form_id?: string | null
+          id?: string
+          lead_id?: string | null
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nps_responses_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "nps_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nps_responses_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       page_templates: {
         Row: {
           component_key: string
