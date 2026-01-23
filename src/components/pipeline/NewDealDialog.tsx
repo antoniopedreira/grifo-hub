@@ -923,48 +923,46 @@ export function NewDealDialog({
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50" align="start">
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                           <Command shouldFilter={false}>
                             <CommandInput 
                               placeholder="Buscar produto..." 
                               value={productFilterSearch}
                               onValueChange={setProductFilterSearch}
                             />
-                            <div className="max-h-[200px] overflow-y-auto overflow-x-hidden overscroll-contain scrollbar-thin">
-                              <CommandList>
-                                <CommandEmpty>Nenhum produto encontrado</CommandEmpty>
-                                {['avancados', 'intermediarios', 'basicos'].map((categorySlug) => {
-                                  const categoryProducts = products.filter(
-                                    p => (p.product_categories as any)?.slug === categorySlug
-                                  ).filter(p => 
-                                    !productFilterSearch || 
-                                    p.name.toLowerCase().includes(productFilterSearch.toLowerCase())
-                                  );
-                                  if (categoryProducts.length === 0) return null;
-                                  
-                                  const categoryName = (categoryProducts[0]?.product_categories as any)?.name || categorySlug;
-                                  
-                                  return (
-                                    <CommandGroup key={categorySlug} heading={categoryName}>
-                                      {categoryProducts.map((product) => (
-                                        <CommandItem
-                                          key={product.id}
-                                          value={product.id}
-                                          onSelect={() => toggleProductFilter(product.id)}
-                                          className="cursor-pointer"
-                                        >
-                                          <Checkbox
-                                            checked={selectedProductFilters.includes(product.id)}
-                                            className="mr-2 h-4 w-4"
-                                          />
-                                          <span className="truncate">{product.name}</span>
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  );
-                                })}
-                              </CommandList>
-                            </div>
+                            <CommandList className="max-h-[200px] overflow-y-auto overflow-x-hidden">
+                              <CommandEmpty>Nenhum produto encontrado</CommandEmpty>
+                              {['avancados', 'intermediarios', 'basicos'].map((categorySlug) => {
+                                const categoryProducts = products.filter(
+                                  p => (p.product_categories as any)?.slug === categorySlug
+                                ).filter(p => 
+                                  !productFilterSearch || 
+                                  p.name.toLowerCase().includes(productFilterSearch.toLowerCase())
+                                );
+                                if (categoryProducts.length === 0) return null;
+                                
+                                const categoryName = (categoryProducts[0]?.product_categories as any)?.name || categorySlug;
+                                
+                                return (
+                                  <CommandGroup key={categorySlug} heading={categoryName}>
+                                    {categoryProducts.map((product) => (
+                                      <CommandItem
+                                        key={product.id}
+                                        value={product.id}
+                                        onSelect={() => toggleProductFilter(product.id)}
+                                        className="cursor-pointer"
+                                      >
+                                        <Checkbox
+                                          checked={selectedProductFilters.includes(product.id)}
+                                          className="mr-2 h-4 w-4"
+                                        />
+                                        <span className="truncate">{product.name}</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                );
+                              })}
+                            </CommandList>
                           </Command>
                         </PopoverContent>
                       </Popover>
