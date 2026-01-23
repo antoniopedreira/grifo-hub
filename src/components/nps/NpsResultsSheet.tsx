@@ -50,6 +50,13 @@ const QUESTION_LABELS: Record<string, string> = {
   comments: "Comentários",
   nome: "Nome",
   email: "E-mail",
+  // VIP template fields
+  content_sense: "Sentido do conteúdo para obra/liderança",
+  practical_application: "Facilitou aplicação prática",
+  extra_hour_value: "Valor da 1h extra (Daniel e Rafael)",
+  extra_hour_expectations: "Expectativas da 1h extra",
+  extra_hour_dynamics: "Dinâmica de perguntas/respostas",
+  extra_hour_highlight: "O que mais fez diferença na 1h extra",
 };
 
 function getQuestionLabel(key: string): string {
