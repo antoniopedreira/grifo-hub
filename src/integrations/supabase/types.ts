@@ -579,6 +579,7 @@ export type Database = {
       sales: {
         Row: {
           amount: number
+          deal_id: string | null
           id: string
           lead_id: string | null
           origin: Database["public"]["Enums"]["sale_origin"]
@@ -591,6 +592,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          deal_id?: string | null
           id?: string
           lead_id?: string | null
           origin: Database["public"]["Enums"]["sale_origin"]
@@ -603,6 +605,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          deal_id?: string | null
           id?: string
           lead_id?: string | null
           origin?: Database["public"]["Enums"]["sale_origin"]
@@ -614,6 +617,13 @@ export type Database = {
           transaction_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sales_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sales_lead_id_fkey"
             columns: ["lead_id"]
