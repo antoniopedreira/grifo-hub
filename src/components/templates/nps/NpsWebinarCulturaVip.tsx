@@ -435,7 +435,7 @@ export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateP
               <ArrowLeft className="mr-2 w-4 h-4" /> Voltar
             </button>
 
-            {currentStep === 7 && (
+            {(currentStep === 6 || currentStep === 7) && (
               <button
                 onClick={handleNext}
                 className="flex items-center bg-[#A47428] hover:bg-[#8a6120] text-white px-6 py-3 rounded-lg font-bold transition-all ml-auto shadow-lg shadow-[#A47428]/20"
