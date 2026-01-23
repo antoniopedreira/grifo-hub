@@ -429,7 +429,7 @@ export default function Leads() {
                       )}
                     </TableCell>
 
-                    <TableCell className="font-medium text-slate-700">
+                    <TableCell className="font-medium text-foreground">
                       {new Intl.NumberFormat("pt-BR", {
                         style: "currency",
                         currency: "BRL",
