@@ -255,7 +255,7 @@ export default function NpsFormsList() {
     setTimeout(() => setCopiedSlug(null), 2000);
   };
 
-  const FormFields = ({ isEdit = false }: { isEdit?: boolean }) => (
+  const renderFormFields = (isEdit: boolean = false) => (
     <div className="grid gap-4 py-4">
       <div className="grid gap-2">
         <Label>Produto (opcional)</Label>
@@ -284,23 +284,25 @@ export default function NpsFormsList() {
       </div>
 
       <div className="grid gap-2">
-        <Label>Título/Pergunta</Label>
+        <Label htmlFor={isEdit ? "edit-title" : "create-title"}>Título/Pergunta</Label>
         <Input
+          id={isEdit ? "edit-title" : "create-title"}
           placeholder="De 0 a 10, quanto você recomendaria..."
           value={formData.title}
-          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
         />
       </div>
 
       <div className="grid gap-2">
-        <Label>
+        <Label htmlFor={isEdit ? "edit-slug" : "create-slug"}>
           Slug (URL) <span className="text-destructive">*</span>
         </Label>
         <div className="flex gap-2">
           <Input
+            id={isEdit ? "edit-slug" : "create-slug"}
             placeholder="mentoria-jan-2024"
             value={formData.slug}
-            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+            onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
             className="font-mono"
           />
           {!isEdit && formData.product_id && (
@@ -311,7 +313,7 @@ export default function NpsFormsList() {
               onClick={() => {
                 const product = products?.find((p) => p.id === formData.product_id);
                 if (product) {
-                  setFormData({ ...formData, slug: generateSlug(product.name) });
+                  setFormData((prev) => ({ ...prev, slug: generateSlug(product.name) }));
                 }
               }}
             >
@@ -325,11 +327,12 @@ export default function NpsFormsList() {
       </div>
 
       <div className="grid gap-2">
-        <Label>Descrição (opcional)</Label>
+        <Label htmlFor={isEdit ? "edit-desc" : "create-desc"}>Descrição (opcional)</Label>
         <Textarea
+          id={isEdit ? "edit-desc" : "create-desc"}
           placeholder="Ajude-nos a melhorar..."
           value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
           rows={2}
         />
       </div>
@@ -337,7 +340,7 @@ export default function NpsFormsList() {
       <div className="flex items-center gap-3">
         <Switch
           checked={formData.active}
-          onCheckedChange={(checked) => setFormData({ ...formData, active: checked })}
+          onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, active: checked }))}
         />
         <Label>Formulário ativo</Label>
       </div>
@@ -507,7 +510,7 @@ export default function NpsFormsList() {
               </DialogDescription>
             </DialogHeader>
 
-            <FormFields />
+            {renderFormFields(false)}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
@@ -535,7 +538,7 @@ export default function NpsFormsList() {
               <DialogDescription>Atualize as configurações do formulário.</DialogDescription>
             </DialogHeader>
 
-            <FormFields isEdit />
+            {renderFormFields(true)}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
