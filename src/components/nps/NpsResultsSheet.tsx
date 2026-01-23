@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, TrendingUp, TrendingDown, Minus, MessageSquare } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Minus, MessageSquare, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sheet,
@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -108,12 +109,24 @@ export default function NpsResultsSheet({ open, onOpenChange, form }: NpsResults
     );
   };
 
+  const handleViewPage = () => {
+    window.open(`/nps/${form.slug}`, "_blank");
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-xl">
         <SheetHeader>
-          <SheetTitle className="text-primary">Resultados NPS</SheetTitle>
-          <SheetDescription>{form.title}</SheetDescription>
+          <div className="flex items-center justify-between pr-6">
+            <div>
+              <SheetTitle className="text-primary">Resultados NPS</SheetTitle>
+              <SheetDescription>{form.title}</SheetDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleViewPage}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Ver Página
+            </Button>
+          </div>
         </SheetHeader>
 
         {isLoading ? (
