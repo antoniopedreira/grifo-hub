@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { NpsTemplateProps } from "./types";
 
 type StepData = {
+  email: string;
   nps_score: number | null;
   content_sense: string;
   practical_application: string;
@@ -27,9 +28,11 @@ type StepData = {
   extra_hour_dynamics: string;
   learning_highlight: string;
   extra_hour_highlight: string;
+  improvement_suggestion: string;
 };
 
 const INITIAL_DATA: StepData = {
+  email: "",
   nps_score: null,
   content_sense: "",
   practical_application: "",
@@ -38,6 +41,7 @@ const INITIAL_DATA: StepData = {
   extra_hour_dynamics: "",
   learning_highlight: "",
   extra_hour_highlight: "",
+  improvement_suggestion: "",
 };
 
 export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateProps) {
@@ -53,7 +57,7 @@ export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateP
     }, 300);
   }, [currentStep]);
 
-  const totalSteps = 8;
+  const totalSteps = 9;
   const progress = ((currentStep + 1) / (totalSteps + 1)) * 100;
 
   const handleNext = () => {
@@ -84,7 +88,7 @@ export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateP
   };
 
   const validateStep = () => {
-    if (currentStep === 6 && formData.learning_highlight.trim().length < 3) {
+    if (currentStep === 7 && formData.learning_highlight.trim().length < 3) {
       toast.error("Por favor, compartilhe o que foi mais valioso para você.");
       return false;
     }
@@ -100,6 +104,7 @@ export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateP
         form_id: form.id,
         score: formData.nps_score,
         feedback: JSON.stringify({
+          email: formData.email || null,
           content_sense: formData.content_sense,
           practical_application: formData.practical_application,
           extra_hour_value: formData.extra_hour_value,
@@ -107,6 +112,7 @@ export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateP
           extra_hour_dynamics: formData.extra_hour_dynamics,
           learning_highlight: formData.learning_highlight,
           extra_hour_highlight: formData.extra_hour_highlight,
+          improvement_suggestion: formData.improvement_suggestion,
         }),
       });
 
@@ -125,9 +131,9 @@ export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateP
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (currentStep === 6) {
+      if (currentStep === 7 || currentStep === 8) {
         handleNext();
-      } else if (currentStep === 7) {
+      } else if (currentStep === 9) {
         handleSubmit();
       }
     }
@@ -176,13 +182,25 @@ export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateP
 
         {/* CONTENT AREA */}
         <div className="w-full relative min-h-[400px]">
-          {/* STEP 0: NPS SCORE */}
+          {/* STEP 0: NPS SCORE + EMAIL OPCIONAL */}
           {currentStep === 0 && (
             <QuestionCard
               number={1}
               question="Em uma escala de 0 a 10, o quanto você indicaria este webinar para um colega que atua em obra ou liderança?"
               subtext="0 = não indicaria | 10 = indicaria com certeza"
             >
+              <div className="mb-6">
+                <label className="block text-sm text-[#E1D8CF]/60 mb-2">
+                  Seu e-mail (opcional)
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  placeholder="seu@email.com"
+                  className="w-full bg-transparent border-2 border-[#E1D8CF]/20 text-[#E1D8CF] text-lg p-3 rounded-lg focus:ring-0 focus:outline-none focus:border-[#A47428] transition-all placeholder:text-[#E1D8CF]/30"
+                />
+              </div>
               <div className="grid grid-cols-11 gap-1 md:gap-2 mt-4">
                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
                   <button
@@ -356,6 +374,23 @@ export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateP
                 onKeyDown={handleKeyDown}
                 placeholder="Conte o que mais marcou você nesse momento..."
               />
+            </QuestionCard>
+          )}
+
+          {/* STEP 8: SUGESTÃO DE MELHORIA */}
+          {currentStep === 8 && (
+            <QuestionCard
+              number={9}
+              question="O que poderia tornar essa experiência ainda melhor para você?"
+              subtext="(Opcional)"
+            >
+              <TextAreaInput
+                ref={inputRef}
+                value={formData.improvement_suggestion}
+                onChange={(e) => handleChange("improvement_suggestion", e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Conte-nos suas sugestões de melhoria..."
+              />
 
               <button
                 onClick={handleSubmit}
@@ -376,7 +411,7 @@ export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateP
           )}
 
           {/* TELA DE SUCESSO */}
-          {currentStep > 7 && (
+          {currentStep > 8 && (
             <div className="flex flex-col items-center justify-center animate-in fade-in duration-700 text-center mt-10">
               <div className="w-20 h-20 rounded-full bg-[#A47428] flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(164,116,40,0.4)]">
                 <Check className="text-white w-10 h-10" />
@@ -390,7 +425,7 @@ export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateP
         </div>
 
         {/* NAVIGATION CONTROLS */}
-        {currentStep > 0 && currentStep <= 7 && (
+        {currentStep > 0 && currentStep <= 8 && (
           <div className="fixed bottom-0 left-0 w-full p-6 bg-[#112232] md:bg-transparent md:static flex items-center justify-between max-w-2xl mt-8">
             <button
               onClick={handleBack}
@@ -400,7 +435,7 @@ export default function NpsWebinarCulturaVip({ form, productName }: NpsTemplateP
               <ArrowLeft className="mr-2 w-4 h-4" /> Voltar
             </button>
 
-            {currentStep === 6 && (
+            {currentStep === 7 && (
               <button
                 onClick={handleNext}
                 className="flex items-center bg-[#A47428] hover:bg-[#8a6120] text-white px-6 py-3 rounded-lg font-bold transition-all ml-auto shadow-lg shadow-[#A47428]/20"
