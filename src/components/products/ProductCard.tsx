@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Eye, Trash2, Loader2, Pencil, Zap } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Eye, Trash2, Loader2, Pencil, Zap, BarChart3 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProductEditSheet } from "./ProductEditSheet";
+import NpsResultsSheet from "@/components/nps/NpsResultsSheet";
 import type { Tables } from "@/integrations/supabase/types";
 
 interface ProductCardProps {
@@ -27,7 +28,23 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
+  const [npsResultsOpen, setNpsResultsOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  // Check if product has linked NPS form
+  const { data: linkedNpsForm } = useQuery({
+    queryKey: ["nps_form_for_product", product.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("nps_forms")
+        .select("id, title, slug")
+        .eq("product_id", product.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const formatPrice = (price: number | null) => {
     if (price === null) return "—";
@@ -134,10 +151,10 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
 
           {/* Actions */}
-          <div className="pt-2 border-t border-border flex gap-2">
+          <div className="pt-2 border-t border-border flex flex-wrap gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex-1">
+                <div className="flex-1 min-w-[100px]">
                   <Button
                     variant="outline"
                     size="sm"
@@ -158,6 +175,22 @@ export function ProductCard({ product }: ProductCardProps) {
                   : "Abrir página pública em nova aba"}
               </TooltipContent>
             </Tooltip>
+
+            {linkedNpsForm && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNpsResultsOpen(true)}
+                    className="border-green-600 text-green-700 hover:bg-green-100"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Ver resultados NPS</TooltipContent>
+              </Tooltip>
+            )}
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -196,6 +229,19 @@ export function ProductCard({ product }: ProductCardProps) {
         open={editSheetOpen}
         onOpenChange={setEditSheetOpen}
       />
+
+      {/* NPS Results Sheet */}
+      {linkedNpsForm && (
+        <NpsResultsSheet
+          open={npsResultsOpen}
+          onOpenChange={setNpsResultsOpen}
+          form={{
+            id: linkedNpsForm.id,
+            title: linkedNpsForm.title,
+            slug: linkedNpsForm.slug,
+          }}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
