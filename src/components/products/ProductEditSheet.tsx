@@ -34,6 +34,10 @@ interface ProductForm {
   pipeline_id: string;
   is_crm_trigger: boolean;
   lead_origin: string;
+  // NPS fields
+  nps_template_id: string;
+  nps_slug: string;
+  nps_active: boolean;
 }
 
 export function ProductEditSheet({ product, open, onOpenChange }: ProductEditSheetProps) {
@@ -51,6 +55,9 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
     pipeline_id: "",
     is_crm_trigger: false,
     lead_origin: "",
+    nps_template_id: "",
+    nps_slug: "",
+    nps_active: true,
   });
 
   const [npsResultsOpen, setNpsResultsOpen] = useState(false);
@@ -60,7 +67,8 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
   // Populate form when product changes
   useEffect(() => {
     if (product) {
-      setForm({
+      setForm((prev) => ({
+        ...prev,
         name: product.name || "",
         price: product.price?.toString() || "",
         category_id: product.category_id || "",
@@ -74,7 +82,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         pipeline_id: (product as any).pipeline_id || "",
         is_crm_trigger: (product as any).is_crm_trigger ?? false,
         lead_origin: (product as any).lead_origin || "",
-      });
+      }));
     }
   }, [product]);
 
@@ -113,22 +121,57 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
     },
   });
 
-  // Fetch NPS forms for linking
-  const { data: npsForms } = useQuery({
-    queryKey: ["nps_forms_for_product"],
+  // Fetch NPS templates (page_templates with type = nps_form)
+  const { data: npsTemplates } = useQuery({
+    queryKey: ["page_templates", "nps_form"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("nps_forms")
-        .select("*, page_templates(name, component_key)")
-        .order("title");
+        .from("page_templates")
+        .select("*")
+        .eq("type", "nps_form")
+        .order("name");
 
       if (error) throw error;
       return data;
     },
   });
 
-  // Get NPS form linked to this product
-  const linkedNpsForm = npsForms?.find((nps) => nps.product_id === product?.id);
+  // Fetch NPS form linked to this product
+  const { data: linkedNpsForm } = useQuery({
+    queryKey: ["nps_form_for_product", product?.id],
+    queryFn: async () => {
+      if (!product?.id) return null;
+      const { data, error } = await supabase
+        .from("nps_forms")
+        .select("*, page_templates(name, component_key)")
+        .eq("product_id", product.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!product?.id,
+  });
+
+  // Populate NPS fields when linked form is loaded
+  useEffect(() => {
+    if (linkedNpsForm) {
+      setForm((prev) => ({
+        ...prev,
+        nps_template_id: linkedNpsForm.template_id || "",
+        nps_slug: linkedNpsForm.slug || "",
+        nps_active: linkedNpsForm.active ?? true,
+      }));
+    } else if (product) {
+      // Reset NPS fields if no linked form
+      setForm((prev) => ({
+        ...prev,
+        nps_template_id: "",
+        nps_slug: "",
+        nps_active: true,
+      }));
+    }
+  }, [linkedNpsForm, product]);
 
   const { data: formTemplates } = useQuery({
     queryKey: ["page_templates", "application_form"],
@@ -172,10 +215,52 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         .single();
 
       if (error) throw error;
+
+      // Handle NPS form linking
+      if (form.nps_template_id && form.nps_slug) {
+        // Check if there's an existing NPS form for this product
+        if (linkedNpsForm) {
+          // Update existing nps_form
+          const { error: npsError } = await supabase
+            .from("nps_forms")
+            .update({
+              template_id: form.nps_template_id,
+              slug: form.nps_slug,
+              active: form.nps_active,
+              title: `NPS - ${form.name}`,
+            })
+            .eq("id", linkedNpsForm.id);
+
+          if (npsError) throw npsError;
+        } else {
+          // Create new nps_form
+          const { error: npsError } = await supabase
+            .from("nps_forms")
+            .insert({
+              product_id: product.id,
+              template_id: form.nps_template_id,
+              slug: form.nps_slug,
+              active: form.nps_active,
+              title: `NPS - ${form.name}`,
+            });
+
+          if (npsError) throw npsError;
+        }
+      } else if (linkedNpsForm && !form.nps_template_id) {
+        // Remove NPS form if template is unset
+        const { error: deleteError } = await supabase
+          .from("nps_forms")
+          .delete()
+          .eq("id", linkedNpsForm.id);
+
+        if (deleteError) throw deleteError;
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["nps_form_for_product", product?.id] });
       toast.success("Produto atualizado com sucesso!");
       onOpenChange(false);
     },
@@ -442,50 +527,105 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
           <div className="space-y-4">
             <h3 className="font-semibold text-primary text-sm">Pesquisa NPS</h3>
 
-            {linkedNpsForm ? (
-              <div className="p-4 rounded-lg border border-green-200 bg-green-50/50 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-green-900">{linkedNpsForm.title}</p>
-                    <p className="text-xs text-green-700/80">
-                      Template: {linkedNpsForm.page_templates?.name || "Padrão"}
-                    </p>
+            <div className="space-y-2">
+              <Label htmlFor="nps_template">Template NPS</Label>
+              <Select
+                value={form.nps_template_id || "none"}
+                onValueChange={(value) =>
+                  setForm({ ...form, nps_template_id: value === "none" ? "" : value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um template NPS" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum (sem NPS)</SelectItem>
+                  {npsTemplates?.map((tpl) => (
+                    <SelectItem key={tpl.id} value={tpl.id}>
+                      {tpl.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Selecione um template NPS criado em Templates para vincular a este produto.
+              </p>
+            </div>
+
+            {form.nps_template_id && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="nps_slug">Slug do NPS</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="nps_slug"
+                      placeholder="pesquisa-produto"
+                      value={form.nps_slug}
+                      onChange={(e) => setForm({ ...form, nps_slug: e.target.value })}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (form.name) {
+                          const slug = form.name
+                            .toLowerCase()
+                            .normalize("NFD")
+                            .replace(/[\u0300-\u036f]/g, "")
+                            .replace(/[^a-z0-9]+/g, "-")
+                            .replace(/(^-|-$)/g, "");
+                          setForm({ ...form, nps_slug: `nps-${slug}` });
+                        }
+                      }}
+                      className="shrink-0"
+                    >
+                      Gerar
+                    </Button>
                   </div>
-                  <span className="text-xs bg-green-600 text-white px-2 py-1 rounded">Vinculado</span>
+                  <p className="text-xs text-muted-foreground">
+                    URL final: /nps/{form.nps_slug || "slug-do-nps"}
+                  </p>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setNpsResultsOpen(true)}
-                    className="flex-1 border-green-600 text-green-700 hover:bg-green-100"
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Ver NPS
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(`/nps/${linkedNpsForm.slug}`, "_blank")}
-                    className="flex-1 border-green-600 text-green-700 hover:bg-green-100"
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Ver Formulário
-                  </Button>
+                <div className="flex items-center gap-4 p-3 rounded-lg border border-border">
+                  <Switch
+                    id="nps_active"
+                    checked={form.nps_active}
+                    onCheckedChange={(checked) => setForm({ ...form, nps_active: checked })}
+                  />
+                  <div>
+                    <Label htmlFor="nps_active" className="cursor-pointer">
+                      Pesquisa Ativa
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Pesquisas inativas não aceitam respostas</p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="p-4 rounded-lg border border-border bg-muted/30 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Nenhum formulário NPS vinculado a este produto.
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Para vincular, crie um formulário NPS na aba Templates e selecione este produto.
-                </p>
-              </div>
+
+                {linkedNpsForm && (
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setNpsResultsOpen(true)}
+                      className="flex-1 border-green-600 text-green-700 hover:bg-green-100"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Ver Resultados
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/nps/${form.nps_slug}`, "_blank")}
+                      className="flex-1 border-primary text-primary hover:bg-primary/10"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Abrir Pesquisa
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
