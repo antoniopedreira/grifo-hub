@@ -260,11 +260,11 @@ export default function NpsFormsList() {
       <div className="grid gap-2">
         <Label>Produto (opcional)</Label>
         <Select
-          value={formData.product_id}
+          value={formData.product_id || "none"}
           onValueChange={(value) =>
             setFormData({
               ...formData,
-              product_id: value,
+              product_id: value === "none" ? "" : value,
               slug: formData.slug || generateSlug(products?.find((p) => p.id === value)?.name || ""),
             })
           }
@@ -273,7 +273,7 @@ export default function NpsFormsList() {
             <SelectValue placeholder="Selecione um produto" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Nenhum (Geral)</SelectItem>
+            <SelectItem value="none">Nenhum (Geral)</SelectItem>
             {products?.map((product) => (
               <SelectItem key={product.id} value={product.id}>
                 {product.name}
