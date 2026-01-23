@@ -91,6 +91,8 @@ export function NewDealDialog({
   const [existingLeadSearch, setExistingLeadSearch] = useState("");
   const [importResultsSearch, setImportResultsSearch] = useState("");
   const [leadComboboxOpen, setLeadComboboxOpen] = useState(false);
+  const [productFilterOpen, setProductFilterOpen] = useState(false);
+  const [productFilterSearch, setProductFilterSearch] = useState("");
 
   // Fetch leads for existing lead selector
   const { data: leads } = useQuery({
@@ -837,43 +839,105 @@ export function NewDealDialog({
                     </div>
                   </div>
 
-                  {/* Product Filter - Required - Compact Collapsible */}
+                  {/* Product Filter - Required - Dropdown Multi-Select */}
                   {products && products.length > 0 && (
                     <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-[10px] text-muted-foreground">
-                          Produto <span className="text-destructive">*</span>
-                          {selectedProductFilters.length > 0 && (
-                            <span className="ml-1 text-primary">({selectedProductFilters.length} selecionado{selectedProductFilters.length > 1 ? 's' : ''})</span>
-                          )}
-                        </Label>
-                      </div>
+                      <Label className="text-[10px] text-muted-foreground">
+                        Produto <span className="text-destructive">*</span>
+                      </Label>
                       
-                      {/* Compact inline display */}
-                      <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto p-1.5 border rounded bg-background/50">
-                        {['avancados', 'intermediarios', 'basicos'].map((categorySlug) => {
-                          const categoryProducts = products.filter(
-                            p => (p.product_categories as any)?.slug === categorySlug
-                          );
-                          if (categoryProducts.length === 0) return null;
-                          
-                          const categoryName = (categoryProducts[0]?.product_categories as any)?.name || categorySlug;
-                          const shortName = categoryName.charAt(0).toUpperCase(); // A, I, B
-                          
-                          return categoryProducts.map((product) => (
-                            <Badge
-                              key={product.id}
-                              variant={selectedProductFilters.includes(product.id) ? "default" : "outline"}
-                              className="cursor-pointer hover:bg-secondary/80 transition-colors text-[10px] py-0 h-4 px-1.5"
-                              onClick={() => toggleProductFilter(product.id)}
-                              title={`${categoryName}: ${product.name}`}
-                            >
-                              <span className="text-[8px] opacity-60 mr-0.5">{shortName}</span>
-                              {product.name.length > 15 ? product.name.slice(0, 15) + '…' : product.name}
+                      <Popover open={productFilterOpen} onOpenChange={setProductFilterOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={productFilterOpen}
+                            className="w-full justify-between h-8 text-sm font-normal"
+                          >
+                            {selectedProductFilters.length === 0 ? (
+                              <span className="text-muted-foreground">Selecione produtos...</span>
+                            ) : (
+                              <span className="truncate">
+                                {selectedProductFilters.length} produto{selectedProductFilters.length > 1 ? 's' : ''} selecionado{selectedProductFilters.length > 1 ? 's' : ''}
+                              </span>
+                            )}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                          <Command shouldFilter={false}>
+                            <CommandInput 
+                              placeholder="Buscar produto..." 
+                              value={productFilterSearch}
+                              onValueChange={setProductFilterSearch}
+                            />
+                            <CommandList className="max-h-[200px]">
+                              <CommandEmpty>Nenhum produto encontrado</CommandEmpty>
+                              {['avancados', 'intermediarios', 'basicos'].map((categorySlug) => {
+                                const categoryProducts = products.filter(
+                                  p => (p.product_categories as any)?.slug === categorySlug
+                                ).filter(p => 
+                                  !productFilterSearch || 
+                                  p.name.toLowerCase().includes(productFilterSearch.toLowerCase())
+                                );
+                                if (categoryProducts.length === 0) return null;
+                                
+                                const categoryName = (categoryProducts[0]?.product_categories as any)?.name || categorySlug;
+                                
+                                return (
+                                  <CommandGroup key={categorySlug} heading={categoryName}>
+                                    {categoryProducts.map((product) => (
+                                      <CommandItem
+                                        key={product.id}
+                                        value={product.id}
+                                        onSelect={() => toggleProductFilter(product.id)}
+                                        className="cursor-pointer"
+                                      >
+                                        <Checkbox
+                                          checked={selectedProductFilters.includes(product.id)}
+                                          className="mr-2 h-4 w-4"
+                                        />
+                                        <span className="truncate">{product.name}</span>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                );
+                              })}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      
+                      {/* Selected products badges */}
+                      {selectedProductFilters.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {selectedProductFilters.slice(0, 4).map((productId) => {
+                            const product = products.find(p => p.id === productId);
+                            if (!product) return null;
+                            return (
+                              <Badge
+                                key={productId}
+                                variant="secondary"
+                                className="text-[10px] py-0 h-5 px-1.5 gap-1"
+                              >
+                                {product.name.length > 12 ? product.name.slice(0, 12) + '…' : product.name}
+                                <button
+                                  type="button"
+                                  onClick={() => toggleProductFilter(productId)}
+                                  className="ml-0.5 hover:text-destructive"
+                                >
+                                  ×
+                                </button>
+                              </Badge>
+                            );
+                          })}
+                          {selectedProductFilters.length > 4 && (
+                            <Badge variant="outline" className="text-[10px] py-0 h-5 px-1.5">
+                              +{selectedProductFilters.length - 4}
                             </Badge>
-                          ));
-                        })}
-                      </div>
+                          )}
+                        </div>
+                      )}
                       
                       {selectedProductFilters.length === 0 && (
                         <p className="text-[9px] text-muted-foreground">
