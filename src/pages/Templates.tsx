@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileText, Plus, Loader2, Pencil, Trash2 } from "lucide-react";
+import { FileText, Plus, Loader2, Pencil, Trash2, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -47,6 +53,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
+import NpsFormsList from "@/components/nps/NpsFormsList";
 
 type TemplateType = Database["public"]["Enums"]["template_type"];
 type Template = Database["public"]["Tables"]["page_templates"]["Row"];
@@ -63,6 +70,7 @@ interface EditTemplateForm {
 }
 
 export default function Templates() {
+  const [activeTab, setActiveTab] = useState("templates");
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -217,22 +225,38 @@ export default function Templates() {
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FileText className="h-8 w-8 text-secondary" />
-            <h1 className="text-3xl font-bold text-primary">Templates</h1>
-          </div>
-          
-          <Button 
-            onClick={() => setCreateOpen(true)}
-            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Template
-          </Button>
+        <div className="flex items-center gap-3">
+          <FileText className="h-8 w-8 text-secondary" />
+          <h1 className="text-3xl font-bold text-primary">Templates</h1>
         </div>
 
-        <div className="rounded-lg border border-border bg-card">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="templates" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Templates de Página
+            </TabsTrigger>
+            <TabsTrigger value="nps" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Formulários NPS
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="templates" className="mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-muted-foreground">
+                Templates de Landing Pages e Formulários para seus produtos.
+              </p>
+              <Button 
+                onClick={() => setCreateOpen(true)}
+                className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Template
+              </Button>
+            </div>
+
+            <div className="rounded-lg border border-border bg-card">
           {isLoading ? (
             <div className="flex items-center justify-center p-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -298,7 +322,13 @@ export default function Templates() {
               </p>
             </div>
           )}
-        </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="nps" className="mt-6">
+            <NpsFormsList />
+          </TabsContent>
+        </Tabs>
 
         {/* Create Modal */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
