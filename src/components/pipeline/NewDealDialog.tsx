@@ -265,11 +265,70 @@ export function NewDealDialog({
         const dealStatusValue = dealStatusFilter as "open" | "won" | "lost" | "abandoned" | "archived";
         const { data: dealsData } = await supabase
           .from("deals")
-          .select("lead_id")
+          .select("lead_id, product_id")
           .in("product_id", selectedProductFilters)
           .eq("status", dealStatusValue);
         
-        leadIdsByDealStatus = new Set(dealsData?.map((d) => d.lead_id).filter(Boolean) || []);
+        // For "abandoned" status, exclude leads who have a paid sale for the SAME product
+        // If someone abandoned a cart but later purchased, they shouldn't show as abandoned
+        if (dealStatusValue === "abandoned" && dealsData && dealsData.length > 0) {
+          // Get all lead_ids and their abandoned product_ids
+          const abandonedLeadProducts = dealsData.map(d => ({
+            lead_id: d.lead_id,
+            product_id: d.product_id
+          })).filter(d => d.lead_id && d.product_id);
+          
+          // Check which of these leads have paid sales for the same products
+          const leadProductPairs = abandonedLeadProducts.map(d => d.lead_id);
+          const productIdsInQuestion = [...new Set(abandonedLeadProducts.map(d => d.product_id))];
+          
+          // Get paid sales for these products
+          const { data: paidSales } = await supabase
+            .from("sales")
+            .select("lead_id, product_id")
+            .in("lead_id", leadProductPairs)
+            .in("product_id", productIdsInQuestion as string[])
+            .eq("status", "paid");
+          
+          // Also check by product name for legacy data
+          const paidProductNames = products
+            ?.filter(p => productIdsInQuestion.includes(p.id))
+            .map(p => p.name) || [];
+          
+          const { data: paidSalesByName } = await supabase
+            .from("sales")
+            .select("lead_id, product_name")
+            .in("lead_id", leadProductPairs)
+            .is("product_id", null)
+            .in("product_name", paidProductNames)
+            .eq("status", "paid");
+          
+          // Build a set of lead+product pairs that have paid sales
+          const paidLeadProductPairs = new Set<string>();
+          paidSales?.forEach(s => {
+            if (s.lead_id && s.product_id) {
+              paidLeadProductPairs.add(`${s.lead_id}:${s.product_id}`);
+            }
+          });
+          paidSalesByName?.forEach(s => {
+            if (s.lead_id && s.product_name) {
+              // Find product_id by name
+              const matchingProduct = products?.find(p => p.name === s.product_name);
+              if (matchingProduct) {
+                paidLeadProductPairs.add(`${s.lead_id}:${matchingProduct.id}`);
+              }
+            }
+          });
+          
+          // Filter out leads who have paid for the same product they abandoned
+          const validAbandonedLeads = abandonedLeadProducts.filter(d => 
+            !paidLeadProductPairs.has(`${d.lead_id}:${d.product_id}`)
+          );
+          
+          leadIdsByDealStatus = new Set(validAbandonedLeads.map(d => d.lead_id).filter(Boolean) as string[]);
+        } else {
+          leadIdsByDealStatus = new Set(dealsData?.map((d) => d.lead_id).filter(Boolean) || []);
+        }
       }
 
       // Fetch all leads with basic filters
