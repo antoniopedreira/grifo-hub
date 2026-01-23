@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Check } from "lucide-react";
+import { Loader2, Check, BarChart3, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import NpsResultsSheet from "@/components/nps/NpsResultsSheet";
 import type { Database, Tables } from "@/integrations/supabase/types";
 
 type FunnelType = Database["public"]["Enums"]["product_funnel_type"];
@@ -51,6 +52,8 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
     is_crm_trigger: false,
     lead_origin: "",
   });
+
+  const [npsResultsOpen, setNpsResultsOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -109,6 +112,23 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
       return data;
     },
   });
+
+  // Fetch NPS forms for linking
+  const { data: npsForms } = useQuery({
+    queryKey: ["nps_forms_for_product"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("nps_forms")
+        .select("*, page_templates(name, component_key)")
+        .order("title");
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Get NPS form linked to this product
+  const linkedNpsForm = npsForms?.find((nps) => nps.product_id === product?.id);
 
   const { data: formTemplates } = useQuery({
     queryKey: ["page_templates", "application_form"],
@@ -418,6 +438,57 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
             </div>
           </div>
 
+          {/* NPS Form Section */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-primary text-sm">Pesquisa NPS</h3>
+
+            {linkedNpsForm ? (
+              <div className="p-4 rounded-lg border border-green-200 bg-green-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-green-900">{linkedNpsForm.title}</p>
+                    <p className="text-xs text-green-700/80">
+                      Template: {linkedNpsForm.page_templates?.name || "Padrão"}
+                    </p>
+                  </div>
+                  <span className="text-xs bg-green-600 text-white px-2 py-1 rounded">Vinculado</span>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNpsResultsOpen(true)}
+                    className="flex-1 border-green-600 text-green-700 hover:bg-green-100"
+                  >
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Ver NPS
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(`/nps/${linkedNpsForm.slug}`, "_blank")}
+                    className="flex-1 border-green-600 text-green-700 hover:bg-green-100"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Ver Formulário
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 rounded-lg border border-border bg-muted/30 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Nenhum formulário NPS vinculado a este produto.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Para vincular, crie um formulário NPS na aba Templates e selecione este produto.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* Slug */}
           <div className="space-y-4">
             <h3 className="font-semibold text-primary text-sm">URL Amigável</h3>
@@ -461,6 +532,19 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
           </Button>
         </div>
       </SheetContent>
+
+      {/* NPS Results Sheet */}
+      {linkedNpsForm && (
+        <NpsResultsSheet
+          open={npsResultsOpen}
+          onOpenChange={setNpsResultsOpen}
+          form={{
+            id: linkedNpsForm.id,
+            title: linkedNpsForm.title,
+            slug: linkedNpsForm.slug,
+          }}
+        />
+      )}
     </Sheet>
   );
 }
