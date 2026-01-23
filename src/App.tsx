@@ -20,6 +20,7 @@ import Agenda from "@/pages/Agenda";
 import CRM from "@/pages/CRM";
 import NotFound from "@/pages/NotFound";
 import PublicPageRenderer from "@/pages/PublicPageRenderer";
+import NpsPageRenderer from "@/pages/NpsPageRenderer";
 
 const queryClient = new QueryClient();
 
@@ -32,8 +33,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Public page route */}
+            {/* Public page routes */}
             <Route path="/p/:slug" element={<PublicPageRenderer />} />
+            <Route path="/nps/:slug" element={<NpsPageRenderer />} />
             
             {/* Auth routes */}
             <Route path="/login" element={<Login />} />
