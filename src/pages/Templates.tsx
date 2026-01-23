@@ -77,8 +77,6 @@ interface TemplateForm {
   component_key: string;
   // NPS-specific fields
   nps_slug: string;
-  nps_product_id: string;
-  nps_description: string;
   nps_active: boolean;
 }
 
@@ -87,17 +85,8 @@ interface EditTemplateForm {
   type: TemplateType | "";
   // NPS-specific fields
   nps_slug: string;
-  nps_product_id: string;
-  nps_description: string;
   nps_active: boolean;
 }
-
-// Available NPS component keys for the select
-const NPS_COMPONENTS = [
-  { key: "nps_premium", label: "NPS Premium (Padrão)" },
-  { key: "nps_simple", label: "NPS Simples" },
-  { key: "nps_cards", label: "NPS Cards Emoji" },
-];
 
 export default function Templates() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -112,8 +101,6 @@ export default function Templates() {
     type: "",
     component_key: "",
     nps_slug: "",
-    nps_product_id: "",
-    nps_description: "",
     nps_active: true,
   });
 
@@ -121,8 +108,6 @@ export default function Templates() {
     name: "",
     type: "",
     nps_slug: "",
-    nps_product_id: "",
-    nps_description: "",
     nps_active: true,
   });
 
@@ -178,8 +163,6 @@ export default function Templates() {
           template_id: template.id,
           title: form.name,
           slug: form.nps_slug,
-          description: form.nps_description || null,
-          product_id: form.nps_product_id || null,
           active: form.nps_active,
         });
 
@@ -197,8 +180,6 @@ export default function Templates() {
         type: "",
         component_key: "",
         nps_slug: "",
-        nps_product_id: "",
-        nps_description: "",
         nps_active: true,
       });
     },
@@ -236,8 +217,6 @@ export default function Templates() {
           .update({
             title: form.name,
             slug: form.nps_slug,
-            description: form.nps_description || null,
-            product_id: form.nps_product_id || null,
             active: form.nps_active,
           })
           .eq("id", npsFormId);
@@ -343,8 +322,6 @@ export default function Templates() {
       name: template.name,
       type: template.type,
       nps_slug: npsForm?.slug || "",
-      nps_product_id: npsForm?.product_id || "",
-      nps_description: "",
       nps_active: npsForm?.active ?? true,
     });
     setEditOpen(true);
@@ -596,7 +573,6 @@ export default function Templates() {
                       setCreateForm({
                         ...createForm,
                         type: value,
-                        component_key: value === "nps_form" ? "nps_premium" : createForm.component_key,
                         nps_slug: value === "nps_form" ? generateSlug(createForm.name) : "",
                       })
                     }
@@ -612,29 +588,26 @@ export default function Templates() {
                   </Select>
                 </div>
 
-                {createForm.type === "nps_form" ? (
-                  <>
-                    <div className="grid gap-2">
-                      <Label>Visual do NPS</Label>
-                      <Select
-                        value={createForm.component_key}
-                        onValueChange={(value) =>
-                          setCreateForm({ ...createForm, component_key: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o visual" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {NPS_COMPONENTS.map((comp) => (
-                            <SelectItem key={comp.key} value={comp.key}>
-                              {comp.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="create-component_key">
+                    Chave do Componente <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="create-component_key"
+                    placeholder="ex: nps_webinar_cultura"
+                    value={createForm.component_key}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, component_key: e.target.value })
+                    }
+                    className="focus-visible:ring-primary font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Nome exato do componente exportado no registry (sem extensão).
+                  </p>
+                </div>
 
+                {createForm.type === "nps_form" && (
+                  <>
                     <div className="grid gap-2">
                       <Label>
                         Slug (URL) <span className="text-destructive">*</span>
@@ -662,24 +635,6 @@ export default function Templates() {
                       <Label>Formulário ativo</Label>
                     </div>
                   </>
-                ) : (
-                  <div className="grid gap-2">
-                    <Label htmlFor="create-component_key">
-                      Chave do Componente <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="create-component_key"
-                      placeholder="ex: LandingPagePremium"
-                      value={createForm.component_key}
-                      onChange={(e) =>
-                        setCreateForm({ ...createForm, component_key: e.target.value })
-                      }
-                      className="focus-visible:ring-primary font-mono"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Nome exato do arquivo React exportado no registry (sem extensão).
-                    </p>
-                  </div>
                 )}
               </div>
 
