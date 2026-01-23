@@ -385,6 +385,7 @@ export type Database = {
           id: string
           product_id: string | null
           slug: string
+          template_id: string | null
           title: string
         }
         Insert: {
@@ -394,6 +395,7 @@ export type Database = {
           id?: string
           product_id?: string | null
           slug: string
+          template_id?: string | null
           title?: string
         }
         Update: {
@@ -403,6 +405,7 @@ export type Database = {
           id?: string
           product_id?: string | null
           slug?: string
+          template_id?: string | null
           title?: string
         }
         Relationships: [
@@ -411,6 +414,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nps_forms_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "page_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -1042,7 +1052,7 @@ export type Database = {
         | "Stand-by"
       product_funnel_type: "external_link" | "internal_form"
       sale_origin: "lastlink_auto" | "crm_manual" | "lastlink"
-      template_type: "landing_page" | "application_form"
+      template_type: "landing_page" | "application_form" | "nps_form"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1182,7 +1192,7 @@ export const Constants = {
       ],
       product_funnel_type: ["external_link", "internal_form"],
       sale_origin: ["lastlink_auto", "crm_manual", "lastlink"],
-      template_type: ["landing_page", "application_form"],
+      template_type: ["landing_page", "application_form", "nps_form"],
     },
   },
 } as const
