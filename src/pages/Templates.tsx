@@ -48,7 +48,6 @@ import {
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -653,43 +652,6 @@ export default function Templates() {
                       </p>
                     </div>
 
-                    <div className="grid gap-2">
-                      <Label>Produto (opcional)</Label>
-                      <Select
-                        value={createForm.nps_product_id || "none"}
-                        onValueChange={(value) =>
-                          setCreateForm({
-                            ...createForm,
-                            nps_product_id: value === "none" ? "" : value,
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um produto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum (Geral)</SelectItem>
-                          {products?.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label>Descrição (opcional)</Label>
-                      <Textarea
-                        placeholder="Ajude-nos a melhorar..."
-                        value={createForm.nps_description}
-                        onChange={(e) =>
-                          setCreateForm({ ...createForm, nps_description: e.target.value })
-                        }
-                        rows={2}
-                      />
-                    </div>
-
                     <div className="flex items-center gap-3">
                       <Switch
                         checked={createForm.nps_active}
@@ -795,43 +757,6 @@ export default function Templates() {
                       <p className="text-xs text-muted-foreground">
                         URL: /nps/{editForm.nps_slug || "seu-slug"}
                       </p>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label>Produto (opcional)</Label>
-                      <Select
-                        value={editForm.nps_product_id || "none"}
-                        onValueChange={(value) =>
-                          setEditForm({
-                            ...editForm,
-                            nps_product_id: value === "none" ? "" : value,
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um produto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum (Geral)</SelectItem>
-                          {products?.map((product) => (
-                            <SelectItem key={product.id} value={product.id}>
-                              {product.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label>Descrição (opcional)</Label>
-                      <Textarea
-                        placeholder="Ajude-nos a melhorar..."
-                        value={editForm.nps_description}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, nps_description: e.target.value })
-                        }
-                        rows={2}
-                      />
                     </div>
 
                     <div className="flex items-center gap-3">
