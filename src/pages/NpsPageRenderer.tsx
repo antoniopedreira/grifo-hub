@@ -4,18 +4,19 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, Home, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { getNpsTemplateComponent } from "@/components/templates/registry";
 import NpsFormPublic from "@/components/nps/NpsFormPublic";
 
 export default function NpsPageRenderer() {
   const { slug } = useParams<{ slug: string }>();
 
-  // Fetch NPS form by slug (with product info)
+  // Fetch NPS form by slug (with product and template info)
   const { data: npsForm, isLoading, error } = useQuery({
     queryKey: ["nps-form-public", slug],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("nps_forms")
-        .select("*, products(name)")
+        .select("*, products(name), page_templates(component_key)")
         .eq("slug", slug)
         .eq("active", true)
         .single();
@@ -44,7 +45,34 @@ export default function NpsPageRenderer() {
   }
 
   const productName = (npsForm.products as { name: string } | null)?.name;
+  const componentKey = (npsForm.page_templates as { component_key: string } | null)?.component_key;
+  
+  // Get the template component from registry
+  const TemplateComponent = componentKey ? getNpsTemplateComponent(componentKey) : null;
 
+  // Use the template component if found, otherwise fallback to NpsFormPublic (legacy)
+  if (TemplateComponent) {
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-primary flex items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-secondary" />
+          </div>
+        }
+      >
+        <TemplateComponent
+          form={{
+            id: npsForm.id,
+            title: npsForm.title,
+            description: npsForm.description,
+          }}
+          productName={productName}
+        />
+      </Suspense>
+    );
+  }
+
+  // Fallback to legacy component (NpsFormPublic) if no template is set
   return (
     <Suspense
       fallback={

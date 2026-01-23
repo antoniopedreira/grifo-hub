@@ -65,8 +65,10 @@ interface NpsForm {
   description: string | null;
   active: boolean;
   product_id: string | null;
+  template_id: string | null;
   created_at: string;
   products?: { name: string } | null;
+  page_templates?: { name: string } | null;
 }
 
 interface FormData {
@@ -74,6 +76,7 @@ interface FormData {
   slug: string;
   description: string;
   product_id: string;
+  template_id: string;
   active: boolean;
 }
 
@@ -82,6 +85,7 @@ const initialFormData: FormData = {
   slug: "",
   description: "",
   product_id: "",
+  template_id: "",
   active: true,
 };
 
@@ -102,11 +106,26 @@ export default function NpsFormsList() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("nps_forms")
-        .select("*, products(name)")
+        .select("*, products(name), page_templates(name)")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
       return data as NpsForm[];
+    },
+  });
+
+  // Fetch NPS templates for select
+  const { data: npsTemplates } = useQuery({
+    queryKey: ["nps-templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("page_templates")
+        .select("id, name, component_key")
+        .eq("type", "nps_form")
+        .order("name");
+
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -133,6 +152,7 @@ export default function NpsFormsList() {
         slug: data.slug,
         description: data.description || null,
         product_id: data.product_id || null,
+        template_id: data.template_id || null,
         active: data.active,
       });
 
@@ -163,6 +183,7 @@ export default function NpsFormsList() {
           slug: data.slug,
           description: data.description || null,
           product_id: data.product_id || null,
+          template_id: data.template_id || null,
           active: data.active,
         })
         .eq("id", id);
@@ -232,6 +253,7 @@ export default function NpsFormsList() {
       slug: form.slug,
       description: form.description || "",
       product_id: form.product_id || "",
+      template_id: form.template_id || "",
       active: form.active,
     });
     setEditOpen(true);
@@ -281,6 +303,34 @@ export default function NpsFormsList() {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="grid gap-2">
+        <Label>Template Visual</Label>
+        <Select
+          value={formData.template_id || "none"}
+          onValueChange={(value) =>
+            setFormData({
+              ...formData,
+              template_id: value === "none" ? "" : value,
+            })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione um template" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Padrão (Premium)</SelectItem>
+            {npsTemplates?.map((template) => (
+              <SelectItem key={template.id} value={template.id}>
+                {template.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Escolha o visual do formulário público
+        </p>
       </div>
 
       <div className="grid gap-2">
@@ -375,8 +425,9 @@ export default function NpsFormsList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40%]">Formulário</TableHead>
+                  <TableHead className="w-[35%]">Formulário</TableHead>
                   <TableHead>Produto</TableHead>
+                  <TableHead>Template</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -398,6 +449,11 @@ export default function NpsFormsList() {
                       {form.products?.name || (
                         <span className="text-muted-foreground">Geral</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-normal">
+                        {form.page_templates?.name || "Premium (Padrão)"}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {form.active ? (

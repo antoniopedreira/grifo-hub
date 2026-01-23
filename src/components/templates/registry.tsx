@@ -1,4 +1,5 @@
 import { lazy, ComponentType } from "react";
+import { NpsTemplateProps } from "./nps/types";
 
 export interface TemplateComponentProps {
   product: {
@@ -28,14 +29,33 @@ const FormConstruction = lazy(() =>
   })),
 );
 
+// NPS Templates
+const NpsPremium = lazy(() => import("./nps/NpsPremium"));
+const NpsSimple = lazy(() => import("./nps/NpsSimple"));
+const NpsCards = lazy(() => import("./nps/NpsCards"));
+
 // Registry mapping component_key strings to React components
 export const templateRegistry: Record<string, ComponentType<TemplateComponentProps>> = {
   form_high_ticket: FormHighTicket,
   form_basic: FormBasic,
   lp_standard: LpStandard,
-  form_construction: FormConstruction, // <--- Nova chave registrada
+  form_construction: FormConstruction,
+};
+
+// NPS Template Registry
+export const npsTemplateRegistry: Record<string, ComponentType<NpsTemplateProps>> = {
+  nps_premium: NpsPremium,
+  nps_simple: NpsSimple,
+  nps_cards: NpsCards,
 };
 
 export function getTemplateComponent(componentKey: string): ComponentType<TemplateComponentProps> | null {
   return templateRegistry[componentKey] || null;
 }
+
+export function getNpsTemplateComponent(componentKey: string): ComponentType<NpsTemplateProps> | null {
+  return npsTemplateRegistry[componentKey] || null;
+}
+
+// Re-export NPS types
+export type { NpsTemplateProps };
