@@ -34,6 +34,38 @@ interface NpsResponse {
   created_at: string;
 }
 
+// Map of field keys to human-readable labels
+const QUESTION_LABELS: Record<string, string> = {
+  score: "Nota NPS (0-10)",
+  relevance: "Relevância do conteúdo",
+  presentation: "Qualidade da apresentação",
+  applicability: "Aplicabilidade no dia a dia",
+  experience: "Experiência geral",
+  learning_highlight: "O que mais aprendeu",
+  improvement_suggestion: "Sugestão de melhoria",
+  feedback: "Comentário adicional",
+  recommendation: "Recomendaria?",
+  satisfaction: "Satisfação",
+  quality: "Qualidade",
+  comments: "Comentários",
+  nome: "Nome",
+  email: "E-mail",
+};
+
+function getQuestionLabel(key: string): string {
+  return QUESTION_LABELS[key] || key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function parseFeedback(feedback: string | null): Record<string, string> | null {
+  if (!feedback) return null;
+  try {
+    return JSON.parse(feedback);
+  } catch {
+    // If not JSON, return as single comment
+    return { feedback };
+  }
+}
+
 export default function NpsResultsSheet({ open, onOpenChange, form }: NpsResultsSheetProps) {
   // Fetch responses
   const { data: responses, isLoading } = useQuery({
@@ -82,28 +114,28 @@ export default function NpsResultsSheet({ open, onOpenChange, form }: NpsResults
   };
 
   const getNpsIcon = (nps: number) => {
-    if (nps >= 50) return <TrendingUp className="h-5 w-5" />;
-    if (nps >= 0) return <Minus className="h-5 w-5" />;
-    return <TrendingDown className="h-5 w-5" />;
+    if (nps >= 50) return <TrendingUp className="h-4 w-4" />;
+    if (nps >= 0) return <Minus className="h-4 w-4" />;
+    return <TrendingDown className="h-4 w-4" />;
   };
 
   const getScoreBadge = (score: number) => {
     if (score >= 9) {
       return (
-        <Badge className="bg-green-500/20 text-green-600 border-green-500/50">
+        <Badge className="bg-green-500/20 text-green-600 border-green-500/50 text-xs">
           Promotor ({score})
         </Badge>
       );
     }
     if (score >= 7) {
       return (
-        <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/50">
+        <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/50 text-xs">
           Neutro ({score})
         </Badge>
       );
     }
     return (
-      <Badge className="bg-red-500/20 text-red-600 border-red-500/50">
+      <Badge className="bg-red-500/20 text-red-600 border-red-500/50 text-xs">
         Detrator ({score})
       </Badge>
     );
@@ -134,113 +166,120 @@ export default function NpsResultsSheet({ open, onOpenChange, form }: NpsResults
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : responses && responses.length > 0 ? (
-          <div className="mt-6 space-y-6">
-            {/* NPS Score Card */}
-            <div
-              className={cn(
-                "rounded-xl p-6 text-center",
-                getNpsBg(metrics.nps)
-              )}
-            >
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <span className={getNpsColor(metrics.nps)}>
-                  {getNpsIcon(metrics.nps)}
-                </span>
-                <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  NPS Score
-                </span>
+          <div className="mt-4 space-y-4">
+            {/* Compact NPS Score + Distribution */}
+            <div className="flex gap-3">
+              {/* NPS Score - Compact */}
+              <div
+                className={cn(
+                  "rounded-lg p-3 text-center flex-shrink-0 w-24",
+                  getNpsBg(metrics.nps)
+                )}
+              >
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <span className={getNpsColor(metrics.nps)}>
+                    {getNpsIcon(metrics.nps)}
+                  </span>
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase">
+                    NPS
+                  </span>
+                </div>
+                <div className={cn("text-2xl font-bold", getNpsColor(metrics.nps))}>
+                  {metrics.nps}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {metrics.total} resposta{metrics.total !== 1 ? "s" : ""}
+                </p>
               </div>
-              <div className={cn("text-5xl font-bold", getNpsColor(metrics.nps))}>
-                {metrics.nps}
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                Baseado em {metrics.total} resposta{metrics.total !== 1 ? "s" : ""}
-              </p>
-            </div>
 
-            {/* Breakdown */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                Distribuição
-              </h3>
-
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-green-600">Promotores (9-10)</span>
-                    <span className="font-medium">
-                      {metrics.promoters} ({Math.round((metrics.promoters / metrics.total) * 100)}%)
-                    </span>
-                  </div>
+              {/* Distribution - Compact */}
+              <div className="flex-1 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-green-600 w-20">Promotores</span>
                   <Progress
                     value={(metrics.promoters / metrics.total) * 100}
-                    className="h-2 bg-green-100 [&>div]:bg-green-500"
+                    className="h-1.5 flex-1 bg-green-100 [&>div]:bg-green-500"
                   />
+                  <span className="text-[10px] font-medium w-12 text-right">
+                    {metrics.promoters} ({Math.round((metrics.promoters / metrics.total) * 100)}%)
+                  </span>
                 </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-yellow-600">Neutros (7-8)</span>
-                    <span className="font-medium">
-                      {metrics.passives} ({Math.round((metrics.passives / metrics.total) * 100)}%)
-                    </span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-yellow-600 w-20">Neutros</span>
                   <Progress
                     value={(metrics.passives / metrics.total) * 100}
-                    className="h-2 bg-yellow-100 [&>div]:bg-yellow-500"
+                    className="h-1.5 flex-1 bg-yellow-100 [&>div]:bg-yellow-500"
                   />
+                  <span className="text-[10px] font-medium w-12 text-right">
+                    {metrics.passives} ({Math.round((metrics.passives / metrics.total) * 100)}%)
+                  </span>
                 </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-red-600">Detratores (0-6)</span>
-                    <span className="font-medium">
-                      {metrics.detractors} ({Math.round((metrics.detractors / metrics.total) * 100)}%)
-                    </span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-red-600 w-20">Detratores</span>
                   <Progress
                     value={(metrics.detractors / metrics.total) * 100}
-                    className="h-2 bg-red-100 [&>div]:bg-red-500"
+                    className="h-1.5 flex-1 bg-red-100 [&>div]:bg-red-500"
                   />
+                  <span className="text-[10px] font-medium w-12 text-right">
+                    {metrics.detractors} ({Math.round((metrics.detractors / metrics.total) * 100)}%)
+                  </span>
                 </div>
               </div>
             </div>
 
             <Separator />
 
-            {/* Responses with feedback */}
-            <div className="space-y-4">
+            {/* Responses - Main focus area */}
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
                 <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Comentários
+                  Respostas ({responses.length})
                 </h3>
               </div>
 
-              <ScrollArea className="h-[300px] pr-4">
+              <ScrollArea className="h-[calc(100vh-320px)] pr-4">
                 <div className="space-y-4">
-                  {responses.map((response) => (
-                    <div
-                      key={response.id}
-                      className="rounded-lg border border-border p-4 space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        {getScoreBadge(response.score)}
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(response.created_at), "dd MMM yyyy 'às' HH:mm", {
-                            locale: ptBR,
-                          })}
-                        </span>
+                  {responses.map((response) => {
+                    const parsedFeedback = parseFeedback(response.feedback);
+
+                    return (
+                      <div
+                        key={response.id}
+                        className="rounded-lg border border-border p-4 space-y-3"
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          {getScoreBadge(response.score)}
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(response.created_at), "dd MMM yyyy 'às' HH:mm", {
+                              locale: ptBR,
+                            })}
+                          </span>
+                        </div>
+
+                        {/* Questions & Answers */}
+                        {parsedFeedback ? (
+                          <div className="space-y-2">
+                            {Object.entries(parsedFeedback).map(([key, value]) => (
+                              <div key={key} className="space-y-0.5">
+                                <p className="text-xs font-medium text-muted-foreground">
+                                  {getQuestionLabel(key)}
+                                </p>
+                                <p className="text-sm text-foreground bg-muted/50 rounded px-2 py-1.5">
+                                  {value || <span className="italic text-muted-foreground">Não respondido</span>}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">
+                            Sem respostas adicionais
+                          </p>
+                        )}
                       </div>
-                      {response.feedback ? (
-                        <p className="text-sm text-foreground">{response.feedback}</p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">
-                          Sem comentário
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </div>
