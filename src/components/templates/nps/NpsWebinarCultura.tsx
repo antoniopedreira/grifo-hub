@@ -23,6 +23,7 @@ import { NpsTemplateProps } from "./types";
 // Terciária (Texto Claro): #E1D8CF
 
 type StepData = {
+  email: string;
   nps_score: number | null;
   relevance: string;
   presentation: string;
@@ -33,6 +34,7 @@ type StepData = {
 };
 
 const INITIAL_DATA: StepData = {
+  email: "",
   nps_score: null,
   relevance: "",
   presentation: "",
@@ -103,6 +105,7 @@ export default function NpsWebinarCultura({ form, productName }: NpsTemplateProp
         form_id: form.id,
         score: formData.nps_score,
         feedback: JSON.stringify({
+          email: formData.email || null,
           relevance: formData.relevance,
           presentation: formData.presentation,
           applicability: formData.applicability,
@@ -178,7 +181,7 @@ export default function NpsWebinarCultura({ form, productName }: NpsTemplateProp
 
         {/* CONTENT AREA */}
         <div className="w-full relative min-h-[400px]">
-          {/* STEP 0: NPS SCORE */}
+          {/* STEP 0: NPS SCORE + EMAIL OPCIONAL */}
           {currentStep === 0 && (
             <QuestionCard
               icon={<Star className="text-[#A47428]" size={32} />}
@@ -186,6 +189,18 @@ export default function NpsWebinarCultura({ form, productName }: NpsTemplateProp
               question="Em uma escala de 0 a 10, o quanto você indicaria este webinar para um colega que atua em obra ou liderança?"
               subtext="0 = não indicaria | 10 = indicaria com certeza"
             >
+              <div className="mb-6">
+                <label className="block text-sm text-[#E1D8CF]/60 mb-2">
+                  Seu e-mail (opcional)
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  placeholder="seu@email.com"
+                  className="w-full bg-transparent border-2 border-[#E1D8CF]/20 text-[#E1D8CF] text-lg p-3 rounded-lg focus:ring-0 focus:outline-none focus:border-[#A47428] transition-all placeholder:text-[#E1D8CF]/30"
+                />
+              </div>
               <div className="grid grid-cols-11 gap-1 md:gap-2 mt-4">
                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
                   <button
