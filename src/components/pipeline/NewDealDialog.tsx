@@ -871,7 +871,7 @@ export function NewDealDialog({
                               value={productFilterSearch}
                               onValueChange={setProductFilterSearch}
                             />
-                            <CommandList className="max-h-[200px]">
+                            <CommandList className="max-h-[200px] overflow-y-auto overflow-x-hidden">
                               <CommandEmpty>Nenhum produto encontrado</CommandEmpty>
                               {['avancados', 'intermediarios', 'basicos'].map((categorySlug) => {
                                 const categoryProducts = products.filter(
