@@ -48,13 +48,12 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
   });
 
   const formatWhatsApp = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    // Allow up to 13 digits to handle cases like 0 + DDD + 9-digit number
+    const numbers = value.replace(/\D/g, "").slice(0, 16);
     if (numbers.length <= 2) return numbers;
     if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
     if (numbers.length <= 11) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
-    // Support 12-13 digits (e.g., leading 0 before DDD)
-    return `(${numbers.slice(0, 3)}) ${numbers.slice(3, 8)}-${numbers.slice(8, 13)}`;
+    // Support 12-16 digits (e.g., international numbers or leading zeros)
+    return `(${numbers.slice(0, 3)}) ${numbers.slice(3, 8)}-${numbers.slice(8, 16)}`;
   };
 
   const handleInputChange = (field: keyof FormData, value: string) => {
