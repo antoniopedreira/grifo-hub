@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, X, Pencil, Check, Trash2, MessageSquareText, GripVertical } from "lucide-react";
+import { Plus, X, Pencil, Check, Trash2, MessageSquareText, GripVertical, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -240,7 +240,7 @@ export function WhatsAppQuickReplies({ onSelectTemplate }: WhatsAppQuickRepliesP
               <Pencil className="h-3 w-3" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <MessageSquareText className="h-5 w-5 text-secondary" />
@@ -248,144 +248,160 @@ export function WhatsAppQuickReplies({ onSelectTemplate }: WhatsAppQuickRepliesP
               </DialogTitle>
             </DialogHeader>
             
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <Droppable droppableId="templates">
-                {(provided) => (
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className="space-y-3 mt-4"
-                  >
-                    {/* Existing Templates */}
-                    {templates.map((template, index) => (
-                      <Draggable key={template.id} draggableId={template.id} index={index}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            className={`p-3 border rounded-lg bg-card transition-shadow ${
-                              snapshot.isDragging ? "shadow-lg ring-2 ring-secondary/50" : ""
-                            }`}
-                          >
-                            {editingId === template.id ? (
-                              <div className="space-y-2">
-                                <Input
-                                  value={editTitle}
-                                  onChange={(e) => setEditTitle(e.target.value)}
-                                  placeholder="Nome"
-                                />
-                                <Textarea
-                                  value={editContent}
-                                  onChange={(e) => setEditContent(e.target.value)}
-                                  rows={2}
-                                />
-                                <div className="flex gap-2 justify-end">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setEditingId(null)}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={handleSaveEdit}
-                                    disabled={updateTemplateMutation.isPending}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    <Check className="h-4 w-4" />
-                                  </Button>
+            <ScrollArea className="flex-1 max-h-[400px] pr-3">
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <Droppable droppableId="templates">
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="space-y-3 mt-2"
+                    >
+                      {/* Existing Templates */}
+                      {templates.map((template, index) => (
+                        <Draggable key={template.id} draggableId={template.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={`p-3 border rounded-lg bg-card transition-shadow ${
+                                snapshot.isDragging ? "shadow-lg ring-2 ring-secondary/50" : ""
+                              }`}
+                            >
+                              {editingId === template.id ? (
+                                <div className="space-y-2">
+                                  <Input
+                                    value={editTitle}
+                                    onChange={(e) => setEditTitle(e.target.value)}
+                                    placeholder="Nome"
+                                  />
+                                  <Textarea
+                                    value={editContent}
+                                    onChange={(e) => setEditContent(e.target.value)}
+                                    rows={2}
+                                  />
+                                  <div className="flex gap-2 justify-end">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setEditingId(null)}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={handleSaveEdit}
+                                      disabled={updateTemplateMutation.isPending}
+                                      className="bg-green-600 hover:bg-green-700"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-start gap-2">
-                                <div
-                                  {...provided.dragHandleProps}
-                                  className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded shrink-0 mt-0.5"
-                                >
-                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm">{template.title}</p>
-                                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                                    {template.content}
-                                  </p>
-                                </div>
-                                <div className="flex gap-1 shrink-0">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    onClick={() => handleStartEdit(template)}
+                              ) : (
+                                <div className="flex items-start gap-2">
+                                  <div
+                                    {...provided.dragHandleProps}
+                                    className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded shrink-0 mt-0.5"
                                   >
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-destructive hover:text-destructive"
-                                    onClick={() => deleteTemplateMutation.mutate(template.id)}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
+                                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm">{template.title}</p>
+                                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                      {template.content}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-1 shrink-0">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 px-2 text-xs bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
+                                      onClick={() => {
+                                        onSelectTemplate(template.content);
+                                        setIsManageOpen(false);
+                                      }}
+                                    >
+                                      <Send className="h-3 w-3 mr-1" />
+                                      Usar
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() => handleStartEdit(template)}
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-destructive hover:text-destructive"
+                                      onClick={() => deleteTemplateMutation.mutate(template.id)}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
+                              )}
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            </ScrollArea>
 
-                    {/* Add New Template */}
-                    {isAdding ? (
-                      <div className="space-y-2 p-3 border rounded-lg bg-muted/30 border-dashed">
-                        <Input
-                          placeholder="Nome do template"
-                          value={newTitle}
-                          onChange={(e) => setNewTitle(e.target.value)}
-                        />
-                        <Textarea
-                          placeholder="Conteúdo da mensagem..."
-                          value={newContent}
-                          onChange={(e) => setNewContent(e.target.value)}
-                          rows={2}
-                        />
-                        <div className="flex gap-2 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setIsAdding(false);
-                              setNewTitle("");
-                              setNewContent("");
-                            }}
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={handleAddNew}
-                            disabled={!newTitle.trim() || !newContent.trim() || addTemplateMutation.isPending}
-                          >
-                            Salvar
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full border-dashed"
-                        onClick={() => setIsAdding(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Novo Template
-                      </Button>
-                    )}
+            {/* Add New Template - Outside ScrollArea */}
+            <div className="pt-3 border-t mt-3">
+              {isAdding ? (
+                <div className="space-y-2 p-3 border rounded-lg bg-muted/30 border-dashed">
+                  <Input
+                    placeholder="Nome do template"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                  />
+                  <Textarea
+                    placeholder="Conteúdo da mensagem..."
+                    value={newContent}
+                    onChange={(e) => setNewContent(e.target.value)}
+                    rows={2}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsAdding(false);
+                        setNewTitle("");
+                        setNewContent("");
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleAddNew}
+                      disabled={!newTitle.trim() || !newContent.trim() || addTemplateMutation.isPending}
+                    >
+                      Salvar
+                    </Button>
                   </div>
-                )}
-              </Droppable>
-            </DragDropContext>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full border-dashed"
+                  onClick={() => setIsAdding(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Template
+                </Button>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       </div>
