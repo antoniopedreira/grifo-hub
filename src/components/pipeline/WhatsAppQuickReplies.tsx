@@ -241,7 +241,7 @@ export function WhatsAppQuickReplies({ onSelectTemplate }: WhatsAppQuickRepliesP
               <Pencil className="h-3 w-3" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <MessageSquareText className="h-5 w-5 text-secondary" />
@@ -249,7 +249,7 @@ export function WhatsAppQuickReplies({ onSelectTemplate }: WhatsAppQuickRepliesP
               </DialogTitle>
             </DialogHeader>
             
-            <ScrollArea className="flex-1 max-h-[350px] pr-4 [&_[data-radix-scroll-area-thumb]]:bg-muted-foreground/50">
+            <div className="max-h-[350px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted-foreground/50 scrollbar-track-transparent">
               <DragDropContext onDragEnd={handleDragEnd}>
                 <Droppable droppableId="templates">
                   {(provided) => (
@@ -355,7 +355,7 @@ export function WhatsAppQuickReplies({ onSelectTemplate }: WhatsAppQuickRepliesP
                   )}
                 </Droppable>
               </DragDropContext>
-            </ScrollArea>
+            </div>
 
             {/* Add New Template - Outside ScrollArea */}
             <div className="pt-3 border-t mt-3">
