@@ -42,11 +42,11 @@ export function GrifoTalkAttendeesSheet({
   const { data: leads, isLoading } = useQuery({
     queryKey: ["grifotalk_attendees", productId],
     queryFn: async () => {
-      // Fetch leads where origin contains "Grifo Talks"
+      // Fetch leads where origin contains "grifo-talk" or "Grifo Talks" (case insensitive)
       const { data, error } = await supabase
         .from("leads")
         .select("id, full_name, email, phone, origin, created_at")
-        .or(`origin.ilike.%Grifo Talks%,origin.ilike.%${productName}%`)
+        .or(`origin.ilike.%grifo-talk%,origin.ilike.%grifo talks%,origin.ilike.%${productName}%`)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
