@@ -10,14 +10,9 @@ import {
   Lock,
   CheckCircle,
   XCircle,
-  Clock,
-  Video,
   Star,
   X,
   Flame,
-  Check,
-  Calendar,
-  ArrowRight,
 } from "lucide-react";
 
 interface LpWebinarCulturaProps {
@@ -457,189 +452,86 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
         </div>
       </section>
 
-      {/* How it Works Section */}
-      <section className="bg-[#001629] py-12 md:py-16 px-4 border-t border-gray-800">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white text-center mb-8 sm:mb-12 uppercase">
-            Como vai <span className="text-[#b8860b]">funcionar</span>:
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-12">
-            <div className="bg-[#0a1f2e] p-8 rounded-2xl border border-gray-800 hover:border-[#b8860b]/30 transition-all duration-300 flex flex-col items-center text-center group">
-              <div className="bg-[#b8860b]/10 p-4 rounded-full mb-6 group-hover:bg-[#b8860b]/20 transition-colors">
-                <Calendar className="w-8 h-8 text-[#b8860b]" />
-              </div>
-              <h3 className="text-xl font-bold text-white uppercase mb-2">Quando é?</h3>
-              <p className="text-gray-300">
-                Dia <strong className="text-white">22 de Janeiro</strong>,<br />
-                das <strong className="text-white">19h às 22h</strong>.
-              </p>
-            </div>
-
-            <div className="bg-[#0a1f2e] p-8 rounded-2xl border border-gray-800 hover:border-[#b8860b]/30 transition-all duration-300 flex flex-col items-center text-center group">
-              <div className="bg-[#b8860b]/10 p-4 rounded-full mb-6 group-hover:bg-[#b8860b]/20 transition-colors">
-                <Video className="w-8 h-8 text-[#b8860b]" />
-              </div>
-              <h3 className="text-xl font-bold text-white uppercase mb-2">
-                Onde vai acontecer?
-              </h3>
-              <p className="text-gray-300">
-                O Webinar acontecerá{" "}
-                <strong className="text-white">100% via Google Meet</strong>.
-              </p>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <Button
-              onClick={scrollToPricing}
-              className="bg-[#d4a017] hover:bg-[#b8860b] text-black font-black text-xs sm:text-base lg:text-lg px-8 sm:px-12 py-3 sm:py-5 lg:py-6 uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#b8860b]/30 w-full sm:w-auto flex items-center justify-center gap-2 mx-auto"
-            >
-              QUERO GARANTIR MINHA VAGA <ArrowRight className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-      </section>
 
       {/* Pricing Section */}
-      <section id="pricing-section" className="bg-[#0d0d0d] py-12 md:py-16 lg:py-24 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4 uppercase px-2">
-            Quanto custa mais um mês de{" "}
-            <span className="text-red-600">Equipe Improdutiva</span>?
-          </h2>
+      <section id="pricing-section" className="bg-[#1a2a35] py-12 md:py-16 lg:py-24 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-8 items-center">
+            {/* Left Column - Benefits */}
+            <div className="text-left">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-6 italic">
+                Aproveite o conteúdo em qualquer dispositivo.
+              </h2>
 
-          <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-8 mb-4 px-2">
-            <div className="flex items-center justify-center gap-2 text-red-500 hover:text-red-400 transition-colors cursor-default text-sm sm:text-base">
-              <XCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              <span>
-                Um erro de execução: <strong>R$ 2.000,00</strong>
-              </span>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-red-500 hover:text-red-400 transition-colors cursor-default text-sm sm:text-base">
-              <XCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              <span>
-                Um dia de atraso: <strong>R$ 5.000,00</strong>
-              </span>
-            </div>
-          </div>
-
-          <p className="text-gray-400 mb-8 sm:mb-12 text-sm sm:text-base">
-            Sua paz mental <span className="underline decoration-[#b8860b]">não tem preço</span>.
-          </p>
-
-          {/* Pricing Grid */}
-          <div className="grid md:grid-cols-2 gap-8 items-stretch max-w-5xl mx-auto">
-            {/* CARD PADRÃO */}
-            <div className="bg-[#1a1a1a] border border-gray-700 rounded-xl sm:rounded-2xl p-6 sm:p-8 flex flex-col relative transition-all duration-300 hover:border-gray-500 hover:shadow-lg">
-              <h3 className="text-white font-black text-xl sm:text-2xl uppercase tracking-wider mb-6">
-                Ingresso Padrão
-              </h3>
-
-              <div className="flex-grow space-y-4 mb-8">
-                <div className="flex items-start gap-3 text-left">
-                  <Check className="w-5 h-5 text-gray-500 flex-shrink-0 mt-1" />
-                  <span className="text-gray-300 text-sm">
-                    ACESSO AO WEBINAR AO VIVO (SEM GRAVAÇÃO)
-                  </span>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#b8860b]/20 flex items-center justify-center">
+                    <Lock className="w-4 h-4 text-[#b8860b]" />
+                  </div>
+                  <span className="text-gray-300">Seus dados pessoais são confidenciais</span>
                 </div>
-                <div className="flex items-start gap-3 text-left">
-                  <Check className="w-5 h-5 text-gray-500 flex-shrink-0 mt-1" />
-                  <span className="text-gray-300 text-sm">
-                    ACESSO A PLANILHA DE PLANEJAMENTO DE CURTO PRAZO
-                  </span>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#b8860b]/20 flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4 text-[#b8860b]" />
+                  </div>
+                  <span className="text-gray-300">Compra 100% segura</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#b8860b]/20 flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4 text-[#b8860b]" />
+                  </div>
+                  <span className="text-gray-300">Garantia: seu dinheiro de volta sem perguntas</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Pricing Card */}
+            <div className="bg-[#0d1820] rounded-2xl p-6 sm:p-8 relative border border-gray-700">
+              {/* Promo Badge */}
+              <div className="absolute -top-3 -right-3 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase transform rotate-12">
+                Promoção
+              </div>
+
+              {/* Limited Time Offer */}
+              <div className="flex justify-center mb-4">
+                <div className="bg-[#b8860b]/20 border border-[#b8860b] text-[#b8860b] px-4 py-2 rounded-full text-xs sm:text-sm font-bold uppercase flex items-center gap-2">
+                  <Flame className="w-4 h-4" />
+                  Oferta por Tempo Limitado
                 </div>
               </div>
 
-              <div className="mt-auto">
-                <p className="text-gray-500 line-through text-lg mb-1">De R$ 197,00</p>
-                <p className="text-gray-400 text-sm mb-2">Por apenas:</p>
-                <div className="text-3xl sm:text-4xl font-black text-white mb-2">R$ 97,00</div>
-                <p className="text-gray-500 text-sm mb-6">à vista</p>
+              {/* Price Display */}
+              <div className="text-center">
+                <p className="text-gray-500 text-sm mb-1">de</p>
+                <p className="text-gray-500 line-through text-xl mb-2">R$ 247,00</p>
+                <p className="text-gray-400 text-sm mb-2">por apenas</p>
+                <div className="text-5xl sm:text-6xl font-black text-[#b8860b] mb-3">
+                  R$ 97<span className="text-2xl">,00</span>
+                </div>
 
+                {/* Savings Badge */}
+                <div className="inline-block bg-green-600/20 border border-green-600 text-green-500 px-4 py-1 rounded-full text-sm font-bold mb-3">
+                  Economia de R$ 150,00
+                </div>
+
+                <p className="text-gray-400 text-sm mb-6">ou 10x R$ 10,33</p>
+
+                {/* CTA Button */}
                 <Button
                   asChild
-                  className="bg-gray-700 hover:bg-gray-600 text-white font-bold text-sm px-6 py-4 w-full uppercase tracking-wide transition-all duration-300"
+                  className="bg-[#22c55e] hover:bg-[#16a34a] text-white font-black text-base sm:text-lg px-8 py-5 w-full uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-green-500/30"
                 >
                   <a href={ctaUrl} target="_blank" rel="noopener noreferrer">
-                    GARANTIR INGRESSO PADRÃO
+                    QUERO APROVEITAR
                   </a>
                 </Button>
 
-                <div className="flex items-center justify-center gap-2 mt-4 text-gray-500 text-xs">
-                  <Lock className="w-3 h-3" />
-                  <span>Pagamento 100% seguro</span>
-                </div>
-              </div>
-            </div>
-
-            {/* CARD VIP */}
-            <div className="bg-gradient-to-b from-[#1f1f1f] to-[#0d0d0d] border-2 border-[#b8860b] rounded-xl sm:rounded-2xl p-6 sm:p-8 flex flex-col relative transform md:scale-105 shadow-2xl shadow-[#b8860b]/20 z-10">
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <span className="bg-[#b8860b] text-black font-bold text-xs uppercase px-4 py-1 rounded-full tracking-wide">
-                  Recomendado
-                </span>
-              </div>
-
-              <h3 className="text-[#b8860b] font-black text-xl sm:text-2xl uppercase tracking-wider mb-6">
-                Ingresso VIP
-              </h3>
-
-              <div className="flex-grow space-y-4 mb-8">
-                <div className="flex items-start gap-3 text-left">
-                  <Check className="w-5 h-5 text-[#b8860b] flex-shrink-0 mt-1" />
-                  <span className="text-white text-sm">
-                    ACESSO AO WEBINAR AO VIVO (COM GRAVAÇÃO)
-                  </span>
-                </div>
-                <div className="flex items-start gap-3 text-left">
-                  <Check className="w-5 h-5 text-[#b8860b] flex-shrink-0 mt-1" />
-                  <span className="text-white text-sm">
-                    ACESSO A PLANILHA DE PLANEJAMENTO DE CURTO PRAZO
-                  </span>
-                </div>
-                <div className="flex items-start gap-3 text-left">
-                  <Check className="w-5 h-5 text-[#b8860b] flex-shrink-0 mt-1" />
-                  <span className="text-white text-sm">
-                    ACESSO A PLANILHA DE RECRUTAMENTO DE ENGENHEIROS
-                  </span>
-                </div>
-                <div className="flex items-start gap-3 text-left bg-[#b8860b]/10 p-2 rounded-lg border border-[#b8860b]/20">
-                  <Star className="w-5 h-5 text-[#b8860b] flex-shrink-0 mt-1" />
-                  <span className="text-[#b8860b] font-bold text-sm">
-                    +1HR DE LIVE EXCLUSIVA PÓS WEBINAR PARA TIRAR DÚVIDAS
-                  </span>
-                </div>
-                <div className="flex items-start gap-3 text-left bg-[#b8860b]/10 p-2 rounded-lg border border-[#b8860b]/20">
-                  <Star className="w-5 h-5 text-[#b8860b] flex-shrink-0 mt-1" />
-                  <span className="text-[#b8860b] font-bold text-sm">
-                    CASHBACK DO SEU INVESTIMENTO NA COMPRA DA MENTORIA FAST
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-auto">
-                <p className="text-gray-500 line-through text-lg mb-1">De R$ 497,00</p>
-                <p className="text-gray-400 text-sm mb-2">Por apenas:</p>
-                <div className="text-4xl sm:text-5xl font-black text-[#b8860b] mb-2">
-                  R$ 297,00
-                </div>
-                <p className="text-gray-400 text-sm mb-6">à vista</p>
-
-                <Button
-                  asChild
-                  style={{ animationDuration: "3s" }}
-                  className="bg-[#d4a017] hover:bg-[#b8860b] text-black font-black text-sm px-6 py-4 w-full uppercase tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-[#b8860b]/30 animate-pulse"
-                >
-                  <a href={ctaUrlVip} target="_blank" rel="noopener noreferrer">
-                    GARANTIR INGRESSO VIP
-                  </a>
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 mt-4 text-gray-500 text-xs">
-                <Lock className="w-3 h-3" />
-                <span>Pagamento 100% seguro</span>
+                {/* Security Notice */}
+                <p className="text-gray-500 text-xs mt-4 uppercase tracking-wide">
+                  Pagamento 100% Seguro com Acesso Imediato
+                </p>
               </div>
             </div>
           </div>
