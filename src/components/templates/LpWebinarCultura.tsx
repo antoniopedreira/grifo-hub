@@ -1,19 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  Lock,
-  CheckCircle,
-  XCircle,
-  Star,
-  X,
-  Flame,
-} from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Lock, CheckCircle, XCircle, Star, X, Flame } from "lucide-react";
 import mentoresWebinar from "@/assets/mentores-webinar-cultura.jpg";
 import danielGedeon from "@/assets/daniel-gedeon.jpg";
 import rafaelSoares from "@/assets/rafael-soares.jpg";
@@ -28,7 +16,53 @@ interface LpWebinarCulturaProps {
 
 export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
   const ctaUrl = product.checkout_url || "#";
-  const ctaUrlVip = product.checkout_url || "#";
+
+  // --- INÍCIO DA INTEGRAÇÃO DE RASTREAMENTO ---
+  useEffect(() => {
+    // 1. Instalação do Meta Pixel
+    const pixelId = "1164549418870952";
+
+    // Verifica se já existe para não duplicar
+    if (!document.getElementById("meta-pixel-script")) {
+      const script = document.createElement("script");
+      script.id = "meta-pixel-script";
+      script.innerHTML = `
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '${pixelId}');
+        fbq('track', 'PageView');
+      `;
+      document.head.appendChild(script);
+
+      // Adiciona o noscript (opcional em SPAs, mas boa prática)
+      const noscript = document.createElement("noscript");
+      noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1" />`;
+      document.head.appendChild(noscript);
+    } else {
+      // Se já existir, apenas dispara o PageView novamente (para navegação interna)
+      // @ts-ignore
+      if (window.fbq) window.fbq("track", "PageView");
+    }
+
+    // 2. Instalação do UTMify
+    if (!document.getElementById("utmify-script")) {
+      const utmifyScript = document.createElement("script");
+      utmifyScript.id = "utmify-script";
+      utmifyScript.src = "https://cdn.utmify.com.br/scripts/utms/latest.js";
+      utmifyScript.async = true;
+      utmifyScript.defer = true;
+      utmifyScript.setAttribute("data-utmify-prevent-xcod-sck", "");
+      utmifyScript.setAttribute("data-utmify-prevent-subids", "");
+      document.head.appendChild(utmifyScript);
+    }
+  }, []); // O array vazio [] garante que isso rode apenas uma vez ao carregar a página
+  // --- FIM DA INTEGRAÇÃO ---
 
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const [dismissedSticky, setDismissedSticky] = useState(false);
@@ -59,12 +93,8 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Flame className="w-5 h-5 text-[#b8860b] animate-pulse" />
-            <span className="text-[#b8860b] font-bold text-sm uppercase tracking-wide">
-              Vagas Limitadas
-            </span>
-            <span className="text-gray-300 text-sm hidden sm:inline">
-              - Webinar ao vivo 22 de Janeiro às 19h30
-            </span>
+            <span className="text-[#b8860b] font-bold text-sm uppercase tracking-wide">Vagas Limitadas</span>
+            <span className="text-gray-300 text-sm hidden sm:inline">- Webinar ao vivo 22 de Janeiro às 19h30</span>
           </div>
           <div className="flex items-center gap-3">
             <Button
@@ -100,9 +130,9 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
               style={{ animationDelay: "0.3s" }}
             >
               <div className="relative w-[70vw] sm:w-full max-w-[280px] sm:max-w-sm md:max-w-md lg:max-w-lg mx-auto">
-                <img 
-                  src={mentoresWebinar} 
-                  alt="Daniel Gedeon e Rafael Soares - Mentores do Webinar Cultura e Liderança" 
+                <img
+                  src={mentoresWebinar}
+                  alt="Daniel Gedeon e Rafael Soares - Mentores do Webinar Cultura e Liderança"
                   className="w-full rounded-xl lg:rounded-2xl shadow-2xl shadow-[#b8860b]/20 border border-[#b8860b]/30"
                 />
               </div>
@@ -118,10 +148,8 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                 className="text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight mb-4 sm:mb-6 uppercase italic animate-fade-in break-words"
                 style={{ animationDelay: "0.1s" }}
               >
-                <span className="text-[#b8860b]">
-                  Sua equipe não engaja e não traz resultado?
-                </span>{" "}
-                A culpa não é da "mão de obra"
+                <span className="text-[#b8860b]">Sua equipe não engaja e não traz resultado?</span> A culpa não é da
+                "mão de obra"
               </h1>
 
               <p
@@ -129,10 +157,9 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                 style={{ animationDelay: "0.2s" }}
               >
                 É da falta de <strong className="text-white">CULTURA</strong> e{" "}
-                <strong className="text-white">LIDERANÇA</strong>. Deixe de ser apenas um
-                "tocador de obra" e torne-se um líder de verdade. Descubra como instalar a
-                cultura que faz o time vestir a camisa e a empresa crescer sem você precisar
-                vigiar
+                <strong className="text-white">LIDERANÇA</strong>. Deixe de ser apenas um "tocador de obra" e torne-se
+                um líder de verdade. Descubra como instalar a cultura que faz o time vestir a camisa e a empresa crescer
+                sem você precisar vigiar
               </p>
 
               <Button
@@ -144,11 +171,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                 QUERO GARANTIR MEU ACESSO
               </Button>
 
-              {!product.checkout_url && (
-                <p className="mt-4 text-sm text-gray-500">
-                  Link de checkout não configurado
-                </p>
-              )}
+              {!product.checkout_url && <p className="mt-4 text-sm text-gray-500">Link de checkout não configurado</p>}
 
               {/* Benefits */}
               <div
@@ -169,13 +192,12 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
       <section className="bg-gray-100 py-12 md:py-16 lg:py-24 px-4">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-[#001629] text-center mb-4 uppercase px-2">
-            Você sente que está{" "}
-            <span className="text-red-600">carregando a construtora</span> nas costas?
+            Você sente que está <span className="text-red-600">carregando a construtora</span> nas costas?
           </h2>
 
           <p className="text-center text-gray-600 text-sm sm:text-base lg:text-lg mb-8 sm:mb-12 max-w-2xl mx-auto px-2">
-            A engenharia é técnica, mas o problema que tira o seu sono é{" "}
-            <strong>humano</strong>. Você conhece esse cenário:
+            A engenharia é técnica, mas o problema que tira o seu sono é <strong>humano</strong>. Você conhece esse
+            cenário:
           </p>
 
           <div className="grid md:grid-cols-2 gap-6 mb-12">
@@ -189,8 +211,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                     A Síndrome do "Tocador de Obra"
                   </h3>
                   <p className="text-gray-600">
-                    Você passa o dia apagando incêndio no canteiro. Se você sai, a obra para
-                    ou o ritmo cai.
+                    Você passa o dia apagando incêndio no canteiro. Se você sai, a obra para ou o ritmo cai.
                   </p>
                 </div>
               </div>
@@ -206,8 +227,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                     Equipe Desengajada
                   </h3>
                   <p className="text-gray-600">
-                    Parece que ninguém se importa com o prazo ou com o desperdício de material
-                    além de você.
+                    Parece que ninguém se importa com o prazo ou com o desperdício de material além de você.
                   </p>
                 </div>
               </div>
@@ -223,8 +243,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                     Comunicação Falha
                   </h3>
                   <p className="text-gray-600">
-                    Você fala "A", eles entendem "B" e executam "C". O retrabalho come o seu
-                    lucro.
+                    Você fala "A", eles entendem "B" e executam "C". O retrabalho come o seu lucro.
                   </p>
                 </div>
               </div>
@@ -240,8 +259,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                     Sensação de Solidão
                   </h3>
                   <p className="text-gray-600">
-                    Você sente que é o único remando o barco, enquanto a equipe está apenas
-                    "batendo ponto".
+                    Você sente que é o único remando o barco, enquanto a equipe está apenas "batendo ponto".
                   </p>
                 </div>
               </div>
@@ -251,8 +269,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
           {/* Truth Box */}
           <div className="bg-gray-200 p-8 rounded-xl text-center hover:bg-gray-250 transition-colors border-l-4 border-red-600">
             <p className="text-gray-600 text-lg mb-4">
-              Você acha que o problema é que{" "}
-              <em>"hoje em dia é difícil achar gente boa"</em>.
+              Você acha que o problema é que <em>"hoje em dia é difícil achar gente boa"</em>.
             </p>
             <p className="text-lg md:text-xl font-bold text-red-600">
               A verdade dura: O problema é que você tem a empresa, mas não tem as{" "}
@@ -287,10 +304,9 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
           </h2>
 
           <p className="text-gray-300 text-sm sm:text-base lg:text-lg max-w-3xl mx-auto mb-6 sm:mb-8 px-2">
-            Unimos dois mundos para resolver esse gargalo. Nesta Masterclass Exclusiva, você
-            terá acesso aos Processos de Cultura e Liderança que une a Visão de Negócio com a
-            Realidade do Canteiro. Vamos abrir a caixa-preta de como transformar um grupo de
-            funcionários em um <span className="text-[#b8860b]">Time de Elite</span>.
+            Unimos dois mundos para resolver esse gargalo. Nesta Masterclass Exclusiva, você terá acesso aos Processos
+            de Cultura e Liderança que une a Visão de Negócio com a Realidade do Canteiro. Vamos abrir a caixa-preta de
+            como transformar um grupo de funcionários em um <span className="text-[#b8860b]">Time de Elite</span>.
           </p>
 
           {/* Benefits Grid */}
@@ -325,8 +341,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                     A Ferramenta de Engajamento
                   </h3>
                   <p className="text-gray-400">
-                    Processos e KPIs para fazer o funcionário entender que o resultado dele move
-                    o ponteiro da empresa.
+                    Processos e KPIs para fazer o funcionário entender que o resultado dele move o ponteiro da empresa.
                   </p>
                 </div>
               </div>
@@ -342,8 +357,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                     Delegação Real
                   </h3>
                   <p className="text-gray-400">
-                    Como passar a tarefa garantindo que ela será feita, sem precisar virar babá
-                    de marmanjo.
+                    Como passar a tarefa garantindo que ela será feita, sem precisar virar babá de marmanjo.
                   </p>
                 </div>
               </div>
@@ -359,8 +373,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                     Gestão de Conflitos
                   </h3>
                   <p className="text-gray-400">
-                    Como resolver a "rádio peão" e as laranjas podres antes que contaminem a
-                    obra.
+                    Como resolver a "rádio peão" e as laranjas podres antes que contaminem a obra.
                   </p>
                 </div>
               </div>
@@ -393,9 +406,9 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
             {/* Daniel Gedeon - First */}
             <div className="bg-[#001629] p-8 rounded-2xl border border-gray-800 hover:border-[#b8860b]/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#b8860b]/10 group">
               <div className="relative w-32 h-32 mx-auto mb-4">
-                <img 
-                  src={danielGedeon} 
-                  alt="Daniel Gedeon" 
+                <img
+                  src={danielGedeon}
+                  alt="Daniel Gedeon"
                   className="w-full h-full rounded-full object-cover border-4 border-[#b8860b] group-hover:border-[#d4a017] transition-colors group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute -bottom-2 -right-2 bg-[#b8860b] p-2 rounded-full group-hover:bg-[#d4a017] transition-colors">
@@ -409,17 +422,17 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                 Engenheiro Civil e Fundador da Grifo Engenharia
               </p>
               <p className="text-gray-300 text-sm leading-relaxed">
-                Daniel não construiu apenas obras, construiu um império de gestão. Começou com
-                R$ 500 e escalou sua construtora através do Método Fast Construction.
+                Daniel não construiu apenas obras, construiu um império de gestão. Começou com R$ 500 e escalou sua
+                construtora através do Método Fast Construction.
               </p>
             </div>
 
             {/* Rafael Soares - Second */}
             <div className="bg-[#001629] p-8 rounded-2xl border border-gray-800 hover:border-[#b8860b]/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#b8860b]/10 group">
               <div className="relative w-32 h-32 mx-auto mb-4">
-                <img 
-                  src={rafaelSoares} 
-                  alt="Rafael Soares" 
+                <img
+                  src={rafaelSoares}
+                  alt="Rafael Soares"
                   className="w-full h-full rounded-full object-cover border-4 border-[#b8860b] group-hover:border-[#d4a017] transition-colors group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute -bottom-2 -right-2 bg-[#b8860b] p-2 rounded-full group-hover:bg-[#d4a017] transition-colors">
@@ -433,8 +446,8 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                 Engenheiro e Autoridade Nacional em Execução de Obras
               </p>
               <p className="text-gray-300 text-sm leading-relaxed">
-                Rafael vive a realidade da obra. Especialista em traduzir projetos complexos
-                para a realidade do canteiro.
+                Rafael vive a realidade da obra. Especialista em traduzir projetos complexos para a realidade do
+                canteiro.
               </p>
             </div>
           </div>
@@ -449,7 +462,6 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
           </div>
         </div>
       </section>
-
 
       {/* Pricing Section */}
       <section id="pricing-section" className="bg-[#1a2a35] py-12 md:py-16 lg:py-24 px-4">
@@ -558,9 +570,8 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                 Para quem é este evento?
               </AccordionTrigger>
               <AccordionContent className="text-gray-400 pb-6">
-                Este webinar é para donos de construtoras, engenheiros, mestres de obras e
-                gestores que querem desenvolver habilidades de liderança e criar uma cultura de
-                alta performance em suas equipes.
+                Este webinar é para donos de construtoras, engenheiros, mestres de obras e gestores que querem
+                desenvolver habilidades de liderança e criar uma cultura de alta performance em suas equipes.
               </AccordionContent>
             </AccordionItem>
 
@@ -584,8 +595,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                 Serve para quem tem equipe pequena?
               </AccordionTrigger>
               <AccordionContent className="text-gray-400 pb-6">
-                Absolutamente! Os princípios de liderança e cultura funcionam independente do
-                tamanho da equipe.
+                Absolutamente! Os princípios de liderança e cultura funcionam independente do tamanho da equipe.
               </AccordionContent>
             </AccordionItem>
 
@@ -609,8 +619,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
                 Tem garantia?
               </AccordionTrigger>
               <AccordionContent className="text-gray-400 pb-6">
-                Sim! Você tem 7 dias de garantia incondicional. Devolvemos 100% do seu
-                investimento.
+                Sim! Você tem 7 dias de garantia incondicional. Devolvemos 100% do seu investimento.
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -623,9 +632,7 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-8">
             <div>
               <h3 className="text-[#b8860b] font-bold text-lg mb-1">GRIFO ACADEMY</h3>
-              <p className="text-gray-500 text-sm">
-                Transformando construtoras através de cultura e liderança
-              </p>
+              <p className="text-gray-500 text-sm">Transformando construtoras através de cultura e liderança</p>
             </div>
             <div className="flex gap-6 text-sm text-gray-500">
               <a href="#" className="hover:text-[#b8860b] transition-colors">
