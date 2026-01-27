@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, Trash2, Loader2, Pencil, Zap, BarChart3 } from "lucide-react";
+import { Eye, Trash2, Loader2, Pencil, Zap, BarChart3, Users } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ProductEditSheet } from "./ProductEditSheet";
 import NpsResultsSheet from "@/components/nps/NpsResultsSheet";
+import { GrifoTalkAttendeesSheet } from "./GrifoTalkAttendeesSheet";
 import type { Tables } from "@/integrations/supabase/types";
 
 interface ProductCardProps {
@@ -29,6 +30,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [npsResultsOpen, setNpsResultsOpen] = useState(false);
+  const [attendeesSheetOpen, setAttendeesSheetOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Check if product has linked NPS form
@@ -45,6 +47,25 @@ export function ProductCard({ product }: ProductCardProps) {
       return data;
     },
   });
+
+  // Check if this is a GrifoTalk product (template_id with component_key = form_grifo_talk)
+  const { data: productTemplate } = useQuery({
+    queryKey: ["product_template", product.template_id],
+    queryFn: async () => {
+      if (!product.template_id) return null;
+      const { data, error } = await supabase
+        .from("page_templates")
+        .select("component_key")
+        .eq("id", product.template_id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!product.template_id,
+  });
+
+  const isGrifoTalkProduct = productTemplate?.component_key === "form_grifo_talk";
 
   const formatPrice = (price: number | null) => {
     if (price === null) return "—";
@@ -176,6 +197,22 @@ export function ProductCard({ product }: ProductCardProps) {
               </TooltipContent>
             </Tooltip>
 
+            {isGrifoTalkProduct && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAttendeesSheetOpen(true)}
+                    className="border-amber-600 text-amber-700 hover:bg-amber-100"
+                  >
+                    <Users className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Ver confirmados</TooltipContent>
+              </Tooltip>
+            )}
+
             {linkedNpsForm && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -243,7 +280,15 @@ export function ProductCard({ product }: ProductCardProps) {
         />
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* GrifoTalk Attendees Sheet */}
+      {isGrifoTalkProduct && (
+        <GrifoTalkAttendeesSheet
+          open={attendeesSheetOpen}
+          onOpenChange={setAttendeesSheetOpen}
+          productId={product.id}
+          productName={product.name}
+        />
+      )}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
