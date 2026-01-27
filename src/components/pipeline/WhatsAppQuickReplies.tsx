@@ -249,7 +249,7 @@ export function WhatsAppQuickReplies({ onSelectTemplate }: WhatsAppQuickRepliesP
               </DialogTitle>
             </DialogHeader>
             
-            <ScrollArea className="flex-1 max-h-[400px] pr-3">
+            <ScrollArea className="flex-1 max-h-[350px] pr-4 [&_[data-radix-scroll-area-thumb]]:bg-muted-foreground/50">
               <DragDropContext onDragEnd={handleDragEnd}>
                 <Droppable droppableId="templates">
                   {(provided) => (
