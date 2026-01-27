@@ -1,15 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import {
-  ArrowRight,
-  ArrowLeft,
-  Check,
-  Loader2,
-  User,
-  Phone,
-  Mail,
-  CalendarCheck,
-  UserPlus,
-} from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Loader2, User, Phone, Mail, CalendarCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -31,9 +21,6 @@ type StepData = {
   phone: string;
   countryCode: string;
   confirmation: string; // "sim" | "nao"
-  guest_name: string;
-  guest_phone: string;
-  guestCountryCode: string;
 };
 
 const INITIAL_DATA: StepData = {
@@ -42,9 +29,6 @@ const INITIAL_DATA: StepData = {
   phone: "",
   countryCode: "+55",
   confirmation: "",
-  guest_name: "",
-  guest_phone: "",
-  guestCountryCode: "+55",
 };
 
 export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoTalkProps) {
@@ -60,11 +44,8 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
     }, 300);
   }, [currentStep]);
 
-  // Steps: 0=nome, 1=email, 2=phone, 3=confirmacao, 4=convidado (se sim), 5=sucesso
-  const getTotalSteps = () => {
-    if (formData.confirmation === "sim") return 5;
-    return 4;
-  };
+  // Steps: 0=nome, 1=email, 2=phone, 3=confirmacao, 4=sucesso
+  const getTotalSteps = () => 4;
 
   const progress = ((currentStep + 1) / (getTotalSteps() + 1)) * 100;
 
@@ -83,12 +64,9 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
 
   const handleConfirmationSelect = (value: string) => {
     handleChange("confirmation", value);
+    // Envia imediatamente, independente da escolha
     setTimeout(() => {
-      if (value === "sim") {
-        setCurrentStep(4); // Vai para convidado
-      } else {
-        handleSubmit(value);
-      }
+      handleSubmit(value);
     }, 250);
   };
 
@@ -105,27 +83,11 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
       toast.error("Telefone inválido.");
       return false;
     }
-    if (currentStep === 4) {
-      // Convidado é opcional - só valida se preencheu nome mas não o telefone
-      if (formData.guest_name && formData.guest_name.length > 0 && formData.guest_name.length < 3) {
-        toast.error("Nome do convidado deve ter pelo menos 3 caracteres.");
-        return false;
-      }
-      if (formData.guest_name && formData.guest_name.length >= 3 && formData.guest_phone.replace(/\D/g, "").length < 10) {
-        toast.error("Telefone do convidado inválido.");
-        return false;
-      }
-    }
     return true;
   };
 
   const handleSubmit = async (confirmationValue?: string) => {
     if (isSubmitting) return;
-
-    // Valida dados do convidado se confirmou presença
-    if (formData.confirmation === "sim" && currentStep === 4) {
-      if (!validateStep()) return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -148,11 +110,7 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
       }
 
       // 1. Criar ou atualizar Lead principal
-      const { data: existingLead } = await supabase
-        .from("leads")
-        .select("id")
-        .eq("email", finalData.email)
-        .single();
+      const { data: existingLead } = await supabase.from("leads").select("id").eq("email", finalData.email).single();
 
       let lead: { id: string };
 
@@ -181,38 +139,12 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
         lead = newLead;
       }
 
-      // 2. Se confirmou presença e tem dados do convidado, criar lead do convidado
-      const hasGuestData = finalData.guest_name && finalData.guest_name.length >= 3 && finalData.guest_phone.replace(/\D/g, "").length >= 10;
-      if (finalData.confirmation === "sim" && hasGuestData) {
-        const guestFullPhone = `${finalData.guestCountryCode}${finalData.guest_phone.replace(/\D/g, "")}`;
-        
-        // Verifica se convidado já existe pelo telefone
-        const { data: existingGuest } = await supabase
-          .from("leads")
-          .select("id")
-          .eq("phone", guestFullPhone)
-          .single();
-
-        if (!existingGuest) {
-          await supabase.from("leads").insert({
-            full_name: finalData.guest_name,
-            phone: guestFullPhone,
-            status: "Novo",
-            origin: `${leadOrigin} (Convidado de ${finalData.full_name})`,
-          });
-        }
-      }
-
-      // 3. Salvar respostas completas
+      // 2. Salvar respostas (Sem dados de convidado)
       const { error: subError } = await supabase.from("form_submissions").insert({
         lead_id: lead.id,
         product_id: productId,
         answers: {
           confirmation: finalData.confirmation === "sim" ? "Confirmou presença" : "Não poderá comparecer",
-          guest_name: finalData.guest_name || null,
-          guest_phone: finalData.guest_phone
-            ? `${finalData.guestCountryCode}${finalData.guest_phone.replace(/\D/g, "")}`
-            : null,
         },
       });
 
@@ -221,8 +153,8 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
       toast.success("Confirmação enviada com sucesso!");
       if (onSubmitSuccess) onSubmitSuccess();
 
-      // Tela de sucesso
-      setCurrentStep(finalData.confirmation === "sim" ? 5 : 4);
+      // Vai para tela de sucesso (Passo 4)
+      setCurrentStep(4);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao enviar. Tente novamente.");
@@ -235,19 +167,15 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
     if (e.key === "Enter") {
       if ([0, 1, 2].includes(currentStep)) {
         handleNext();
-      } else if (currentStep === 4 && formData.confirmation === "sim") {
-        handleSubmit();
       }
     }
   };
 
-  const isSuccessScreen =
-    (formData.confirmation === "sim" && currentStep === 5) ||
-    (formData.confirmation === "nao" && currentStep === 4);
+  const isSuccessScreen = currentStep === 4;
 
-  const showNavigation = !isSuccessScreen && currentStep <= 4;
+  const showNavigation = !isSuccessScreen && currentStep <= 3;
   const showContinueButton = [0, 1, 2].includes(currentStep);
-  const showSubmitButton = currentStep === 4 && formData.confirmation === "sim";
+  // Botão de submit removido da navegação pois o submit é automático na seleção da opção
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#112232] text-[#E1D8CF] font-sans relative overflow-hidden p-4">
@@ -272,9 +200,7 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
               Você está convidado(a) para o Grifo Talks.
             </h1>
-            <p className="text-[#E1D8CF]/70 text-lg">
-              Por favor, confirme sua presença preenchendo os dados a seguir.
-            </p>
+            <p className="text-[#E1D8CF]/70 text-lg">Por favor, confirme sua presença preenchendo os dados a seguir.</p>
           </div>
         )}
 
@@ -380,62 +306,7 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
             </QuestionCard>
           )}
 
-          {/* STEP 4: CONVIDADO (só se confirmou presença) */}
-          {currentStep === 4 && formData.confirmation === "sim" && (
-            <QuestionCard
-              icon={<UserPlus className="text-[#A47428]" size={32} />}
-              number={5}
-              question="Dados do seu convidado"
-              subtext="Caso queira levar um convidado, informe os dados abaixo."
-            >
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-[#E1D8CF]/60 text-sm mb-2">Nome do convidado</label>
-                  <InputLine
-                    ref={inputRef}
-                    name="guest-name"
-                    autoComplete="off"
-                    value={formData.guest_name}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("guest_name", e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Nome completo do convidado"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[#E1D8CF]/60 text-sm mb-2">Telefone do convidado</label>
-                  <div className="flex items-end gap-3">
-                    <CountryCodeSelect
-                      value={formData.guestCountryCode}
-                      onChange={(dialCode) => handleChange("guestCountryCode", dialCode)}
-                      variant="dark"
-                      className="flex-shrink-0"
-                    />
-                    <div className="flex-1">
-                      <InputLine
-                        name="guest-tel"
-                        autoComplete="off"
-                        value={formData.guest_phone}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                          let val = e.target.value.replace(/^\+\d{1,3}\s?/, "");
-                          handleChange("guest_phone", val);
-                        }}
-                        onKeyDown={handleKeyDown}
-                        placeholder="(00) 00000-0000"
-                        type="tel"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {isSubmitting && (
-                <div className="mt-4 flex items-center justify-center text-[#A47428]">
-                  <Loader2 className="animate-spin mr-2" /> Enviando...
-                </div>
-              )}
-            </QuestionCard>
-          )}
-
-          {/* TELA DE SUCESSO */}
+          {/* TELA DE SUCESSO (Step 4) */}
           {isSuccessScreen && (
             <div className="flex flex-col items-center justify-center animate-in fade-in duration-700 text-center mt-10">
               <div className="w-20 h-20 rounded-full bg-[#A47428] flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(164,116,40,0.4)]">
@@ -443,7 +314,9 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
               </div>
               {formData.confirmation === "sim" ? (
                 <>
-                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Obrigado por confirmar sua presença.</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                    Obrigado por confirmar sua presença.
+                  </h2>
                   <p className="text-[#E1D8CF]/80 text-lg max-w-md">
                     Estamos preparando uma experiência especial para você no Grifo Talks.
                   </p>
@@ -481,24 +354,6 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
                 Continuar <ArrowRight className="ml-2 w-4 h-4" />
               </button>
             )}
-
-            {showSubmitButton && (
-              <button
-                onClick={() => handleSubmit()}
-                disabled={isSubmitting}
-                className="flex items-center bg-[#A47428] hover:bg-[#8a6120] text-white px-6 py-3 rounded-lg font-bold transition-all ml-auto shadow-lg shadow-[#A47428]/20 disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="animate-spin mr-2 w-4 h-4" /> Enviando...
-                  </>
-                ) : (
-                  <>
-                    Confirmar <Check className="ml-2 w-4 h-4" />
-                  </>
-                )}
-              </button>
-            )}
           </div>
         )}
       </div>
@@ -508,7 +363,13 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
 
 // --- SUB-COMPONENTES ---
 
-function QuestionCard({ children, icon, number, question, subtext }: {
+function QuestionCard({
+  children,
+  icon,
+  number,
+  question,
+  subtext,
+}: {
   children: React.ReactNode;
   icon: React.ReactNode;
   number: number;
@@ -530,7 +391,16 @@ function QuestionCard({ children, icon, number, question, subtext }: {
   );
 }
 
-const InputLine = ({ value, onChange, placeholder, type = "text", onKeyDown, ref, autoComplete = "on", name }: {
+const InputLine = ({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  onKeyDown,
+  ref,
+  autoComplete = "on",
+  name,
+}: {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder: string;
@@ -568,7 +438,12 @@ const InputLine = ({ value, onChange, placeholder, type = "text", onKeyDown, ref
   </div>
 );
 
-const OptionButton = ({ label, selected, onClick, icon }: {
+const OptionButton = ({
+  label,
+  selected,
+  onClick,
+  icon,
+}: {
   label: string;
   selected: boolean;
   onClick: () => void;
