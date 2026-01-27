@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import {
   Users,
   Search,
@@ -72,9 +72,20 @@ const statusColors: Record<string, string> = {
   Arquivado: "bg-gray-100 text-gray-800",
 };
 
+const REGION_OPTIONS = [
+  { value: "all", label: "Todas as regiões" },
+  { value: "Sudeste", label: "Sudeste" },
+  { value: "Sul", label: "Sul" },
+  { value: "Nordeste", label: "Nordeste" },
+  { value: "Norte", label: "Norte" },
+  { value: "Centro-Oeste", label: "Centro-Oeste" },
+  { value: "Internacional", label: "Internacional" },
+];
+
 export default function Leads() {
   const [searchQuery, setSearchQuery] = useState("");
   const [productFilter, setProductFilter] = useState("all");
+  const [regionFilter, setRegionFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -155,7 +166,10 @@ export default function Leads() {
 
         const matchesProduct = productFilter === "all" || lead.sales?.some((sale) => sale.product_id === productFilter);
 
-        return matchesSearch && matchesProduct;
+        const leadRegion = getRegionByPhone(lead.phone)?.region;
+        const matchesRegion = regionFilter === "all" || leadRegion === regionFilter;
+
+        return matchesSearch && matchesProduct && matchesRegion;
       })
       .sort((a, b) => {
         const aValue = a[sortConfig.key];
@@ -217,32 +231,28 @@ export default function Leads() {
     return pageNumbers;
   };
 
-  const handleExportCSV = () => {
+  const handleExportXLSX = () => {
     if (!filteredAndSortedLeads.length) {
       toast.error("Nenhum lead para exportar");
       return;
     }
 
-    const csvData = filteredAndSortedLeads.map((lead) => ({
-      Nome: lead.full_name || "",
-      Email: lead.email || "",
-      Telefone: lead.phone || "",
-      Status: lead.status || "",
-      Origem: lead.origin || "",
-      LTV: lead.ltv || 0,
-      Produtos: lead.sales?.map((s) => s.product_name).join(", ") || "",
-      "Data de Cadastro": lead.created_at ? format(new Date(lead.created_at), "dd/MM/yyyy", { locale: ptBR }) : "",
-    }));
+    const data = filteredAndSortedLeads.map((lead) => {
+      const regionInfo = getRegionByPhone(lead.phone);
+      return {
+        Nome: lead.full_name || "",
+        Email: lead.email || "",
+        Telefone: lead.phone || "",
+        Região: regionInfo?.region || "-",
+        LTV: lead.ltv || 0,
+      };
+    });
 
-    const csv = Papa.unparse(csvData);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `leads_${format(new Date(), "yyyy-MM-dd")}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success("CSV exportado com sucesso!");
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Leads");
+    XLSX.writeFile(workbook, `leads_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    toast.success("XLSX exportado com sucesso!");
   };
 
   const handleViewDetails = (lead: Lead) => {
@@ -279,7 +289,7 @@ export default function Leads() {
           />
         </div>
 
-        <div className="w-full md:w-[250px]">
+        <div className="w-full md:w-[200px]">
           <Select
             value={productFilter}
             onValueChange={(value) => {
@@ -293,7 +303,7 @@ export default function Leads() {
                 <SelectValue placeholder="Filtrar por produto" />
               </div>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="min-w-[--radix-select-trigger-width]">
               <SelectItem value="all">Todos os produtos</SelectItem>
               {productsData?.map((product) => (
                 <SelectItem key={product.id} value={product.id}>
@@ -304,10 +314,34 @@ export default function Leads() {
           </Select>
         </div>
 
+        <div className="w-full md:w-[180px]">
+          <Select
+            value={regionFilter}
+            onValueChange={(value) => {
+              setRegionFilter(value);
+              setCurrentPage(1);
+            }}
+          >
+            <SelectTrigger>
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <SelectValue placeholder="Filtrar por região" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="min-w-[--radix-select-trigger-width]">
+              {REGION_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportCSV}>
+          <Button variant="outline" onClick={handleExportXLSX}>
             <Download className="h-4 w-4 mr-2" />
-            CSV
+            XLSX
           </Button>
           <NewLeadDialog />
         </div>
@@ -324,7 +358,7 @@ export default function Leads() {
             <UserX className="h-16 w-16 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-1">Nenhum lead encontrado</h3>
             <p className="text-sm text-muted-foreground max-w-sm">
-              {searchQuery || productFilter !== "all"
+              {searchQuery || productFilter !== "all" || regionFilter !== "all"
                 ? "Tente ajustar sua busca ou filtros."
                 : "Comece adicionando seu primeiro lead clicando no botão 'Novo Lead'."}
             </p>
