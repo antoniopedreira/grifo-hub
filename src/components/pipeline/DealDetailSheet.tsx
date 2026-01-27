@@ -18,6 +18,7 @@ import {
   Globe,
   Calendar,
   XCircle,
+  GitBranch,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -110,6 +111,37 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
         .single();
       if (error) return null;
       return data;
+    },
+    enabled: open && !!deal?.stage_id,
+  });
+
+  // Fetch all non-archived pipelines for transfer
+  const { data: allPipelines = [] } = useQuery({
+    queryKey: ["pipelines-for-transfer"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pipelines")
+        .select("id, name")
+        .eq("archived", false)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: open,
+  });
+
+  // Get current pipeline ID from the deal's stage
+  const { data: currentPipelineId } = useQuery({
+    queryKey: ["deal-pipeline", deal?.stage_id],
+    queryFn: async () => {
+      if (!deal?.stage_id) return null;
+      const { data, error } = await supabase
+        .from("pipeline_stages")
+        .select("pipeline_id")
+        .eq("id", deal.stage_id)
+        .single();
+      if (error) return null;
+      return data?.pipeline_id || null;
     },
     enabled: open && !!deal?.stage_id,
   });
@@ -317,6 +349,53 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
       // Always refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+  });
+
+  // Transfer deal to another pipeline mutation
+  const transferPipelineMutation = useMutation({
+    mutationFn: async ({ dealId, targetPipelineId }: { dealId: string; targetPipelineId: string }) => {
+      // Get the first stage of the target pipeline
+      const { data: firstStage, error: stageError } = await supabase
+        .from("pipeline_stages")
+        .select("id")
+        .eq("pipeline_id", targetPipelineId)
+        .order("order_index", { ascending: true })
+        .limit(1)
+        .single();
+
+      if (stageError || !firstStage) {
+        throw new Error("Pipeline de destino não possui etapas configuradas");
+      }
+
+      // Update the deal to the new pipeline's first stage
+      const { error } = await supabase
+        .from("deals")
+        .update({
+          pipeline_id: targetPipelineId,
+          stage_id: firstStage.id,
+          order_index: 0,
+        })
+        .eq("id", dealId);
+
+      if (error) throw error;
+      return { targetPipelineId, newStageId: firstStage.id };
+    },
+    onSuccess: (_, variables) => {
+      const targetPipeline = allPipelines.find(p => p.id === variables.targetPipelineId);
+      toast({
+        title: "Deal transferido",
+        description: `O deal foi movido para o pipeline "${targetPipeline?.name || 'selecionado'}".`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao transferir",
+        description: error.message || "Não foi possível transferir o deal.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -792,6 +871,42 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
                     )}
                   </div>
                   {renderSalesHistory()}
+                </div>
+
+                <Separator />
+
+                {/* Transfer Pipeline */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-primary flex items-center gap-2">
+                    <GitBranch className="h-4 w-4" />
+                    Transferir Pipeline
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={currentPipelineId || ""}
+                      onValueChange={(value) => {
+                        if (value && value !== currentPipelineId && deal) {
+                          transferPipelineMutation.mutate({ dealId: deal.id, targetPipelineId: value });
+                        }
+                      }}
+                      disabled={transferPipelineMutation.isPending}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione um pipeline" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allPipelines.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                            {p.id === currentPipelineId && " (atual)"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Ao transferir, o deal será movido para a primeira etapa do pipeline selecionado.
+                  </p>
                 </div>
 
                 {/* Delete Button */}
