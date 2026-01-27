@@ -72,16 +72,6 @@ const statusColors: Record<string, string> = {
   Arquivado: "bg-gray-100 text-gray-800",
 };
 
-const REGION_OPTIONS = [
-  { value: "all", label: "Todas as regiões" },
-  { value: "Sudeste", label: "Sudeste" },
-  { value: "Sul", label: "Sul" },
-  { value: "Nordeste", label: "Nordeste" },
-  { value: "Norte", label: "Norte" },
-  { value: "Centro-Oeste", label: "Centro-Oeste" },
-  { value: "Internacional", label: "Internacional" },
-];
-
 export default function Leads() {
   const [searchQuery, setSearchQuery] = useState("");
   const [productFilter, setProductFilter] = useState("all");
@@ -166,8 +156,8 @@ export default function Leads() {
 
         const matchesProduct = productFilter === "all" || lead.sales?.some((sale) => sale.product_id === productFilter);
 
-        const leadRegion = getRegionByPhone(lead.phone)?.region;
-        const matchesRegion = regionFilter === "all" || leadRegion === regionFilter;
+        const leadState = getRegionByPhone(lead.phone)?.state;
+        const matchesRegion = regionFilter === "all" || leadState === regionFilter;
 
         return matchesSearch && matchesProduct && matchesRegion;
       })
@@ -191,6 +181,13 @@ export default function Leads() {
         if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
       }) || [];
+
+  // Extrai estados únicos dos leads para o filtro
+  const uniqueStates = [...new Set(
+    leadsData
+      ?.map((lead) => getRegionByPhone(lead.phone)?.state)
+      .filter((state): state is string => !!state)
+  )].sort();
 
   // Paginação
   const totalPages = Math.ceil(filteredAndSortedLeads.length / ITEMS_PER_PAGE);
@@ -314,7 +311,7 @@ export default function Leads() {
           </Select>
         </div>
 
-        <div className="w-full md:w-[180px]">
+        <div className="w-full md:w-[160px]">
           <Select
             value={regionFilter}
             onValueChange={(value) => {
@@ -325,13 +322,14 @@ export default function Leads() {
             <SelectTrigger>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
-                <SelectValue placeholder="Filtrar por região" />
+                <SelectValue placeholder="Filtrar estado" />
               </div>
             </SelectTrigger>
             <SelectContent className="min-w-[--radix-select-trigger-width]">
-              {REGION_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
+              <SelectItem value="all">Todos os estados</SelectItem>
+              {uniqueStates.map((state) => (
+                <SelectItem key={state} value={state}>
+                  {state}
                 </SelectItem>
               ))}
             </SelectContent>
