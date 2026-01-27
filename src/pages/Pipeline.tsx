@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { KanbanColumn } from "@/components/pipeline/KanbanColumn";
 import { NewDealDialog } from "@/components/pipeline/NewDealDialog";
 import { ScheduleMeetingDialog } from "@/components/pipeline/ScheduleMeetingDialog";
+import { ScheduleFollowupDialog } from "@/components/pipeline/ScheduleFollowupDialog";
 import { CloseSaleDialog } from "@/components/pipeline/CloseSaleDialog";
 import { NegotiationDialog } from "@/components/pipeline/NegotiationDialog";
 import { LostDealDialog } from "@/components/pipeline/LostDealDialog";
@@ -60,6 +61,11 @@ export default function Pipeline() {
     targetStageId: null,
   });
   const [lostDialog, setLostDialog] = useState<{ open: boolean; deal: Deal | null; targetStageId: string | null }>({
+    open: false,
+    deal: null,
+    targetStageId: null,
+  });
+  const [followupDialog, setFollowupDialog] = useState<{ open: boolean; deal: Deal | null; targetStageId: string | null }>({
     open: false,
     deal: null,
     targetStageId: null,
@@ -243,6 +249,12 @@ export default function Pipeline() {
       return;
     }
 
+    // Lógica de Interceptação: Follow-up
+    if (targetStage?.type === "followup" && source.droppableId !== targetStageId) {
+      setFollowupDialog({ open: true, deal, targetStageId });
+      return;
+    }
+
     // Movimento Padrão - set order_index to highest + 1 so it appears at top
     const dealsInTargetStage = deals.filter(d => d.stage_id === targetStageId);
     const maxOrderIndex = dealsInTargetStage.reduce((max, d) => Math.max(max, d.order_index || 0), 0);
@@ -289,6 +301,17 @@ export default function Pipeline() {
   const handleLostSuccess = () => {
     // A mutation já moveu o deal no LostDealDialog
     setLostDialog({ open: false, deal: null, targetStageId: null });
+  };
+
+  const handleFollowupSuccess = () => {
+    if (followupDialog.deal && followupDialog.targetStageId) {
+      moveDealMutation.mutate({
+        dealId: followupDialog.deal.id,
+        stageId: followupDialog.targetStageId,
+        orderIndex: 0,
+      });
+    }
+    setFollowupDialog({ open: false, deal: null, targetStageId: null });
   };
 
   const filteredDeals = deals.filter((deal) => {
@@ -501,6 +524,18 @@ export default function Pipeline() {
           targetStageId={lostDialog.targetStageId}
           onCancel={() => setLostDialog((prev) => ({ ...prev, open: false }))}
           onSuccess={handleLostSuccess}
+        />
+      )}
+
+      {followupDialog.deal && (
+        <ScheduleFollowupDialog
+          open={followupDialog.open}
+          onOpenChange={(open) => !open && setFollowupDialog((prev) => ({ ...prev, open: false }))}
+          dealId={followupDialog.deal.id}
+          dealTitle={followupDialog.deal.title}
+          leadName={followupDialog.deal.lead?.full_name || undefined}
+          currentDate={null}
+          onSuccess={handleFollowupSuccess}
         />
       )}
 

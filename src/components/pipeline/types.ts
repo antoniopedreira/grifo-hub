@@ -42,7 +42,7 @@ export interface PipelineStage {
   name: string;
   pipeline_id: string;
   order_index: number;
-  type?: "default" | "meeting" | "won" | "lost" | "negotiation";
+  type?: "default" | "meeting" | "won" | "lost" | "negotiation" | "followup";
 }
 
 export interface Pipeline {

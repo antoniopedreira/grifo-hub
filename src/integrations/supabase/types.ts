@@ -171,6 +171,7 @@ export type Database = {
         Row: {
           cash_value: number | null
           created_at: string | null
+          followup_date: string | null
           id: string
           installments: number | null
           lead_id: string | null
@@ -191,6 +192,7 @@ export type Database = {
         Insert: {
           cash_value?: number | null
           created_at?: string | null
+          followup_date?: string | null
           id?: string
           installments?: number | null
           lead_id?: string | null
@@ -211,6 +213,7 @@ export type Database = {
         Update: {
           cash_value?: number | null
           created_at?: string | null
+          followup_date?: string | null
           id?: string
           installments?: number | null
           lead_id?: string | null
