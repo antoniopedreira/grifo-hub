@@ -135,10 +135,20 @@ export default function Pipeline() {
 
   // Mutation para mover o card com Optimistic Updates
   const moveDealMutation = useMutation({
-    mutationFn: async ({ dealId, stageId, orderIndex }: { dealId: string; stageId: string; orderIndex: number }) => {
+    mutationFn: async ({ dealId, stageId, orderIndex, clearLossReason }: { dealId: string; stageId: string; orderIndex: number; clearLossReason?: boolean }) => {
+      const updateData: { stage_id: string; order_index: number; loss_reason?: null } = { 
+        stage_id: stageId, 
+        order_index: orderIndex 
+      };
+      
+      // Limpa o motivo da perda se estiver saindo de uma etapa "lost"
+      if (clearLossReason) {
+        updateData.loss_reason = null;
+      }
+      
       const { error } = await supabase
         .from("deals")
-        .update({ stage_id: stageId, order_index: orderIndex })
+        .update(updateData)
         .eq("id", dealId);
       if (error) throw error;
     },
@@ -237,10 +247,15 @@ export default function Pipeline() {
     const dealsInTargetStage = deals.filter(d => d.stage_id === targetStageId);
     const maxOrderIndex = dealsInTargetStage.reduce((max, d) => Math.max(max, d.order_index || 0), 0);
     
+    // Verifica se está saindo de uma etapa "lost" para limpar o motivo da perda
+    const sourceStage = stages.find((s) => s.id === source.droppableId);
+    const isLeavingLostStage = sourceStage?.type === "lost" && targetStage?.type !== "lost";
+    
     moveDealMutation.mutate({
       dealId: draggableId,
       stageId: targetStageId,
       orderIndex: maxOrderIndex + 1,
+      clearLossReason: isLeavingLostStage,
     });
   };
 
