@@ -16,6 +16,9 @@ const FormBasic = lazy(() => import("./FormBasic"));
 // LpStandard é um named export, então usamos o .then para extrair
 const LpStandard = lazy(() => import("./LpStandard").then((m) => ({ default: m.LpStandard })));
 
+// LpWebinarCultura - Landing Page de Vendas de Webinar
+const LpWebinarCultura = lazy(() => import("./LpWebinarCultura").then((m) => ({ default: m.LpWebinarCultura })));
+
 // FormConstruction - adaptador: o sistema manda 'product', mas o componente quer 'productId'
 const FormConstruction = lazy(() =>
   import("./FormConstruction").then((m) => ({
@@ -50,6 +53,7 @@ export const templateRegistry: Record<string, ComponentType<TemplateComponentPro
   form_high_ticket: FormHighTicket,
   form_basic: FormBasic,
   lp_standard: LpStandard,
+  lp_webinar_cultura: LpWebinarCultura,
   form_construction: FormConstruction,
   form_grifo_talk: FormGrifoTalk,
 };
