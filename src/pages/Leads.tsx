@@ -240,7 +240,7 @@ export default function Leads() {
         Nome: lead.full_name || "",
         Email: lead.email || "",
         Telefone: lead.phone || "",
-        Região: regionInfo?.region || "-",
+        Estado: regionInfo?.state || "-",
         LTV: lead.ltv || 0,
       };
     });
