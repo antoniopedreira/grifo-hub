@@ -319,14 +319,14 @@ export default function Leads() {
               setCurrentPage(1);
             }}
           >
-            <SelectTrigger>
+            <SelectTrigger className="whitespace-nowrap">
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <SelectValue placeholder="Filtrar estado" />
+                <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                <SelectValue placeholder="Estado" />
               </div>
             </SelectTrigger>
             <SelectContent className="min-w-[--radix-select-trigger-width]">
-              <SelectItem value="all">Todos os estados</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               {uniqueStates.map((state) => (
                 <SelectItem key={state} value={state}>
                   {state}
