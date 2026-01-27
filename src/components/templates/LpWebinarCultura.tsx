@@ -14,6 +14,9 @@ import {
   X,
   Flame,
 } from "lucide-react";
+import mentoresWebinar from "@/assets/mentores-webinar-cultura.jpg";
+import danielGedeon from "@/assets/daniel-gedeon.jpg";
+import rafaelSoares from "@/assets/rafael-soares.jpg";
 
 interface LpWebinarCulturaProps {
   product: {
@@ -91,28 +94,17 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
       >
         <div className="max-w-6xl mx-auto w-full">
           <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-12 items-center">
-            {/* Right Column - Image Placeholder */}
+            {/* Right Column - Image */}
             <div
               className="flex justify-center lg:justify-end animate-fade-in order-first lg:order-last"
               style={{ animationDelay: "0.3s" }}
             >
               <div className="relative w-[70vw] sm:w-full max-w-[280px] sm:max-w-sm md:max-w-md lg:max-w-lg mx-auto">
-                <div className="w-full aspect-[4/3] rounded-xl lg:rounded-2xl shadow-2xl shadow-[#b8860b]/20 border border-[#b8860b]/30 bg-[#0a1f2e] flex items-center justify-center">
-                  <div className="text-center p-8">
-                    <div className="flex justify-center gap-4 mb-4">
-                      <div className="w-20 h-20 rounded-full bg-[#b8860b]/20 border-2 border-[#b8860b] flex items-center justify-center">
-                        <span className="text-[#b8860b] font-bold text-xs">MENTOR 1</span>
-                      </div>
-                      <div className="w-20 h-20 rounded-full bg-[#b8860b]/20 border-2 border-[#b8860b] flex items-center justify-center">
-                        <span className="text-[#b8860b] font-bold text-xs">MENTOR 2</span>
-                      </div>
-                    </div>
-                    <h3 className="text-[#b8860b] font-bold uppercase text-lg">
-                      CULTURA E LIDERANÇA
-                    </h3>
-                    <p className="text-gray-400 text-sm italic">de alta performance</p>
-                  </div>
-                </div>
+                <img 
+                  src={mentoresWebinar} 
+                  alt="Daniel Gedeon e Rafael Soares - Mentores do Webinar Cultura e Liderança" 
+                  className="w-full rounded-xl lg:rounded-2xl shadow-2xl shadow-[#b8860b]/20 border border-[#b8860b]/30"
+                />
               </div>
             </div>
 
@@ -398,11 +390,14 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
           </h2>
 
           <div className="grid md:grid-cols-2 gap-8">
+            {/* Daniel Gedeon - First */}
             <div className="bg-[#001629] p-8 rounded-2xl border border-gray-800 hover:border-[#b8860b]/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#b8860b]/10 group">
               <div className="relative w-32 h-32 mx-auto mb-4">
-                <div className="w-full h-full rounded-full border-4 border-[#b8860b] group-hover:border-[#d4a017] transition-colors group-hover:scale-105 transition-transform duration-300 bg-[#0a1f2e] flex items-center justify-center">
-                  <span className="text-[#b8860b] font-bold text-xs">MENTOR</span>
-                </div>
+                <img 
+                  src={danielGedeon} 
+                  alt="Daniel Gedeon" 
+                  className="w-full h-full rounded-full object-cover border-4 border-[#b8860b] group-hover:border-[#d4a017] transition-colors group-hover:scale-105 transition-transform duration-300"
+                />
                 <div className="absolute -bottom-2 -right-2 bg-[#b8860b] p-2 rounded-full group-hover:bg-[#d4a017] transition-colors">
                   <Star className="w-4 h-4 text-black" />
                 </div>
@@ -419,11 +414,14 @@ export function LpWebinarCultura({ product }: LpWebinarCulturaProps) {
               </p>
             </div>
 
+            {/* Rafael Soares - Second */}
             <div className="bg-[#001629] p-8 rounded-2xl border border-gray-800 hover:border-[#b8860b]/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#b8860b]/10 group">
               <div className="relative w-32 h-32 mx-auto mb-4">
-                <div className="w-full h-full rounded-full border-4 border-[#b8860b] group-hover:border-[#d4a017] transition-colors group-hover:scale-105 transition-transform duration-300 bg-[#0a1f2e] flex items-center justify-center">
-                  <span className="text-[#b8860b] font-bold text-xs">MENTOR</span>
-                </div>
+                <img 
+                  src={rafaelSoares} 
+                  alt="Rafael Soares" 
+                  className="w-full h-full rounded-full object-cover border-4 border-[#b8860b] group-hover:border-[#d4a017] transition-colors group-hover:scale-105 transition-transform duration-300"
+                />
                 <div className="absolute -bottom-2 -right-2 bg-[#b8860b] p-2 rounded-full group-hover:bg-[#d4a017] transition-colors">
                   <Star className="w-4 h-4 text-black" />
                 </div>
