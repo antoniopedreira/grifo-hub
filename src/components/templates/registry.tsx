@@ -16,14 +16,23 @@ const FormBasic = lazy(() => import("./FormBasic"));
 // LpStandard é um named export, então usamos o .then para extrair
 const LpStandard = lazy(() => import("./LpStandard").then((m) => ({ default: m.LpStandard })));
 
-// ADICIONADO: FormConstruction
-// Note o adaptador: o sistema manda 'product', mas o componente quer 'productId'
+// FormConstruction - adaptador: o sistema manda 'product', mas o componente quer 'productId'
 const FormConstruction = lazy(() =>
   import("./FormConstruction").then((m) => ({
     default: (props: TemplateComponentProps) => (
       <m.FormConstruction
         productId={props.product.id}
-        // Se precisar passar onSubmitSuccess, passaria aqui, mas o renderizador padrão talvez não mande
+      />
+    ),
+  })),
+);
+
+// FormGrifoTalk - Formulário de confirmação de presença para evento
+const FormGrifoTalk = lazy(() =>
+  import("./FormGrifoTalk").then((m) => ({
+    default: (props: TemplateComponentProps) => (
+      <m.default
+        productId={props.product.id}
       />
     ),
   })),
@@ -42,6 +51,7 @@ export const templateRegistry: Record<string, ComponentType<TemplateComponentPro
   form_basic: FormBasic,
   lp_standard: LpStandard,
   form_construction: FormConstruction,
+  form_grifo_talk: FormGrifoTalk,
 };
 
 // NPS Template Registry
