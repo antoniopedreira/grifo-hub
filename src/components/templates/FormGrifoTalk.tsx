@@ -106,11 +106,12 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
       return false;
     }
     if (currentStep === 4) {
-      if (formData.guest_name.length < 3) {
-        toast.error("Por favor, digite o nome do convidado.");
+      // Convidado é opcional - só valida se preencheu nome mas não o telefone
+      if (formData.guest_name && formData.guest_name.length > 0 && formData.guest_name.length < 3) {
+        toast.error("Nome do convidado deve ter pelo menos 3 caracteres.");
         return false;
       }
-      if (formData.guest_phone.replace(/\D/g, "").length < 10) {
+      if (formData.guest_name && formData.guest_name.length >= 3 && formData.guest_phone.replace(/\D/g, "").length < 10) {
         toast.error("Telefone do convidado inválido.");
         return false;
       }
@@ -180,8 +181,9 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
         lead = newLead;
       }
 
-      // 2. Se confirmou presença e tem convidado, criar lead do convidado
-      if (finalData.confirmation === "sim" && finalData.guest_name && finalData.guest_phone) {
+      // 2. Se confirmou presença e tem dados do convidado, criar lead do convidado
+      const hasGuestData = finalData.guest_name && finalData.guest_name.length >= 3 && finalData.guest_phone.replace(/\D/g, "").length >= 10;
+      if (finalData.confirmation === "sim" && hasGuestData) {
         const guestFullPhone = `${finalData.guestCountryCode}${finalData.guest_phone.replace(/\D/g, "")}`;
         
         // Verifica se convidado já existe pelo telefone
