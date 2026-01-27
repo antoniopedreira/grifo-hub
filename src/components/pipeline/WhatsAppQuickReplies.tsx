@@ -195,6 +195,7 @@ export function WhatsAppQuickReplies({ onSelectTemplate }: WhatsAppQuickRepliesP
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
                   rows={3}
+                  className="max-h-32 overflow-y-auto resize-none"
                 />
                 <Button
                   onClick={handleAddNew}
@@ -279,6 +280,7 @@ export function WhatsAppQuickReplies({ onSelectTemplate }: WhatsAppQuickRepliesP
                                     value={editContent}
                                     onChange={(e) => setEditContent(e.target.value)}
                                     rows={2}
+                                    className="max-h-32 overflow-y-auto resize-none"
                                   />
                                   <div className="flex gap-2 justify-end">
                                     <Button
@@ -369,6 +371,7 @@ export function WhatsAppQuickReplies({ onSelectTemplate }: WhatsAppQuickRepliesP
                     value={newContent}
                     onChange={(e) => setNewContent(e.target.value)}
                     rows={2}
+                    className="max-h-32 overflow-y-auto resize-none"
                   />
                   <div className="flex gap-2 justify-end">
                     <Button
