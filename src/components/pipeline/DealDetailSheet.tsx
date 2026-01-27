@@ -98,6 +98,22 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
     enabled: open,
   });
 
+  // Fetch current stage to check if it's a "lost" stage
+  const { data: currentStage } = useQuery({
+    queryKey: ["deal-stage", deal?.stage_id],
+    queryFn: async () => {
+      if (!deal?.stage_id) return null;
+      const { data, error } = await supabase
+        .from("pipeline_stages")
+        .select("id, type")
+        .eq("id", deal.stage_id)
+        .single();
+      if (error) return null;
+      return data;
+    },
+    enabled: open && !!deal?.stage_id,
+  });
+
   // Fetch sales history for this lead
   const { data: salesHistory = [] } = useQuery({
     queryKey: ["lead-sales-pipeline", deal?.lead_id],
@@ -743,8 +759,8 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
                   </div>
                 </div>
 
-                {/* Loss Reason - only show if deal has a loss_reason */}
-                {deal.loss_reason && (
+                {/* Loss Reason - only show if deal is in a "lost" stage AND has a loss_reason */}
+                {currentStage?.type === "lost" && deal.loss_reason && (
                   <>
                     <Separator />
                     <div className="space-y-2">
