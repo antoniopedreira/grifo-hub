@@ -313,6 +313,8 @@ export type Database = {
           company_revenue: number | null
           created_at: string | null
           email: string | null
+          fbc: string | null
+          fbp: string | null
           full_name: string | null
           id: string
           ltv: number | null
@@ -325,6 +327,8 @@ export type Database = {
           company_revenue?: number | null
           created_at?: string | null
           email?: string | null
+          fbc?: string | null
+          fbp?: string | null
           full_name?: string | null
           id?: string
           ltv?: number | null
@@ -337,6 +341,8 @@ export type Database = {
           company_revenue?: number | null
           created_at?: string | null
           email?: string | null
+          fbc?: string | null
+          fbp?: string | null
           full_name?: string | null
           id?: string
           ltv?: number | null
