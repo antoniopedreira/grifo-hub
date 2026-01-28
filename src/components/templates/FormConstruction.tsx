@@ -60,6 +60,57 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
   // Elemento de input para focar automaticamente
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
+  // --- INJEÇÃO DO PIXEL DO META ADS ---
+  // Busca o Pixel ID configurado no produto e inicia o rastreamento
+  useEffect(() => {
+    if (!productId) return;
+
+    const initMetaPixel = async () => {
+      try {
+        const { data } = await supabase.from("products").select("meta_pixel_id").eq("id", productId).single();
+
+        const pixelId = data?.meta_pixel_id;
+
+        if (pixelId) {
+          // Verifica se já existe para não duplicar
+          if (!document.getElementById(`pixel-${pixelId}`)) {
+            console.log(`Inicializando Pixel do Facebook: ${pixelId}`);
+
+            const script = document.createElement("script");
+            script.id = `pixel-${pixelId}`;
+            script.innerHTML = `
+              !function(f,b,e,v,n,t,s)
+              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+              n.queue=[];t=b.createElement(e);t.async=!0;
+              t.src=v;s=b.getElementsByTagName(e)[0];
+              s.parentNode.insertBefore(t,s)}(window, document,'script',
+              'https://connect.facebook.net/en_US/fbevents.js');
+              
+              fbq('init', '${pixelId}'); 
+              fbq('track', 'PageView');
+            `;
+            document.head.appendChild(script);
+
+            const noscript = document.createElement("noscript");
+            noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1" />`;
+            document.head.appendChild(noscript);
+          } else {
+            // Se já existe, apenas dispara o PageView
+            // @ts-ignore
+            if (window.fbq) window.fbq("track", "PageView");
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar Pixel:", error);
+      }
+    };
+
+    initMetaPixel();
+  }, [productId]);
+  // --- FIM DA INTEGRAÇÃO PIXEL ---
+
   useEffect(() => {
     // Foca no input sempre que mudar o passo
     setTimeout(() => {
@@ -137,7 +188,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
   const handleSubmit = async (finalValue?: string) => {
     // Guard contra duplo-clique
     if (isSubmitting) return;
-    
+
     setIsSubmitting(true);
     try {
       const finalData = { ...formData, investment: finalValue || formData.investment };
@@ -146,11 +197,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
       const companyRevenue = mapRevenueToNumber(finalData.revenue);
 
       // 1. Criar ou atualizar Lead
-      const { data: existingLead } = await supabase
-        .from("leads")
-        .select("id")
-        .eq("email", finalData.email)
-        .single();
+      const { data: existingLead } = await supabase.from("leads").select("id").eq("email", finalData.email).single();
 
       let lead: { id: string };
 
@@ -163,10 +210,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
         if (companyRevenue !== null) {
           updateData.company_revenue = companyRevenue;
         }
-        await supabase
-          .from("leads")
-          .update(updateData)
-          .eq("id", existingLead.id);
+        await supabase.from("leads").update(updateData).eq("id", existingLead.id);
         lead = existingLead;
       } else {
         // Fetch product's lead_origin setting
@@ -191,11 +235,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
         if (companyRevenue !== null) {
           insertData.company_revenue = companyRevenue;
         }
-        const { data: newLead, error: leadError } = await supabase
-          .from("leads")
-          .insert(insertData)
-          .select()
-          .single();
+        const { data: newLead, error: leadError } = await supabase.from("leads").insert(insertData).select().single();
         if (leadError) throw leadError;
         lead = newLead;
       }
