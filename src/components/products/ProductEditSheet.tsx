@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Check, BarChart3, ExternalLink } from "lucide-react";
+import { Loader2, Check, BarChart3, ExternalLink, Megaphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,8 @@ interface ProductForm {
   pipeline_id: string;
   is_crm_trigger: boolean;
   lead_origin: string;
+  // Meta Ads field
+  meta_pixel_id: string;
   // NPS fields
   nps_template_id: string;
   nps_slug: string;
@@ -55,6 +57,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
     pipeline_id: "",
     is_crm_trigger: false,
     lead_origin: "",
+    meta_pixel_id: "",
     nps_template_id: "",
     nps_slug: "",
     nps_active: true,
@@ -82,9 +85,31 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         pipeline_id: (product as any).pipeline_id || "",
         is_crm_trigger: (product as any).is_crm_trigger ?? false,
         lead_origin: (product as any).lead_origin || "",
+        meta_pixel_id: (product as any).meta_pixel_id || "", // Carrega o Pixel
       }));
+    } else {
+      // Reset form for new product
+      setForm({
+        name: "",
+        price: "",
+        category_id: "",
+        funnel_type: "external_link",
+        checkout_url: "",
+        template_id: "",
+        slug: "",
+        create_deal: false,
+        active: true,
+        external_id: "",
+        pipeline_id: "",
+        is_crm_trigger: false,
+        lead_origin: "",
+        meta_pixel_id: "",
+        nps_template_id: "",
+        nps_slug: "",
+        nps_active: true,
+      });
     }
-  }, [product]);
+  }, [product, open]); // Added open dependency to reset on new
 
   const { data: categories } = useQuery({
     queryKey: ["product_categories"],
@@ -125,11 +150,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
   const { data: npsTemplates } = useQuery({
     queryKey: ["page_templates", "nps_form"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("page_templates")
-        .select("*")
-        .eq("type", "nps_form")
-        .order("name");
+      const { data, error } = await supabase.from("page_templates").select("*").eq("type", "nps_form").order("name");
 
       if (error) throw error;
       return data;
@@ -163,13 +184,8 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         nps_active: linkedNpsForm.active ?? true,
       }));
     } else if (product) {
-      // Reset NPS fields if no linked form
-      setForm((prev) => ({
-        ...prev,
-        nps_template_id: "",
-        nps_slug: "",
-        nps_active: true,
-      }));
+      // Reset NPS fields if no linked form but editing existing product
+      // We don't reset here for new products as it's handled in the main useEffect
     }
   }, [linkedNpsForm, product]);
 
@@ -189,8 +205,6 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
 
   const updateProduct = useMutation({
     mutationFn: async () => {
-      if (!product) throw new Error("Produto não encontrado");
-
       const productData = {
         name: form.name,
         price: form.price ? parseFloat(form.price) : null,
@@ -204,20 +218,33 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
         external_id: form.external_id || null,
         pipeline_id: form.create_deal && form.pipeline_id ? form.pipeline_id : null,
         is_crm_trigger: form.is_crm_trigger,
-        lead_origin: form.funnel_type === "internal_form" ? (form.lead_origin || null) : null,
+        lead_origin: form.funnel_type === "internal_form" ? form.lead_origin || null : null,
+        meta_pixel_id: form.meta_pixel_id || null, // Salva o Pixel
       };
 
-      const { data, error } = await supabase
-        .from("products")
-        .update(productData)
-        .eq("id", product.id)
-        .select()
-        .single();
+      let data;
 
-      if (error) throw error;
+      if (product) {
+        // Update existing
+        const { data: updated, error } = await supabase
+          .from("products")
+          .update(productData)
+          .eq("id", product.id)
+          .select()
+          .single();
 
-      // Handle NPS form linking
-      if (form.nps_template_id && form.nps_slug) {
+        if (error) throw error;
+        data = updated;
+      } else {
+        // Create new
+        const { data: created, error } = await supabase.from("products").insert(productData).select().single();
+
+        if (error) throw error;
+        data = created;
+      }
+
+      // Handle NPS form linking (only if product exists or was just created)
+      if (data && form.nps_template_id && form.nps_slug) {
         // Check if there's an existing NPS form for this product
         if (linkedNpsForm) {
           // Update existing nps_form
@@ -234,24 +261,19 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
           if (npsError) throw npsError;
         } else {
           // Create new nps_form
-          const { error: npsError } = await supabase
-            .from("nps_forms")
-            .insert({
-              product_id: product.id,
-              template_id: form.nps_template_id,
-              slug: form.nps_slug,
-              active: form.nps_active,
-              title: `NPS - ${form.name}`,
-            });
+          const { error: npsError } = await supabase.from("nps_forms").insert({
+            product_id: data.id,
+            template_id: form.nps_template_id,
+            slug: form.nps_slug,
+            active: form.nps_active,
+            title: `NPS - ${form.name}`,
+          });
 
           if (npsError) throw npsError;
         }
       } else if (linkedNpsForm && !form.nps_template_id) {
         // Remove NPS form if template is unset
-        const { error: deleteError } = await supabase
-          .from("nps_forms")
-          .delete()
-          .eq("id", linkedNpsForm.id);
+        const { error: deleteError } = await supabase.from("nps_forms").delete().eq("id", linkedNpsForm.id);
 
         if (deleteError) throw deleteError;
       }
@@ -260,12 +282,14 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["nps_form_for_product", product?.id] });
-      toast.success("Produto atualizado com sucesso!");
+      if (product?.id) {
+        queryClient.invalidateQueries({ queryKey: ["nps_form_for_product", product.id] });
+      }
+      toast.success(product ? "Produto atualizado com sucesso!" : "Produto criado com sucesso!");
       onOpenChange(false);
     },
     onError: (error) => {
-      toast.error("Erro ao atualizar produto: " + error.message);
+      toast.error("Erro ao salvar produto: " + error.message);
     },
   });
 
@@ -289,13 +313,11 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
     updateProduct.mutate();
   };
 
-  if (!product) return null;
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-[500px] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="text-primary">Editar Produto</SheetTitle>
+          <SheetTitle className="text-primary">{product ? "Editar Produto" : "Novo Produto"}</SheetTitle>
           <SheetDescription>Altere as configurações do produto</SheetDescription>
         </SheetHeader>
 
@@ -335,7 +357,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
                 onChange={(e) => setForm({ ...form, external_id: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
-                Cole aqui o ID do produto na Lastlink. Isso permitirá que o n8n identifique a venda automaticamente.
+                Cole aqui o ID do produto na Lastlink. Isso permitirá que o sistema identifique a venda automaticamente.
               </p>
             </div>
 
@@ -456,6 +478,30 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
               </>
             )}
 
+            {/* SEÇÃO DO META ADS (NOVO) */}
+            <div className="border border-blue-200 bg-blue-50/50 rounded-lg p-4 space-y-3 dark:bg-blue-900/10 dark:border-blue-800">
+              <div className="flex items-center gap-2 text-[#1877F2]">
+                <Megaphone className="w-4 h-4" />
+                <span className="font-semibold text-sm">Rastreamento Meta Ads</span>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="pixel" className="text-xs">
+                  ID do Pixel (Dataset ID)
+                </Label>
+                <Input
+                  id="pixel"
+                  value={form.meta_pixel_id}
+                  onChange={(e) => setForm({ ...form, meta_pixel_id: e.target.value })}
+                  placeholder="Ex: 1164549418870952"
+                  className="bg-white dark:bg-black/20 font-mono text-sm"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Cole aqui o ID do Pixel específico para este produto.
+                </p>
+              </div>
+            </div>
+
             {/* Create Deal Switch */}
             <div className="flex items-start gap-4 p-4 rounded-lg border border-border bg-muted/50">
               <Switch
@@ -531,9 +577,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
               <Label htmlFor="nps_template">Template NPS</Label>
               <Select
                 value={form.nps_template_id || "none"}
-                onValueChange={(value) =>
-                  setForm({ ...form, nps_template_id: value === "none" ? "" : value })
-                }
+                onValueChange={(value) => setForm({ ...form, nps_template_id: value === "none" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um template NPS" />
@@ -582,9 +626,7 @@ export function ProductEditSheet({ product, open, onOpenChange }: ProductEditShe
                       Gerar
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    URL final: /nps/{form.nps_slug || "slug-do-nps"}
-                  </p>
+                  <p className="text-xs text-muted-foreground">URL final: /nps/{form.nps_slug || "slug-do-nps"}</p>
                 </div>
 
                 <div className="flex items-center gap-4 p-3 rounded-lg border border-border">
