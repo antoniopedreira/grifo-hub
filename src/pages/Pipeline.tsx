@@ -39,6 +39,7 @@ export default function Pipeline() {
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("");
   const [isNewDealOpen, setIsNewDealOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [revenueFilter, setRevenueFilter] = useState<string>("all"); // <--- Novo State de Filtro
 
   // Estados para controlar os Modais de Ação
   const [meetingDialog, setMeetingDialog] = useState<{
@@ -55,7 +56,11 @@ export default function Pipeline() {
     deal: null,
     targetStageId: null,
   });
-  const [negotiationDialog, setNegotiationDialog] = useState<{ open: boolean; deal: Deal | null; targetStageId: string | null }>({
+  const [negotiationDialog, setNegotiationDialog] = useState<{
+    open: boolean;
+    deal: Deal | null;
+    targetStageId: string | null;
+  }>({
     open: false,
     deal: null,
     targetStageId: null,
@@ -65,7 +70,11 @@ export default function Pipeline() {
     deal: null,
     targetStageId: null,
   });
-  const [followupDialog, setFollowupDialog] = useState<{ open: boolean; deal: Deal | null; targetStageId: string | null }>({
+  const [followupDialog, setFollowupDialog] = useState<{
+    open: boolean;
+    deal: Deal | null;
+    targetStageId: string | null;
+  }>({
     open: false,
     deal: null,
     targetStageId: null,
@@ -80,11 +89,7 @@ export default function Pipeline() {
   const { data: pipelines = [], isLoading: isLoadingPipelines } = useQuery({
     queryKey: ["pipelines"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pipelines")
-        .select("*")
-        .eq("archived", false)
-        .order("name");
+      const { data, error } = await supabase.from("pipelines").select("*").eq("archived", false).order("name");
       if (error) throw error;
       return data as PipelineType[];
     },
@@ -120,12 +125,14 @@ export default function Pipeline() {
 
       const { data, error } = await supabase
         .from("deals")
-        .select(`
+        .select(
+          `
           *,
-          lead:leads(id, full_name, email, phone, ltv),
+          lead:leads(id, full_name, email, phone, ltv, company_revenue), // <--- Adicionado company_revenue
           product:products(id, name, price),
           meeting_owner:team_members(id, name)
-        `)
+        `,
+        )
         .order("order_index");
 
       if (error) throw error;
@@ -141,28 +148,31 @@ export default function Pipeline() {
 
   // Mutation para mover o card com Optimistic Updates (reordena múltiplos cards)
   const moveDealMutation = useMutation({
-    mutationFn: async ({ updates, clearLossReason, dealId }: { 
+    mutationFn: async ({
+      updates,
+      clearLossReason,
+      dealId,
+    }: {
       updates: Array<{ id: string; stage_id: string; order_index: number }>;
       clearLossReason?: boolean;
       dealId?: string;
     }) => {
       // Update all affected deals in parallel for speed
-      await Promise.all(updates.map(update => {
-        const updateData: { stage_id: string; order_index: number; loss_reason?: null } = {
-          stage_id: update.stage_id,
-          order_index: update.order_index,
-        };
-        
-        // Limpa o motivo da perda apenas no deal movido
-        if (clearLossReason && update.id === dealId) {
-          updateData.loss_reason = null;
-        }
-        
-        return supabase
-          .from("deals")
-          .update(updateData)
-          .eq("id", update.id);
-      }));
+      await Promise.all(
+        updates.map((update) => {
+          const updateData: { stage_id: string; order_index: number; loss_reason?: null } = {
+            stage_id: update.stage_id,
+            order_index: update.order_index,
+          };
+
+          // Limpa o motivo da perda apenas no deal movido
+          if (clearLossReason && update.id === dealId) {
+            updateData.loss_reason = null;
+          }
+
+          return supabase.from("deals").update(updateData).eq("id", update.id);
+        }),
+      );
     },
     onMutate: async ({ updates }) => {
       // Cancela queries em andamento para evitar sobrescrita
@@ -175,7 +185,7 @@ export default function Pipeline() {
       queryClient.setQueryData<Deal[]>(["deals", selectedPipelineId], (oldDeals) => {
         if (!oldDeals) return oldDeals;
         return oldDeals.map((deal) => {
-          const update = updates.find(u => u.id === deal.id);
+          const update = updates.find((u) => u.id === deal.id);
           if (update) {
             return { ...deal, stage_id: update.stage_id, order_index: update.order_index };
           }
@@ -202,13 +212,10 @@ export default function Pipeline() {
   const deleteAllDealsMutation = useMutation({
     mutationFn: async () => {
       if (!selectedPipelineId || stages.length === 0) return;
-      
+
       const stageIds = stages.map((s) => s.id);
-      const { error } = await supabase
-        .from("deals")
-        .delete()
-        .in("stage_id", stageIds);
-      
+      const { error } = await supabase.from("deals").delete().in("stage_id", stageIds);
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -349,15 +356,24 @@ export default function Pipeline() {
     const leadPhone = deal.lead?.phone?.replace(/\D/g, "") || "";
     const search = searchTerm.toLowerCase().replace(/\D/g, "");
     const searchRaw = searchTerm.toLowerCase();
-    
+
+    // Filtro de Faturamento (Revenue)
+    const matchesRevenue =
+      revenueFilter === "all" ||
+      (deal.lead?.company_revenue !== undefined &&
+        deal.lead?.company_revenue !== null &&
+        deal.lead.company_revenue.toString() === revenueFilter);
+
     // Se busca contém apenas números, pesquisa por telefone (inclusive últimos dígitos)
     const isPhoneSearch = /^\d+$/.test(search) && search.length >= 2;
     const matchesPhone = isPhoneSearch && leadPhone.endsWith(search);
-    
-    return leadName.includes(searchRaw) || productName.includes(searchRaw) || matchesPhone;
+
+    const matchesSearch = leadName.includes(searchRaw) || productName.includes(searchRaw) || matchesPhone;
+
+    return matchesSearch && matchesRevenue;
   });
 
-  const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
+  const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId);
 
   return (
     <div className="h-[calc(100vh-2rem)] flex flex-col p-6">
@@ -421,9 +437,10 @@ export default function Pipeline() {
             </div>
             <h3 className="text-lg font-semibold text-primary mb-2">Nenhum pipeline encontrado</h3>
             <p className="text-muted-foreground text-center max-w-md mb-4">
-              Crie seu primeiro pipeline de vendas em Configurações → Pipelines para começar a gerenciar suas oportunidades.
+              Crie seu primeiro pipeline de vendas em Configurações → Pipelines para começar a gerenciar suas
+              oportunidades.
             </p>
-            <Button variant="outline" onClick={() => window.location.href = '/configuracoes'}>
+            <Button variant="outline" onClick={() => (window.location.href = "/configuracoes")}>
               Ir para Configurações
             </Button>
           </CardContent>
@@ -448,30 +465,47 @@ export default function Pipeline() {
       {/* Kanban Board */}
       {selectedPipelineId && stages.length > 0 && (
         <>
-          {/* Search Bar */}
-          <div className="mb-4">
-            <div className="relative max-w-sm">
+          {/* Search Bar & Filter Row */}
+          <div className="mb-4 flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por lead, produto ou telefone..."
-                className="pl-9 bg-card text-foreground"
+                className="pl-9 bg-card text-foreground w-full"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+
+            {/* Filtro de Faturamento */}
+            <Select value={revenueFilter} onValueChange={setRevenueFilter}>
+              <SelectTrigger className="w-full md:w-[200px] bg-card text-foreground">
+                <SelectValue placeholder="Faturamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Receitas</SelectItem>
+                <SelectItem value="0">Até R$ 500k</SelectItem>
+                <SelectItem value="500000">R$ 500k - R$ 1M</SelectItem>
+                <SelectItem value="1000000">R$ 1M - R$ 5M</SelectItem>
+                <SelectItem value="5000000">R$ 5M - R$ 10M</SelectItem>
+                <SelectItem value="10000000">R$ 10M - R$ 50M</SelectItem>
+                <SelectItem value="50000000">Acima de R$ 50M</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <DragDropContext onDragEnd={handleDragEnd}>
             <div className="flex-1 overflow-x-auto pb-4">
               <div className="flex gap-4 h-full">
-              {stages.map((stage, stageIndex) => {
-                const isFirstStage = stageIndex === 0;
-                const stageDeals = filteredDeals
+                {stages.map((stage, stageIndex) => {
+                  const isFirstStage = stageIndex === 0;
+                  const stageDeals = filteredDeals
                     .filter((d) => d.stage_id === stage.id)
-                    .sort((a, b) => 
-                      isFirstStage
-                        ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // First stage: order of arrival
-                        : (b.order_index || 0) - (a.order_index || 0) // Other stages: drag-and-drop order
+                    .sort(
+                      (a, b) =>
+                        isFirstStage
+                          ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // First stage: order of arrival
+                          : (b.order_index || 0) - (a.order_index || 0), // Other stages: drag-and-drop order
                     );
 
                   return (
@@ -499,9 +533,10 @@ export default function Pipeline() {
             </div>
             <h3 className="text-lg font-semibold text-primary mb-2">Pipeline sem etapas</h3>
             <p className="text-muted-foreground text-center max-w-md mb-4">
-              O pipeline "{selectedPipeline?.name}" não possui etapas configuradas. Configure as etapas em Configurações → Pipelines.
+              O pipeline "{selectedPipeline?.name}" não possui etapas configuradas. Configure as etapas em Configurações
+              → Pipelines.
             </p>
-            <Button variant="outline" onClick={() => window.location.href = '/configuracoes'}>
+            <Button variant="outline" onClick={() => (window.location.href = "/configuracoes")}>
               Configurar Etapas
             </Button>
           </CardContent>
@@ -584,8 +619,9 @@ export default function Pipeline() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir todos os negócios?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação irá remover permanentemente <strong>{deals.length} negócio(s)</strong> da pipeline "{selectedPipeline?.name}". 
-              Os leads e vendas históricas serão preservados. Esta ação não pode ser desfeita.
+              Esta ação irá remover permanentemente <strong>{deals.length} negócio(s)</strong> da pipeline "
+              {selectedPipeline?.name}". Os leads e vendas históricas serão preservados. Esta ação não pode ser
+              desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
