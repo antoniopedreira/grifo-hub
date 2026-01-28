@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { CountryCodeSelect } from "@/components/ui/country-code-select";
+import { useMetaPixel } from "@/hooks/useMetaPixel";
 
 // --- CORES DA MARCA ---
 // Principal (Fundo): #112232
@@ -40,6 +41,9 @@ export default function FormGrifoTalk({ productId, productSlug, onSubmitSuccess 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Inicializa o Meta Pixel do produto
+  useMetaPixel(productId);
 
   useEffect(() => {
     setTimeout(() => {

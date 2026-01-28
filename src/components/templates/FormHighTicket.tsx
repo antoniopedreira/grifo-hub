@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
+import { useMetaPixel } from "@/hooks/useMetaPixel";
 
 interface FormHighTicketProps {
   product: {
@@ -47,6 +48,9 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
     volumeObras: "",
     faturamento: "",
   });
+
+  // Inicializa o Meta Pixel do produto
+  useMetaPixel(product.id);
 
   const formatWhatsApp = (value: string) => {
     const numbers = value.replace(/\D/g, "").slice(0, 16);

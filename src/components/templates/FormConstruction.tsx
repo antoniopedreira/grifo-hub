@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { CountryCodeSelect } from "@/components/ui/country-code-select";
+import { useMetaPixel } from "@/hooks/useMetaPixel";
 
 // --- FUNÇÃO AUXILIAR PARA LER COOKIES ---
 const getCookie = (name: string) => {
@@ -65,60 +66,8 @@ export function FormConstruction({ productId, productSlug, onSubmitSuccess }: Fo
 
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
-  // --- INJEÇÃO DO PIXEL DO META ADS ---
-  useEffect(() => {
-    if (!productId) return;
-
-    const initMetaPixel = async () => {
-      try {
-        // Usamos 'as any' aqui temporariamente para driblar o erro de tipagem
-        // já que a coluna foi criada via SQL mas os tipos locais não foram regenerados via CLI
-        const { data } = await supabase
-          .from("products")
-          .select("meta_pixel_id" as any)
-          .eq("id", productId)
-          .single();
-
-        // @ts-ignore
-        const pixelId = data?.meta_pixel_id;
-
-        if (pixelId) {
-          if (!document.getElementById(`pixel-${pixelId}`)) {
-            console.log(`Inicializando Pixel do Facebook: ${pixelId}`);
-
-            const script = document.createElement("script");
-            script.id = `pixel-${pixelId}`;
-            script.innerHTML = `
-              !function(f,b,e,v,n,t,s)
-              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-              n.queue=[];t=b.createElement(e);t.async=!0;
-              t.src=v;s=b.getElementsByTagName(e)[0];
-              s.parentNode.insertBefore(t,s)}(window, document,'script',
-              'https://connect.facebook.net/en_US/fbevents.js');
-              
-              fbq('init', '${pixelId}'); 
-              fbq('track', 'PageView');
-            `;
-            document.head.appendChild(script);
-
-            const noscript = document.createElement("noscript");
-            noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1" />`;
-            document.head.appendChild(noscript);
-          } else {
-            // @ts-ignore
-            if (window.fbq) window.fbq("track", "PageView");
-          }
-        }
-      } catch (error) {
-        console.error("Erro ao carregar Pixel:", error);
-      }
-    };
-
-    initMetaPixel();
-  }, [productId]);
-  // --- FIM DA INTEGRAÇÃO PIXEL ---
+  // Inicializa o Meta Pixel do produto
+  useMetaPixel(productId);
 
   useEffect(() => {
     setTimeout(() => {
