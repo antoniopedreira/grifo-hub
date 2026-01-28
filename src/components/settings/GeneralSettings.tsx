@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Copy, Check, Eye, EyeOff, Link2, Key, Loader2 } from "lucide-react";
+import { Building2, Copy, Check, Eye, EyeOff, Link2, Key, Loader2, Megaphone } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,12 +10,16 @@ import { supabase } from "@/integrations/supabase/client";
 export function GeneralSettings() {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+
+  // Controles de visibilidade de senha
   const [showWhatsAppToken, setShowWhatsAppToken] = useState(false);
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
+  const [showMetaToken, setShowMetaToken] = useState(false); // Novo para o Meta
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Form state
+  // Estado do Formulário
   const [formData, setFormData] = useState({
     razaoSocial: "",
     cnpj: "",
@@ -24,9 +28,11 @@ export function GeneralSettings() {
     webhookLastlink: "https://api.grifo.academy/webhook/lastlink",
     whatsappToken: "",
     openaiKey: "",
+    // Novo campo apenas para o Token
+    metaAccessToken: "",
   });
 
-  // Load settings from Supabase
+  // Carregar configurações do Supabase
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -48,6 +54,8 @@ export function GeneralSettings() {
             webhookLastlink: settingsMap["webhook_lastlink"] || "https://api.grifo.academy/webhook/lastlink",
             whatsappToken: settingsMap["whatsapp_token"] || "",
             openaiKey: settingsMap["openai_key"] || "",
+            // Carrega o Token do Meta
+            metaAccessToken: settingsMap["meta_access_token"] || "",
           });
         }
       } catch (error) {
@@ -90,10 +98,15 @@ export function GeneralSettings() {
         { key: "webhook_lastlink", value: formData.webhookLastlink },
         { key: "whatsapp_token", value: formData.whatsappToken },
         { key: "openai_key", value: formData.openaiKey },
+        // Salva o Token do Meta
+        { key: "meta_access_token", value: formData.metaAccessToken },
       ];
 
       for (const update of updates) {
-        const { error } = await supabase.from("settings").update({ value: update.value }).eq("key", update.key);
+        // Upsert garante criar se não existir
+        const { error } = await supabase
+          .from("settings")
+          .upsert({ key: update.key, value: update.value }, { onConflict: "key" });
 
         if (error) throw error;
       }
@@ -178,14 +191,64 @@ export function GeneralSettings() {
         </CardContent>
       </Card>
 
-      {/* Card 2: Conexões Externas */}
+      {/* Card 2: Meta Ads (NOVO - Apenas Token) */}
+      <Card className="border-blue-900/20 bg-blue-50/5 dark:bg-blue-900/10">
+        <CardHeader>
+          <CardTitle className="text-[#1877F2] flex items-center gap-2">
+            <Megaphone className="h-5 w-5" />
+            Meta Ads (API de Conversões)
+          </CardTitle>
+          <CardDescription>
+            Configure o Token Global da sua conta de anúncios. O ID do Pixel deve ser configurado individualmente em
+            cada produto.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="metaAccessToken" className="flex items-center gap-2">
+              <Key className="h-4 w-4" />
+              Token de Acesso (API Token)
+            </Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  id="metaAccessToken"
+                  type={showMetaToken ? "text" : "password"}
+                  placeholder="Cole aqui seu Token (Começa com EAA...)"
+                  value={formData.metaAccessToken}
+                  onChange={(e) => handleInputChange("metaAccessToken", e.target.value)}
+                  className="pr-10 font-mono"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowMetaToken(!showMetaToken)}
+                >
+                  {showMetaToken ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Token de longa duração gerado em: Gerenciador de Eventos {">"} Configurações {">"} API de Conversões.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Card 3: Outras Conexões */}
       <Card>
         <CardHeader>
           <CardTitle className="text-primary flex items-center gap-2">
             <Link2 className="h-5 w-5" />
-            Conexões Externas
+            Outras Integrações
           </CardTitle>
-          <CardDescription>Configure integrações com serviços externos</CardDescription>
+          <CardDescription>WhatsApp, OpenAI e Webhooks</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Webhook Lastlink */}
@@ -212,7 +275,7 @@ export function GeneralSettings() {
           <div className="space-y-2">
             <Label htmlFor="whatsappToken" className="flex items-center gap-2">
               <Key className="h-4 w-4" />
-              Token WhatsApp
+              Token WhatsApp (UAZAPI)
             </Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
