@@ -139,26 +139,33 @@ export default function Pipeline() {
     enabled: !!selectedPipelineId && stages.length > 0,
   });
 
-  // Mutation para mover o card com Optimistic Updates
+  // Mutation para mover o card com Optimistic Updates (reordena múltiplos cards)
   const moveDealMutation = useMutation({
-    mutationFn: async ({ dealId, stageId, orderIndex, clearLossReason }: { dealId: string; stageId: string; orderIndex: number; clearLossReason?: boolean }) => {
-      const updateData: { stage_id: string; order_index: number; loss_reason?: null } = { 
-        stage_id: stageId, 
-        order_index: orderIndex 
-      };
-      
-      // Limpa o motivo da perda se estiver saindo de uma etapa "lost"
-      if (clearLossReason) {
-        updateData.loss_reason = null;
+    mutationFn: async ({ updates, clearLossReason, dealId }: { 
+      updates: Array<{ id: string; stage_id: string; order_index: number }>;
+      clearLossReason?: boolean;
+      dealId?: string;
+    }) => {
+      // Update all affected deals
+      for (const update of updates) {
+        const updateData: { stage_id: string; order_index: number; loss_reason?: null } = {
+          stage_id: update.stage_id,
+          order_index: update.order_index,
+        };
+        
+        // Limpa o motivo da perda apenas no deal movido
+        if (clearLossReason && update.id === dealId) {
+          updateData.loss_reason = null;
+        }
+        
+        const { error } = await supabase
+          .from("deals")
+          .update(updateData)
+          .eq("id", update.id);
+        if (error) throw error;
       }
-      
-      const { error } = await supabase
-        .from("deals")
-        .update(updateData)
-        .eq("id", dealId);
-      if (error) throw error;
     },
-    onMutate: async ({ dealId, stageId, orderIndex }) => {
+    onMutate: async ({ updates }) => {
       // Cancela queries em andamento para evitar sobrescrita
       await queryClient.cancelQueries({ queryKey: ["deals", selectedPipelineId] });
 
@@ -168,11 +175,13 @@ export default function Pipeline() {
       // Atualiza o cache imediatamente (otimista)
       queryClient.setQueryData<Deal[]>(["deals", selectedPipelineId], (oldDeals) => {
         if (!oldDeals) return oldDeals;
-        return oldDeals.map((deal) =>
-          deal.id === dealId
-            ? { ...deal, stage_id: stageId, order_index: orderIndex }
-            : deal
-        );
+        return oldDeals.map((deal) => {
+          const update = updates.find(u => u.id === deal.id);
+          if (update) {
+            return { ...deal, stage_id: update.stage_id, order_index: update.order_index };
+          }
+          return deal;
+        });
       });
 
       return { previousDeals };
@@ -224,6 +233,8 @@ export default function Pipeline() {
 
     const targetStageId = destination.droppableId;
     const targetStage = stages.find((s) => s.id === targetStageId);
+    const targetStageIndex = stages.findIndex((s) => s.id === targetStageId);
+    const isFirstStage = targetStageIndex === 0;
 
     // Lógica de Interceptação: Agendamento
     if (targetStage?.type === "meeting" && source.droppableId !== targetStageId) {
@@ -255,28 +266,49 @@ export default function Pipeline() {
       return;
     }
 
-    // Movimento Padrão - set order_index to highest + 1 so it appears at top
-    const dealsInTargetStage = deals.filter(d => d.stage_id === targetStageId);
-    const maxOrderIndex = dealsInTargetStage.reduce((max, d) => Math.max(max, d.order_index || 0), 0);
-    
     // Verifica se está saindo de uma etapa "lost" para limpar o motivo da perda
     const sourceStage = stages.find((s) => s.id === source.droppableId);
     const isLeavingLostStage = sourceStage?.type === "lost" && targetStage?.type !== "lost";
-    
+
+    // Para o primeiro estágio: apenas move, não precisa reordenar (ordenado por created_at)
+    if (isFirstStage && source.droppableId !== targetStageId) {
+      moveDealMutation.mutate({
+        updates: [{ id: draggableId, stage_id: targetStageId, order_index: 0 }],
+        clearLossReason: isLeavingLostStage,
+        dealId: draggableId,
+      });
+      return;
+    }
+
+    // Para outros estágios: reordena baseado na posição do drop
+    // Pega os deals do estágio destino, ordenados por order_index desc
+    const targetStageDeals = deals
+      .filter((d) => d.stage_id === targetStageId && d.id !== draggableId)
+      .sort((a, b) => (b.order_index || 0) - (a.order_index || 0));
+
+    // Insere o deal na posição correta
+    const newOrderedDeals = [...targetStageDeals];
+    newOrderedDeals.splice(destination.index, 0, deal);
+
+    // Gera updates com novos order_index (maior = topo)
+    const updates = newOrderedDeals.map((d, idx) => ({
+      id: d.id,
+      stage_id: targetStageId,
+      order_index: newOrderedDeals.length - idx, // Invertido: primeiro item = maior index
+    }));
+
     moveDealMutation.mutate({
-      dealId: draggableId,
-      stageId: targetStageId,
-      orderIndex: maxOrderIndex + 1,
+      updates,
       clearLossReason: isLeavingLostStage,
+      dealId: draggableId,
     });
   };
 
   const handleMeetingSuccess = () => {
     if (meetingDialog.deal && meetingDialog.targetStageId) {
       moveDealMutation.mutate({
+        updates: [{ id: meetingDialog.deal.id, stage_id: meetingDialog.targetStageId, order_index: 0 }],
         dealId: meetingDialog.deal.id,
-        stageId: meetingDialog.targetStageId,
-        orderIndex: 0,
       });
     }
     setMeetingDialog({ open: false, deal: null, targetStageId: null });
@@ -285,9 +317,8 @@ export default function Pipeline() {
   const handleCloseSuccess = () => {
     if (closeDialog.deal && closeDialog.targetStageId) {
       moveDealMutation.mutate({
+        updates: [{ id: closeDialog.deal.id, stage_id: closeDialog.targetStageId, order_index: 0 }],
         dealId: closeDialog.deal.id,
-        stageId: closeDialog.targetStageId,
-        orderIndex: 0,
       });
     }
     setCloseDialog({ open: false, deal: null, targetStageId: null });
@@ -306,9 +337,8 @@ export default function Pipeline() {
   const handleFollowupSuccess = () => {
     if (followupDialog.deal && followupDialog.targetStageId) {
       moveDealMutation.mutate({
+        updates: [{ id: followupDialog.deal.id, stage_id: followupDialog.targetStageId, order_index: 0 }],
         dealId: followupDialog.deal.id,
-        stageId: followupDialog.targetStageId,
-        orderIndex: 0,
       });
     }
     setFollowupDialog({ open: false, deal: null, targetStageId: null });
