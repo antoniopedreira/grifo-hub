@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Star } from "lucide-react";
+import { useMetaPixel } from "@/hooks/useMetaPixel";
 
 interface LpStandardProps {
   product: {
@@ -10,6 +11,8 @@ interface LpStandardProps {
 }
 
 export function LpStandard({ product }: LpStandardProps) {
+  // Inicializa o Meta Pixel do produto
+  useMetaPixel(product.id);
   const handleCTAClick = () => {
     if (product.checkout_url) {
       window.open(product.checkout_url, "_blank");
