@@ -51,6 +51,11 @@ export interface ProductCategory {
   slug: string;
 }
 
+// --- NOVO: Interface Product com o campo do Pixel ---
+export interface Product extends Tables<"products"> {
+  meta_pixel_id?: string | null;
+}
+
 export interface ProductWithCategory extends Tables<"products"> {
   product_categories?: ProductCategory | null;
 }
