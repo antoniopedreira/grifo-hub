@@ -435,11 +435,15 @@ export default function Pipeline() {
           <DragDropContext onDragEnd={handleDragEnd}>
             <div className="flex-1 overflow-x-auto pb-4">
               <div className="flex gap-4 h-full">
-                {stages.map((stage) => {
+              {stages.map((stage, stageIndex) => {
+                const isFirstStage = stageIndex === 0;
                 const stageDeals = filteredDeals
                     .filter((d) => d.stage_id === stage.id)
-                    // Sort by created_at descending: newest deals (order of arrival) appear at top
-                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                    .sort((a, b) => 
+                      isFirstStage
+                        ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // First stage: order of arrival
+                        : (b.order_index || 0) - (a.order_index || 0) // Other stages: drag-and-drop order
+                    );
 
                   return (
                     <KanbanColumn
