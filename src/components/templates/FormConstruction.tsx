@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   ArrowLeft,
@@ -20,6 +21,7 @@ import { CountryCodeSelect } from "@/components/ui/country-code-select";
 
 interface FormConstructionProps {
   productId?: string;
+  productSlug?: string;
   onSubmitSuccess?: () => void;
 }
 
@@ -47,7 +49,8 @@ const INITIAL_DATA: StepData = {
   investment: "",
 };
 
-export function FormConstruction({ productId, onSubmitSuccess }: FormConstructionProps) {
+export function FormConstruction({ productId, productSlug, onSubmitSuccess }: FormConstructionProps) {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<StepData>(INITIAL_DATA);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -272,7 +275,13 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
       toast.success("Aplicação enviada com sucesso!");
       if (onSubmitSuccess) onSubmitSuccess();
-      setCurrentStep(totalSteps + 1);
+      
+      // Redirect to thank you page
+      if (productSlug) {
+        navigate(`/obrigado/${productSlug}`);
+      } else {
+        setCurrentStep(totalSteps + 1);
+      }
     } catch (error) {
       console.error(error);
       toast.error("Erro ao enviar. Tente novamente.");

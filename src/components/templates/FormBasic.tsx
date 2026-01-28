@@ -14,6 +14,7 @@ interface FormBasicProps {
   product: {
     id: string;
     name: string;
+    slug?: string | null;
     create_deal?: boolean;
     pipeline_id?: string | null;
     lead_origin?: string | null;
@@ -129,7 +130,8 @@ export default function FormBasic({ product }: FormBasicProps) {
       return leadId;
     },
     onSuccess: () => {
-      setCurrentStep(totalSteps);
+      const slug = product.slug || product.name.toLowerCase().replace(/\s+/g, "-");
+      navigate(`/obrigado/${slug}`);
     },
     onError: (error) => {
       console.error("Error submitting form:", error);

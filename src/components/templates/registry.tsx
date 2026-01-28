@@ -5,6 +5,7 @@ export interface TemplateComponentProps {
   product: {
     id: string;
     name: string;
+    slug?: string | null;
     checkout_url?: string | null;
   };
 }
@@ -25,6 +26,7 @@ const FormConstruction = lazy(() =>
     default: (props: TemplateComponentProps) => (
       <m.FormConstruction
         productId={props.product.id}
+        productSlug={props.product.slug || undefined}
       />
     ),
   })),
@@ -36,6 +38,7 @@ const FormGrifoTalk = lazy(() =>
     default: (props: TemplateComponentProps) => (
       <m.default
         productId={props.product.id}
+        productSlug={props.product.slug || undefined}
       />
     ),
   })),

@@ -577,6 +577,7 @@ export type Database = {
           id: string
           is_crm_trigger: boolean | null
           lead_origin: string | null
+          meta_pixel_id: string | null
           name: string
           pipeline_id: string | null
           price: number | null
@@ -596,6 +597,7 @@ export type Database = {
           id?: string
           is_crm_trigger?: boolean | null
           lead_origin?: string | null
+          meta_pixel_id?: string | null
           name: string
           pipeline_id?: string | null
           price?: number | null
@@ -615,6 +617,7 @@ export type Database = {
           id?: string
           is_crm_trigger?: boolean | null
           lead_origin?: string | null
+          meta_pixel_id?: string | null
           name?: string
           pipeline_id?: string | null
           price?: number | null

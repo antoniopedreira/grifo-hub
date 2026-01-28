@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowRight, ArrowLeft, Check, Loader2, User, Phone, Mail, CalendarCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +13,7 @@ import { CountryCodeSelect } from "@/components/ui/country-code-select";
 
 interface FormGrifoTalkProps {
   productId?: string;
+  productSlug?: string;
   onSubmitSuccess?: () => void;
 }
 
@@ -31,7 +33,8 @@ const INITIAL_DATA: StepData = {
   confirmation: "",
 };
 
-export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoTalkProps) {
+export default function FormGrifoTalk({ productId, productSlug, onSubmitSuccess }: FormGrifoTalkProps) {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<StepData>(INITIAL_DATA);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,8 +156,13 @@ export default function FormGrifoTalk({ productId, onSubmitSuccess }: FormGrifoT
       toast.success("Confirmação enviada com sucesso!");
       if (onSubmitSuccess) onSubmitSuccess();
 
-      // Vai para tela de sucesso (Passo 4)
-      setCurrentStep(4);
+      // Redirect to thank you page
+      if (productSlug) {
+        navigate(`/obrigado/${productSlug}`);
+      } else {
+        // Fallback to success screen
+        setCurrentStep(4);
+      }
     } catch (error) {
       console.error(error);
       toast.error("Erro ao enviar. Tente novamente.");

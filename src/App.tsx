@@ -21,6 +21,7 @@ import CRM from "@/pages/CRM";
 import NotFound from "@/pages/NotFound";
 import PublicPageRenderer from "@/pages/PublicPageRenderer";
 import NpsPageRenderer from "@/pages/NpsPageRenderer";
+import ThankYouPage from "@/pages/ThankYouPage";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
             {/* Public page routes */}
             <Route path="/p/:slug" element={<PublicPageRenderer />} />
             <Route path="/nps/:slug" element={<NpsPageRenderer />} />
+            <Route path="/obrigado/:slug" element={<ThankYouPage />} />
             
             {/* Auth routes */}
             <Route path="/login" element={<Login />} />
