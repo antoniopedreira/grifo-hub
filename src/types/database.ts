@@ -53,7 +53,7 @@ export interface ProductCategory {
 
 // Interface Product estendida manualmente para incluir meta_pixel_id
 // Isso previne erros de TS até que a introspecção do banco atualize os tipos gerados
-export interface Product extends Tables<"products"> {
+export interface Product extends Omit<Tables<"products">, "meta_pixel_id"> {
   meta_pixel_id?: string | null;
 }
 

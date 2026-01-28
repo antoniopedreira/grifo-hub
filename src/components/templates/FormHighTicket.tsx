@@ -14,6 +14,7 @@ interface FormHighTicketProps {
   product: {
     id: string;
     name: string;
+    slug?: string | null;
     create_deal?: boolean;
     pipeline_id?: string | null;
     lead_origin?: string | null;
@@ -163,11 +164,8 @@ export default function FormHighTicket({ product }: FormHighTicketProps) {
       return leadId;
     },
     onSuccess: () => {
-      navigate(`/p/${product.name.toLowerCase().replace(/\s+/g, "-")}/obrigado`, { 
-        state: { productName: product.name } 
-      });
-      // Since thank you page might not exist, just show the last step
-      setCurrentStep(totalSteps);
+      const slug = product.slug || product.name.toLowerCase().replace(/\s+/g, "-");
+      navigate(`/obrigado/${slug}`);
     },
     onError: (error) => {
       console.error("Error submitting form:", error);
