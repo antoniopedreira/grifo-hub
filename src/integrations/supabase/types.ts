@@ -322,6 +322,7 @@ export type Database = {
           phone: string | null
           social_media: string | null
           status: string | null
+          user_ip: string | null
         }
         Insert: {
           company_revenue?: number | null
@@ -336,6 +337,7 @@ export type Database = {
           phone?: string | null
           social_media?: string | null
           status?: string | null
+          user_ip?: string | null
         }
         Update: {
           company_revenue?: number | null
@@ -350,6 +352,7 @@ export type Database = {
           phone?: string | null
           social_media?: string | null
           status?: string | null
+          user_ip?: string | null
         }
         Relationships: []
       }

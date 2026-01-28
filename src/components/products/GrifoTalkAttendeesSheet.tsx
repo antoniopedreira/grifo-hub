@@ -38,31 +38,16 @@ export function GrifoTalkAttendeesSheet({
   productId,
   productName,
 }: GrifoTalkAttendeesSheetProps) {
-  // Fetch all leads with GrifoTalk related origins
-  const { data: leads, isLoading } = useQuery({
+  // Fetch form submissions for this product with lead data
+  const { data: submissionsWithLeads, isLoading } = useQuery({
     queryKey: ["grifotalk_attendees", productId],
     queryFn: async () => {
-      // Fetch leads where origin contains "grifo-talk" or "Grifo Talks" (case insensitive)
-      const { data, error } = await supabase
-        .from("leads")
-        .select("id, full_name, email, phone, origin, created_at")
-        .or(`origin.ilike.%grifo-talk%,origin.ilike.%grifo talks%,origin.ilike.%${productName}%`)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: open,
-  });
-
-  // Fetch form submissions for this product to get confirmation status
-  const { data: submissions } = useQuery({
-    queryKey: ["grifotalk_submissions", productId],
-    queryFn: async () => {
+      // Fetch all form submissions for this product, joining with leads
       const { data, error } = await supabase
         .from("form_submissions")
-        .select("lead_id, answers")
-        .eq("product_id", productId);
+        .select("id, lead_id, answers, submitted_at, leads(id, full_name, email, phone, origin, created_at)")
+        .eq("product_id", productId)
+        .order("submitted_at", { ascending: false });
 
       if (error) throw error;
       return data;
@@ -70,24 +55,28 @@ export function GrifoTalkAttendeesSheet({
     enabled: open,
   });
 
-  // Process leads into main attendees and guests
+  // Process submissions into main attendees and guests
   const { mainAttendees, guests, confirmedCount, declinedCount } = useMemo(() => {
-    if (!leads) return { mainAttendees: [], guests: [], confirmedCount: 0, declinedCount: 0 };
-
-    const submissionMap = new Map<string, { confirmation: string }>();
-    submissions?.forEach((sub) => {
-      if (sub.lead_id) {
-        const answers = sub.answers as { confirmation?: string };
-        submissionMap.set(sub.lead_id, { confirmation: answers?.confirmation || "" });
-      }
-    });
+    if (!submissionsWithLeads) return { mainAttendees: [], guests: [], confirmedCount: 0, declinedCount: 0 };
 
     const processedAttendees: Attendee[] = [];
     const processedGuests: Attendee[] = [];
     let confirmed = 0;
     let declined = 0;
 
-    leads.forEach((lead) => {
+    submissionsWithLeads.forEach((submission) => {
+      const lead = submission.leads as {
+        id: string;
+        full_name: string | null;
+        email: string | null;
+        phone: string | null;
+        origin: string | null;
+        created_at: string | null;
+      } | null;
+
+      if (!lead) return;
+
+      const answers = submission.answers as { confirmation?: string };
       const isGuest = lead.origin?.includes("Convidado de") || false;
       
       // Extract host name from origin like "Grifo Talks (Convidado de João Silva)"
@@ -103,7 +92,7 @@ export function GrifoTalkAttendeesSheet({
         email: lead.email,
         phone: lead.phone,
         origin: lead.origin,
-        created_at: lead.created_at,
+        created_at: submission.submitted_at,
         isGuest,
         hostName,
       };
@@ -111,11 +100,10 @@ export function GrifoTalkAttendeesSheet({
       if (isGuest) {
         processedGuests.push(attendee);
       } else {
-        // Check confirmation status from submissions
-        const submission = submissionMap.get(lead.id);
-        if (submission?.confirmation?.includes("Confirmou")) {
+        // Check confirmation status from submission answers
+        if (answers?.confirmation?.includes("Confirmou")) {
           confirmed++;
-        } else if (submission?.confirmation?.includes("Não")) {
+        } else if (answers?.confirmation?.includes("Não")) {
           declined++;
         }
         processedAttendees.push(attendee);
@@ -128,7 +116,7 @@ export function GrifoTalkAttendeesSheet({
       confirmedCount: confirmed,
       declinedCount: declined,
     };
-  }, [leads, submissions]);
+  }, [submissionsWithLeads]);
 
   const formatPhone = (phone: string | null) => {
     if (!phone) return "-";
@@ -146,8 +134,8 @@ export function GrifoTalkAttendeesSheet({
     });
   };
 
-  const getConfirmationStatus = (leadId: string) => {
-    const submission = submissions?.find((s) => s.lead_id === leadId);
+  const getConfirmationStatus = (attendeeId: string) => {
+    const submission = submissionsWithLeads?.find((s) => s.leads && (s.leads as any).id === attendeeId);
     if (!submission) return null;
     const answers = submission.answers as { confirmation?: string };
     return answers?.confirmation;
