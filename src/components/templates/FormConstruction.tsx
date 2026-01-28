@@ -19,6 +19,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { CountryCodeSelect } from "@/components/ui/country-code-select";
 
+// --- FUNÇÃO AUXILIAR PARA LER COOKIES ---
+const getCookie = (name: string) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift();
+  return null;
+};
+
 interface FormConstructionProps {
   productId?: string;
   productSlug?: string;
@@ -64,7 +72,6 @@ export function FormConstruction({ productId, productSlug, onSubmitSuccess }: Fo
     const initMetaPixel = async () => {
       try {
         // Usamos 'as any' aqui temporariamente para driblar o erro de tipagem
-        // já que a coluna foi criada via SQL mas os tipos locais não foram regenerados via CLI
         const { data } = await supabase
           .from("products")
           .select("meta_pixel_id" as any)
@@ -187,15 +194,23 @@ export function FormConstruction({ productId, productSlug, onSubmitSuccess }: Fo
       const fullPhone = `${finalData.countryCode}${finalData.phone.replace(/\D/g, "")}`;
       const companyRevenue = mapRevenueToNumber(finalData.revenue);
 
+      // --- NOVO: Captura os Cookies do Facebook ---
+      const fbpCookie = getCookie("_fbp");
+      const fbcCookie = getCookie("_fbc");
+
       // 1. Criar ou atualizar Lead
       const { data: existingLead } = await supabase.from("leads").select("id").eq("email", finalData.email).single();
 
       let lead: { id: string };
 
       if (existingLead) {
+        // Update existing lead
         const updateData: Record<string, unknown> = {
           full_name: finalData.full_name,
           phone: fullPhone,
+          // Atualiza cookies
+          fbp: fbpCookie,
+          fbc: fbcCookie,
         };
         if (companyRevenue !== null) {
           updateData.company_revenue = companyRevenue;
@@ -203,6 +218,7 @@ export function FormConstruction({ productId, productSlug, onSubmitSuccess }: Fo
         await supabase.from("leads").update(updateData).eq("id", existingLead.id);
         lead = existingLead;
       } else {
+        // Fetch product's lead_origin setting
         let leadOrigin: string | null = null;
         if (productId) {
           const { data: productConfig } = await supabase
@@ -213,12 +229,16 @@ export function FormConstruction({ productId, productSlug, onSubmitSuccess }: Fo
           leadOrigin = productConfig?.lead_origin || productConfig?.name || null;
         }
 
+        // Create new lead
         const insertData: Record<string, unknown> = {
           full_name: finalData.full_name,
           email: finalData.email,
           phone: fullPhone,
           status: "Novo",
           origin: leadOrigin,
+          // Salva cookies
+          fbp: fbpCookie,
+          fbc: fbcCookie,
         };
         if (companyRevenue !== null) {
           insertData.company_revenue = companyRevenue;
@@ -275,7 +295,7 @@ export function FormConstruction({ productId, productSlug, onSubmitSuccess }: Fo
 
       toast.success("Aplicação enviada com sucesso!");
       if (onSubmitSuccess) onSubmitSuccess();
-      
+
       // Redirect to thank you page
       if (productSlug) {
         navigate(`/obrigado/${productSlug}`);
