@@ -23,6 +23,7 @@ export interface Deal {
     email?: string;
     phone?: string;
     ltv?: number;
+    company_revenue?: number | null; // <--- O CAMPO QUE FALTAVA
   } | null;
 
   product?: {
