@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
-import { Plus, Search, GitBranch, AlertCircle, MoreHorizontal, Trash2 } from "lucide-react";
+import { Plus, Search, GitBranch, AlertCircle, MoreHorizontal, Trash2, Filter, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,8 @@ export default function Pipeline() {
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("");
   const [isNewDealOpen, setIsNewDealOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [revenueFilter, setRevenueFilter] = useState<string>("all"); // <--- Novo State de Filtro
+  // Filtro inicia com -1 para representar "Todos" (qualquer valor >= -1)
+  const [minRevenueFilter, setMinRevenueFilter] = useState<string>("-1");
 
   // Estados para controlar os Modais de Ação
   const [meetingDialog, setMeetingDialog] = useState<{
@@ -85,7 +86,7 @@ export default function Pipeline() {
   });
   const [deleteAllDealsDialogOpen, setDeleteAllDealsDialogOpen] = useState(false);
 
-  // 1. Busca Pipelines (apenas não arquivados)
+  // 1. Busca Pipelines
   const { data: pipelines = [], isLoading: isLoadingPipelines } = useQuery({
     queryKey: ["pipelines"],
     queryFn: async () => {
@@ -117,7 +118,7 @@ export default function Pipeline() {
     enabled: !!selectedPipelineId,
   });
 
-  // 3. Busca Deals com joins para lead e product
+  // 3. Busca Deals com o campo company_revenue
   const { data: deals = [] } = useQuery({
     queryKey: ["deals", selectedPipelineId],
     queryFn: async () => {
@@ -128,7 +129,7 @@ export default function Pipeline() {
         .select(
           `
           *,
-          lead:leads(id, full_name, email, phone, ltv, company_revenue), // <--- Adicionado company_revenue
+          lead:leads(id, full_name, email, phone, ltv, company_revenue),
           product:products(id, name, price),
           meeting_owner:team_members(id, name)
         `,
@@ -137,7 +138,6 @@ export default function Pipeline() {
 
       if (error) throw error;
 
-      // Filtro no front para garantir consistência
       const validStageIds = stages.map((s) => s.id);
       const filteredDeals = (data as any[]).filter((d) => validStageIds.includes(d.stage_id));
 
@@ -146,7 +146,7 @@ export default function Pipeline() {
     enabled: !!selectedPipelineId && stages.length > 0,
   });
 
-  // Mutation para mover o card com Optimistic Updates (reordena múltiplos cards)
+  // Mutation para mover o card
   const moveDealMutation = useMutation({
     mutationFn: async ({
       updates,
@@ -157,31 +157,22 @@ export default function Pipeline() {
       clearLossReason?: boolean;
       dealId?: string;
     }) => {
-      // Update all affected deals in parallel for speed
       await Promise.all(
         updates.map((update) => {
           const updateData: { stage_id: string; order_index: number; loss_reason?: null } = {
             stage_id: update.stage_id,
             order_index: update.order_index,
           };
-
-          // Limpa o motivo da perda apenas no deal movido
           if (clearLossReason && update.id === dealId) {
             updateData.loss_reason = null;
           }
-
           return supabase.from("deals").update(updateData).eq("id", update.id);
         }),
       );
     },
     onMutate: async ({ updates }) => {
-      // Cancela queries em andamento para evitar sobrescrita
       await queryClient.cancelQueries({ queryKey: ["deals", selectedPipelineId] });
-
-      // Snapshot do estado anterior (para rollback em caso de erro)
       const previousDeals = queryClient.getQueryData<Deal[]>(["deals", selectedPipelineId]);
-
-      // Atualiza o cache imediatamente (otimista)
       queryClient.setQueryData<Deal[]>(["deals", selectedPipelineId], (oldDeals) => {
         if (!oldDeals) return oldDeals;
         return oldDeals.map((deal) => {
@@ -192,30 +183,25 @@ export default function Pipeline() {
           return deal;
         });
       });
-
       return { previousDeals };
     },
     onError: (_error, _variables, context) => {
-      // Rollback para o estado anterior em caso de erro
       if (context?.previousDeals) {
         queryClient.setQueryData(["deals", selectedPipelineId], context.previousDeals);
       }
       toast.error("Erro ao mover card");
     },
     onSettled: () => {
-      // Revalida silenciosamente para garantir consistência
       queryClient.invalidateQueries({ queryKey: ["deals", selectedPipelineId] });
     },
   });
 
-  // Mutation para excluir todos os deals da pipeline
+  // Mutation para excluir todos os deals
   const deleteAllDealsMutation = useMutation({
     mutationFn: async () => {
       if (!selectedPipelineId || stages.length === 0) return;
-
       const stageIds = stages.map((s) => s.id);
       const { error } = await supabase.from("deals").delete().in("stage_id", stageIds);
-
       if (error) throw error;
     },
     onSuccess: () => {
@@ -230,7 +216,6 @@ export default function Pipeline() {
 
   const handleDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
-
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
@@ -242,41 +227,31 @@ export default function Pipeline() {
     const targetStageIndex = stages.findIndex((s) => s.id === targetStageId);
     const isFirstStage = targetStageIndex === 0;
 
-    // Lógica de Interceptação: Agendamento
+    // Lógicas de Interceptação (Agendamento, Negociação, etc.)
     if (targetStage?.type === "meeting" && source.droppableId !== targetStageId) {
       setMeetingDialog({ open: true, deal, targetStageId });
       return;
     }
-
-    // Lógica de Interceptação: Negociação
     if (targetStage?.type === "negotiation" && source.droppableId !== targetStageId) {
       setNegotiationDialog({ open: true, deal, targetStageId });
       return;
     }
-
-    // Lógica de Interceptação: Ganho
     if (targetStage?.type === "won" && source.droppableId !== targetStageId) {
       setCloseDialog({ open: true, deal, targetStageId });
       return;
     }
-
-    // Lógica de Interceptação: Perdido
     if (targetStage?.type === "lost" && source.droppableId !== targetStageId) {
       setLostDialog({ open: true, deal, targetStageId });
       return;
     }
-
-    // Lógica de Interceptação: Follow-up
     if (targetStage?.type === "followup" && source.droppableId !== targetStageId) {
       setFollowupDialog({ open: true, deal, targetStageId });
       return;
     }
 
-    // Verifica se está saindo de uma etapa "lost" para limpar o motivo da perda
     const sourceStage = stages.find((s) => s.id === source.droppableId);
     const isLeavingLostStage = sourceStage?.type === "lost" && targetStage?.type !== "lost";
 
-    // Para o primeiro estágio: apenas move, não precisa reordenar (ordenado por created_at)
     if (isFirstStage && source.droppableId !== targetStageId) {
       moveDealMutation.mutate({
         updates: [{ id: draggableId, stage_id: targetStageId, order_index: 0 }],
@@ -286,21 +261,17 @@ export default function Pipeline() {
       return;
     }
 
-    // Para outros estágios: reordena baseado na posição do drop
-    // Pega os deals do estágio destino, ordenados por order_index desc
     const targetStageDeals = deals
       .filter((d) => d.stage_id === targetStageId && d.id !== draggableId)
       .sort((a, b) => (b.order_index || 0) - (a.order_index || 0));
 
-    // Insere o deal na posição correta
     const newOrderedDeals = [...targetStageDeals];
     newOrderedDeals.splice(destination.index, 0, deal);
 
-    // Gera updates com novos order_index (maior = topo)
     const updates = newOrderedDeals.map((d, idx) => ({
       id: d.id,
       stage_id: targetStageId,
-      order_index: newOrderedDeals.length - idx, // Invertido: primeiro item = maior index
+      order_index: newOrderedDeals.length - idx,
     }));
 
     moveDealMutation.mutate({
@@ -331,12 +302,10 @@ export default function Pipeline() {
   };
 
   const handleNegotiationSuccess = () => {
-    // A mutation já moveu o deal no NegotiationDialog
     setNegotiationDialog({ open: false, deal: null, targetStageId: null });
   };
 
   const handleLostSuccess = () => {
-    // A mutation já moveu o deal no LostDealDialog
     setLostDialog({ open: false, deal: null, targetStageId: null });
   };
 
@@ -350,6 +319,7 @@ export default function Pipeline() {
     setFollowupDialog({ open: false, deal: null, targetStageId: null });
   };
 
+  // --- LÓGICA DE FILTRAGEM ATUALIZADA ---
   const filteredDeals = deals.filter((deal) => {
     const leadName = deal.lead?.full_name?.toLowerCase() || "";
     const productName = deal.product?.name?.toLowerCase() || "";
@@ -357,18 +327,16 @@ export default function Pipeline() {
     const search = searchTerm.toLowerCase().replace(/\D/g, "");
     const searchRaw = searchTerm.toLowerCase();
 
-    // Filtro de Faturamento (Revenue)
-    const matchesRevenue =
-      revenueFilter === "all" ||
-      (deal.lead?.company_revenue !== undefined &&
-        deal.lead?.company_revenue !== null &&
-        deal.lead.company_revenue.toString() === revenueFilter);
-
-    // Se busca contém apenas números, pesquisa por telefone (inclusive últimos dígitos)
+    // Filtro de Texto
     const isPhoneSearch = /^\d+$/.test(search) && search.length >= 2;
     const matchesPhone = isPhoneSearch && leadPhone.endsWith(search);
-
     const matchesSearch = leadName.includes(searchRaw) || productName.includes(searchRaw) || matchesPhone;
+
+    // Filtro de Faturamento (Lógica >=)
+    // Se o deal não tem company_revenue, assumimos 0 para fins de comparação
+    const dealRevenue = deal.lead?.company_revenue ?? 0;
+    const minRevenue = Number(minRevenueFilter);
+    const matchesRevenue = dealRevenue >= minRevenue;
 
     return matchesSearch && matchesRevenue;
   });
@@ -407,7 +375,6 @@ export default function Pipeline() {
             Novo Negócio
           </Button>
 
-          {/* Menu discreto de ações */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-9 w-9">
@@ -437,8 +404,7 @@ export default function Pipeline() {
             </div>
             <h3 className="text-lg font-semibold text-primary mb-2">Nenhum pipeline encontrado</h3>
             <p className="text-muted-foreground text-center max-w-md mb-4">
-              Crie seu primeiro pipeline de vendas em Configurações → Pipelines para começar a gerenciar suas
-              oportunidades.
+              Crie seu primeiro pipeline de vendas em Configurações → Pipelines.
             </p>
             <Button variant="outline" onClick={() => (window.location.href = "/configuracoes")}>
               Ir para Configurações
@@ -456,7 +422,7 @@ export default function Pipeline() {
             </div>
             <h3 className="text-lg font-semibold text-primary mb-2">Selecione um pipeline</h3>
             <p className="text-muted-foreground text-center max-w-md">
-              Escolha um pipeline no seletor acima para visualizar e gerenciar suas oportunidades de venda.
+              Escolha um pipeline no seletor acima para visualizar.
             </p>
           </CardContent>
         </Card>
@@ -465,8 +431,9 @@ export default function Pipeline() {
       {/* Kanban Board */}
       {selectedPipelineId && stages.length > 0 && (
         <>
-          {/* Search Bar & Filter Row */}
+          {/* Barra de Filtros */}
           <div className="mb-4 flex flex-col md:flex-row gap-4">
+            {/* Busca Textual */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -477,19 +444,36 @@ export default function Pipeline() {
               />
             </div>
 
-            {/* Filtro de Faturamento */}
-            <Select value={revenueFilter} onValueChange={setRevenueFilter}>
-              <SelectTrigger className="w-full md:w-[200px] bg-card text-foreground">
-                <SelectValue placeholder="Faturamento" />
+            {/* Filtro de Faturamento (UI/UX Melhorada) */}
+            <Select value={minRevenueFilter} onValueChange={setMinRevenueFilter}>
+              <SelectTrigger className="w-full md:w-[240px] bg-card text-foreground border-input">
+                <div className="flex items-center gap-2 text-sm">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span>{minRevenueFilter === "-1" ? "Faturamento: Todos" : "Faturamento Mínimo"}</span>
+                </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as Receitas</SelectItem>
-                <SelectItem value="0">Até R$ 500k</SelectItem>
-                <SelectItem value="500000">R$ 500k - R$ 1M</SelectItem>
-                <SelectItem value="1000000">R$ 1M - R$ 5M</SelectItem>
-                <SelectItem value="5000000">R$ 5M - R$ 10M</SelectItem>
-                <SelectItem value="10000000">R$ 10M - R$ 50M</SelectItem>
-                <SelectItem value="50000000">Acima de R$ 50M</SelectItem>
+                <SelectItem value="-1">
+                  <span className="font-medium">Todos os Faturamentos</span>
+                </SelectItem>
+                <SelectItem value="0">
+                  Acima de <span className="font-bold">R$ 0</span> (Todos c/ Receita)
+                </SelectItem>
+                <SelectItem value="500000">
+                  Acima de <span className="font-bold">R$ 500k</span>
+                </SelectItem>
+                <SelectItem value="1000000">
+                  Acima de <span className="font-bold">R$ 1 Milhão</span>
+                </SelectItem>
+                <SelectItem value="5000000">
+                  Acima de <span className="font-bold">R$ 5 Milhões</span>
+                </SelectItem>
+                <SelectItem value="10000000">
+                  Acima de <span className="font-bold">R$ 10 Milhões</span>
+                </SelectItem>
+                <SelectItem value="50000000">
+                  Acima de <span className="font-bold">R$ 50 Milhões</span>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -501,11 +485,10 @@ export default function Pipeline() {
                   const isFirstStage = stageIndex === 0;
                   const stageDeals = filteredDeals
                     .filter((d) => d.stage_id === stage.id)
-                    .sort(
-                      (a, b) =>
-                        isFirstStage
-                          ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // First stage: order of arrival
-                          : (b.order_index || 0) - (a.order_index || 0), // Other stages: drag-and-drop order
+                    .sort((a, b) =>
+                      isFirstStage
+                        ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                        : (b.order_index || 0) - (a.order_index || 0),
                     );
 
                   return (
@@ -524,7 +507,6 @@ export default function Pipeline() {
         </>
       )}
 
-      {/* Empty State - No stages */}
       {selectedPipelineId && stages.length === 0 && (
         <Card className="flex-1">
           <CardContent className="flex flex-col items-center justify-center h-full py-20">
@@ -532,10 +514,7 @@ export default function Pipeline() {
               <GitBranch className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold text-primary mb-2">Pipeline sem etapas</h3>
-            <p className="text-muted-foreground text-center max-w-md mb-4">
-              O pipeline "{selectedPipeline?.name}" não possui etapas configuradas. Configure as etapas em Configurações
-              → Pipelines.
-            </p>
+            <p className="text-muted-foreground text-center max-w-md mb-4">Configure as etapas em Configurações.</p>
             <Button variant="outline" onClick={() => (window.location.href = "/configuracoes")}>
               Configurar Etapas
             </Button>
@@ -613,15 +592,12 @@ export default function Pipeline() {
         onOpenChange={(open) => setDetailSheet((prev) => ({ ...prev, open }))}
       />
 
-      {/* Dialog de confirmação para excluir todos os deals */}
       <AlertDialog open={deleteAllDealsDialogOpen} onOpenChange={setDeleteAllDealsDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir todos os negócios?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação irá remover permanentemente <strong>{deals.length} negócio(s)</strong> da pipeline "
-              {selectedPipeline?.name}". Os leads e vendas históricas serão preservados. Esta ação não pode ser
-              desfeita.
+              Esta ação irá remover permanentemente {deals.length} negócio(s).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -630,7 +606,7 @@ export default function Pipeline() {
               onClick={() => deleteAllDealsMutation.mutate()}
               className="bg-destructive hover:bg-destructive/90"
             >
-              {deleteAllDealsMutation.isPending ? "Excluindo..." : "Excluir Todos"}
+              Excluir Todos
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
