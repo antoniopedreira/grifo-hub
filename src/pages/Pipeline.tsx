@@ -146,8 +146,8 @@ export default function Pipeline() {
       clearLossReason?: boolean;
       dealId?: string;
     }) => {
-      // Update all affected deals
-      for (const update of updates) {
+      // Update all affected deals in parallel for speed
+      await Promise.all(updates.map(update => {
         const updateData: { stage_id: string; order_index: number; loss_reason?: null } = {
           stage_id: update.stage_id,
           order_index: update.order_index,
@@ -158,12 +158,11 @@ export default function Pipeline() {
           updateData.loss_reason = null;
         }
         
-        const { error } = await supabase
+        return supabase
           .from("deals")
           .update(updateData)
           .eq("id", update.id);
-        if (error) throw error;
-      }
+      }));
     },
     onMutate: async ({ updates }) => {
       // Cancela queries em andamento para evitar sobrescrita
