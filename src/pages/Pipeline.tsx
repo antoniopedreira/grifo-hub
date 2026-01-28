@@ -34,52 +34,47 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// --- ENGINE DE ORDENAÇÃO (Lógica Pura) ---
+// --- ENGINE DE ORDENAÇÃO (Lógica de Negócio) ---
 
-// 1. Mapa de Pesos (Mais rápido que switch/case)
-const PRIORITY_WEIGHTS: Record<string, number> = {
-  High: 3,
-  Medium: 2,
-  Low: 1,
-  default: 0,
-};
-
-// 2. Função Auxiliar Segura
 const getPriorityScore = (priority?: string | null) => {
-  return PRIORITY_WEIGHTS[priority || "default"] || 0;
+  switch (priority) {
+    case "High":
+      return 3;
+    case "Medium":
+      return 2;
+    case "Low":
+      return 1;
+    default:
+      return 0;
+  }
 };
 
-// 3. A Função de Comparação "Definitiva"
 const compareDeals = (a: Deal, b: Deal, isFirstStage: boolean): number => {
-  // NÍVEL 1: Respeito Absoluto à Ordem Manual (Drag & Drop)
-  const orderA = a.order_index ?? 0;
-  const orderB = b.order_index ?? 0;
-
-  // Se houver indices manuais definidos e diferentes, eles mandam.
-  if (orderA !== orderB) {
-    return orderB - orderA; // Descendente (Maior índice no topo)
+  // REGRA 1: Estágio de Entrada (Inbound)
+  // Apenas Data de Chegada importa (Mais recente no topo)
+  if (isFirstStage) {
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   }
 
-  // Preparação de dados para desempate
-  const dateA = new Date(a.created_at).getTime();
-  const dateB = new Date(b.created_at).getTime();
+  // REGRA 2: Outros Estágios (Qualificação/Fechamento)
+  // 1º Nível: Prioridade (Alta > Média > Baixa)
   const scoreA = getPriorityScore(a.priority);
   const scoreB = getPriorityScore(b.priority);
 
-  // NÍVEL 2 & 3: Estratégias Condicionais
-  if (isFirstStage) {
-    // Estratégia de Entrada: "Novidade é Rei"
-    // 1º Critério: Data de Chegada (Mais recente no topo)
-    if (dateA !== dateB) return dateB - dateA;
-    // 2º Critério: Prioridade
-    return scoreB - scoreA;
-  } else {
-    // Estratégia de Trabalho: "Importância é Rei"
-    // 1º Critério: Prioridade (High > Medium > Low)
-    if (scoreA !== scoreB) return scoreB - scoreA;
-    // 2º Critério: Data de Chegada (Mais recente no topo)
-    return dateB - dateA;
+  if (scoreA !== scoreB) {
+    return scoreB - scoreA; // Maior prioridade primeiro
   }
+
+  // 2º Nível: Ordem Manual (Drag & Drop) dentro da mesma prioridade
+  const orderA = a.order_index ?? 0;
+  const orderB = b.order_index ?? 0;
+
+  if (orderA !== orderB) {
+    return orderB - orderA; // Maior índice (topo) primeiro
+  }
+
+  // 3º Nível: Desempate por Data (se não tiver ordem manual definida)
+  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
 };
 
 export default function Pipeline() {
@@ -235,7 +230,7 @@ export default function Pipeline() {
 
     const targetStageId = destination.droppableId;
     const targetStage = stages.find((s) => s.id === targetStageId);
-    const isFirstStage = stages.findIndex((s) => s.id === targetStageId) === 0;
+    const isFirstStage = stages.findIndex((s) => s.id === targetStageId) === 0; // Verifica se o destino é o 1º estágio
 
     // Interceptações de Status
     if (targetStage?.type === "meeting" && source.droppableId !== targetStageId) {
@@ -263,18 +258,21 @@ export default function Pipeline() {
     const isLeavingLostStage = sourceStage?.type === "lost" && targetStage?.type !== "lost";
 
     // Reordenação Visual
+    // IMPORTANTE: Aqui usamos a mesma lógica de ordenação (compareDeals) para calcular os índices corretamente
+    // Se o destino for o 1º estágio, a ordenação é por Data, então o DND não deve afetar a ordem visual (o backend/query vai corrigir)
+    // Mas se for outros estágios, o DND é rei dentro da prioridade.
+
     const targetStageDeals = deals
       .filter((d) => d.stage_id === targetStageId && d.id !== draggableId)
-      .sort((a, b) => compareDeals(a, b, isFirstStage)); // Usa a mesma lógica visual para consistência
+      .sort((a, b) => compareDeals(a, b, isFirstStage));
 
     const newOrderedDeals = [...targetStageDeals];
-    // Ajuste fino: Se for drag & drop, respeitamos a posição exata onde o usuário soltou
     newOrderedDeals.splice(destination.index, 0, deal);
 
     const updates = newOrderedDeals.map((d, idx) => ({
       id: d.id,
       stage_id: targetStageId,
-      order_index: newOrderedDeals.length - idx, // Garante que o topo tenha o maior índice
+      order_index: newOrderedDeals.length - idx,
     }));
 
     moveDealMutation.mutate({ updates, clearLossReason: isLeavingLostStage, dealId: draggableId });
@@ -312,14 +310,13 @@ export default function Pipeline() {
     setFollowupDialog({ open: false, deal: null, targetStageId: null });
   };
 
-  // Filtragem e Ordenação Otimizada (useMemo para performance)
+  // Filtragem e Ordenação Otimizada
   const processedStages = useMemo(() => {
     return stages.map((stage, index) => {
       const isFirstStage = index === 0;
 
       const filteredAndSortedDeals = deals
         .filter((deal) => {
-          // Lógica de Filtro
           if (deal.stage_id !== stage.id) return false;
 
           const leadName = deal.lead?.full_name?.toLowerCase() || "";
@@ -338,7 +335,7 @@ export default function Pipeline() {
 
           return matchesSearch && matchesRevenue;
         })
-        .sort((a, b) => compareDeals(a, b, isFirstStage)); // Aplica a lógica "Definitiva"
+        .sort((a, b) => compareDeals(a, b, isFirstStage)); // Aplica a lógica diferenciada por estágio
 
       return {
         ...stage,
