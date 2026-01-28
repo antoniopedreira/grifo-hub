@@ -18,11 +18,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { CountryCodeSelect } from "@/components/ui/country-code-select";
 
-// --- CORES DA MARCA ---
-// Principal (Fundo): #112232
-// Secundária (Dourado): #A47428
-// Terciária (Texto Claro): #E1D8CF
-
 interface FormConstructionProps {
   productId?: string;
   onSubmitSuccess?: () => void;
@@ -57,22 +52,26 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
   const [formData, setFormData] = useState<StepData>(INITIAL_DATA);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Elemento de input para focar automaticamente
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   // --- INJEÇÃO DO PIXEL DO META ADS ---
-  // Busca o Pixel ID configurado no produto e inicia o rastreamento
   useEffect(() => {
     if (!productId) return;
 
     const initMetaPixel = async () => {
       try {
-        const { data } = await supabase.from("products").select("meta_pixel_id").eq("id", productId).single();
+        // Usamos 'as any' aqui temporariamente para driblar o erro de tipagem
+        // já que a coluna foi criada via SQL mas os tipos locais não foram regenerados via CLI
+        const { data } = await supabase
+          .from("products")
+          .select("meta_pixel_id" as any)
+          .eq("id", productId)
+          .single();
 
+        // @ts-ignore
         const pixelId = data?.meta_pixel_id;
 
         if (pixelId) {
-          // Verifica se já existe para não duplicar
           if (!document.getElementById(`pixel-${pixelId}`)) {
             console.log(`Inicializando Pixel do Facebook: ${pixelId}`);
 
@@ -97,7 +96,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1" />`;
             document.head.appendChild(noscript);
           } else {
-            // Se já existe, apenas dispara o PageView
             // @ts-ignore
             if (window.fbq) window.fbq("track", "PageView");
           }
@@ -112,13 +110,11 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
   // --- FIM DA INTEGRAÇÃO PIXEL ---
 
   useEffect(() => {
-    // Foca no input sempre que mudar o passo
     setTimeout(() => {
       if (inputRef.current) inputRef.current.focus();
     }, 300);
   }, [currentStep]);
 
-  // Total de passos agora é 8 (0 a 7)
   const totalSteps = 8;
   const progress = ((currentStep + 1) / (totalSteps + 1)) * 100;
 
@@ -137,10 +133,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
   const handleSelectAndNext = (field: keyof StepData, value: string) => {
     handleChange(field, value);
-    // Pequeno delay para feedback visual antes de avançar
     setTimeout(() => {
-      // Se for a última pergunta (investimento) e for uma resposta positiva, submete
-      // Se for negativa, também submete mas registra o desinteresse
       if (field === "investment") {
         handleSubmit(value);
       } else {
@@ -150,7 +143,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
   };
 
   const validateStep = () => {
-    // Validação simples
     if (currentStep === 0 && formData.full_name.length < 3) {
       toast.error("Por favor, digite seu nome completo.");
       return false;
@@ -170,7 +162,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     return true;
   };
 
-  // Map revenue string to numeric value for company_revenue
   const mapRevenueToNumber = (revenue: string): number | null => {
     if (!revenue) return null;
     const mapping: Record<string, number> = {
@@ -184,15 +175,12 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     return mapping[revenue] ?? null;
   };
 
-  // Aceita value opcional para casos onde o state ainda não atualizou no closure
   const handleSubmit = async (finalValue?: string) => {
-    // Guard contra duplo-clique
     if (isSubmitting) return;
 
     setIsSubmitting(true);
     try {
       const finalData = { ...formData, investment: finalValue || formData.investment };
-      // Store with country code (no space): +5571996428700
       const fullPhone = `${finalData.countryCode}${finalData.phone.replace(/\D/g, "")}`;
       const companyRevenue = mapRevenueToNumber(finalData.revenue);
 
@@ -202,7 +190,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
       let lead: { id: string };
 
       if (existingLead) {
-        // Update existing lead
         const updateData: Record<string, unknown> = {
           full_name: finalData.full_name,
           phone: fullPhone,
@@ -213,7 +200,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
         await supabase.from("leads").update(updateData).eq("id", existingLead.id);
         lead = existingLead;
       } else {
-        // Fetch product's lead_origin setting
         let leadOrigin: string | null = null;
         if (productId) {
           const { data: productConfig } = await supabase
@@ -224,7 +210,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           leadOrigin = productConfig?.lead_origin || productConfig?.name || null;
         }
 
-        // Create new lead
         const insertData: Record<string, unknown> = {
           full_name: finalData.full_name,
           email: finalData.email,
@@ -240,7 +225,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
         lead = newLead;
       }
 
-      // 2. Salvar Respostas Completas
+      // 2. Salvar Respostas
       const { error: subError } = await supabase.from("form_submissions").insert({
         lead_id: lead.id,
         product_id: productId,
@@ -255,7 +240,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
       if (subError) throw subError;
 
-      // 3. Criar Deal se configurado no produto
+      // 3. Criar Deal
       if (productId) {
         const { data: productConfig } = await supabase
           .from("products")
@@ -264,7 +249,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           .single();
 
         if (productConfig?.create_deal && productConfig?.pipeline_id) {
-          // Busca primeira etapa do pipeline configurado
           const { data: stages } = await supabase
             .from("pipeline_stages")
             .select("id")
@@ -288,8 +272,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
       toast.success("Aplicação enviada com sucesso!");
       if (onSubmitSuccess) onSubmitSuccess();
-
-      // Tela de sucesso final
       setCurrentStep(totalSteps + 1);
     } catch (error) {
       console.error(error);
@@ -301,24 +283,19 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      // Avança com enter apenas nos passos de texto (0, 1, 2, 3)
       if ([0, 1, 2, 3].includes(currentStep)) {
         handleNext();
       }
     }
   };
 
-  // --- COMPONENTES DE UI ---
-
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#112232] text-[#E1D8CF] font-sans relative overflow-hidden p-4">
-      {/* BACKGROUND DECORATION */}
       <div className="absolute top-0 left-0 w-full h-2 bg-[#112232] z-50">
         <div className="h-full bg-[#A47428] transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
       </div>
 
       <div className="w-full max-w-2xl z-10 flex flex-col items-center">
-        {/* HEADER LOGO */}
         <div className="mb-8 md:mb-12 transition-opacity duration-500">
           <img
             src="https://naroalxhbrvmosbqzhrb.supabase.co/storage/v1/object/public/photos-wallpapers/LOGO_GRIFO_6-removebg-preview.png"
@@ -327,9 +304,7 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           />
         </div>
 
-        {/* CONTENT AREA */}
         <div className="w-full relative min-h-[400px]">
-          {/* STEP 0: NOME */}
           {currentStep === 0 && (
             <QuestionCard
               icon={<User className="text-[#A47428]" size={32} />}
@@ -349,7 +324,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 1: WHATSAPP */}
           {currentStep === 1 && (
             <QuestionCard
               icon={<Phone className="text-[#A47428]" size={32} />}
@@ -371,7 +345,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
                     autoComplete="tel-national"
                     value={formData.phone}
                     onChange={(e: any) => {
-                      // Remove country code if user tries to type it
                       let val = e.target.value.replace(/^\+\d{1,3}\s?/, "");
                       handleChange("phone", val);
                     }}
@@ -384,7 +357,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 2: EMAIL */}
           {currentStep === 2 && (
             <QuestionCard
               icon={<Mail className="text-[#A47428]" size={32} />}
@@ -405,7 +377,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 3: NOME DA EMPRESA */}
           {currentStep === 3 && (
             <QuestionCard
               icon={<Building2 className="text-[#A47428]" size={32} />}
@@ -425,7 +396,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 4: CARGO */}
           {currentStep === 4 && (
             <QuestionCard
               icon={<Briefcase className="text-[#A47428]" size={32} />}
@@ -453,7 +423,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 5: NICHO */}
           {currentStep === 5 && (
             <QuestionCard
               icon={<HardHat className="text-[#A47428]" size={32} />}
@@ -481,7 +450,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 6: FATURAMENTO */}
           {currentStep === 6 && (
             <QuestionCard
               icon={<DollarSign className="text-[#A47428]" size={32} />}
@@ -509,7 +477,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* STEP 7: INVESTIMENTO */}
           {currentStep === 7 && (
             <QuestionCard
               icon={<Wallet className="text-[#A47428]" size={32} />}
@@ -547,7 +514,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
             </QuestionCard>
           )}
 
-          {/* TELA DE SUCESSO */}
           {currentStep > 7 && (
             <div className="flex flex-col items-center justify-center animate-in fade-in duration-700 text-center mt-10">
               <div className="w-20 h-20 rounded-full bg-[#A47428] flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(164,116,40,0.4)]">
@@ -562,7 +528,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
           )}
         </div>
 
-        {/* NAVIGATION CONTROLS */}
         {currentStep <= 7 && (
           <div className="fixed bottom-0 left-0 w-full p-6 bg-[#112232] md:bg-transparent md:static flex items-center justify-between max-w-2xl mt-8">
             {currentStep > 0 && (
@@ -575,7 +540,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
               </button>
             )}
 
-            {/* Botão Continuar aparece apenas nos campos de texto */}
             {[0, 1, 2, 3].includes(currentStep) && (
               <button
                 onClick={handleNext}
@@ -590,8 +554,6 @@ export function FormConstruction({ productId, onSubmitSuccess }: FormConstructio
     </div>
   );
 }
-
-// --- SUB-COMPONENTES ---
 
 function QuestionCard({ children, icon, number, question, subtext }: any) {
   return (
@@ -611,7 +573,6 @@ function QuestionCard({ children, icon, number, question, subtext }: any) {
 
 const InputLine = ({ value, onChange, placeholder, type = "text", onKeyDown, ref, autoComplete = "on", name }: any) => (
   <div className="relative w-full">
-    {/* CSS Hack para remover fundo branco do Autocomplete do navegador */}
     <style>
       {`
         input:-webkit-autofill,

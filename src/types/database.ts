@@ -51,7 +51,8 @@ export interface ProductCategory {
   slug: string;
 }
 
-// --- NOVO: Interface Product com o campo do Pixel ---
+// Interface Product estendida manualmente para incluir meta_pixel_id
+// Isso previne erros de TS até que a introspecção do banco atualize os tipos gerados
 export interface Product extends Tables<"products"> {
   meta_pixel_id?: string | null;
 }
