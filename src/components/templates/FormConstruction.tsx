@@ -72,6 +72,7 @@ export function FormConstruction({ productId, productSlug, onSubmitSuccess }: Fo
     const initMetaPixel = async () => {
       try {
         // Usamos 'as any' aqui temporariamente para driblar o erro de tipagem
+        // já que a coluna foi criada via SQL mas os tipos locais não foram regenerados via CLI
         const { data } = await supabase
           .from("products")
           .select("meta_pixel_id" as any)
@@ -296,7 +297,7 @@ export function FormConstruction({ productId, productSlug, onSubmitSuccess }: Fo
       toast.success("Aplicação enviada com sucesso!");
       if (onSubmitSuccess) onSubmitSuccess();
 
-      // Redirect to thank you page
+      // Redirect to thank you page or show success screen
       if (productSlug) {
         navigate(`/obrigado/${productSlug}`);
       } else {
