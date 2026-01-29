@@ -7,7 +7,6 @@ import {
   Loader2,
   ArrowUpRight,
   CalendarDays,
-  MoreHorizontal,
   Target,
   BarChart3,
   Filter,
@@ -67,7 +66,7 @@ interface DashboardData {
   monthlyRevenue: { month: string; value: number; count: number }[];
   salesByProduct: { name: string; value: number }[];
   dealsByStage: { name: string; count: number; value: number }[];
-  topCustomers: TopCustomer[]; // NOVO
+  topCustomers: TopCustomer[];
 }
 
 // --- DESIGN TOKENS ---
@@ -221,7 +220,7 @@ export default function Dashboard() {
           .sort((a, b) => b.value - a.value)
           .slice(0, 5);
 
-        // 7. TOP CLIENTES (LTV RANKING) - NOVA LÓGICA
+        // 7. TOP CLIENTES (LTV RANKING)
         const customerMap = new Map<string, TopCustomer>();
 
         (allSales || []).forEach((sale) => {
@@ -236,7 +235,6 @@ export default function Dashboard() {
               ...existing,
               totalSpent: existing.totalSpent + amount,
               salesCount: existing.salesCount + 1,
-              // Mantém a data mais recente
               lastPurchaseDate: date > existing.lastPurchaseDate ? date : existing.lastPurchaseDate,
             });
           } else {
@@ -252,7 +250,7 @@ export default function Dashboard() {
 
         const topCustomers = Array.from(customerMap.values())
           .sort((a, b) => b.totalSpent - a.totalSpent)
-          .slice(0, 5); // Top 5
+          .slice(0, 5);
 
         setData({
           totalRevenue,
@@ -509,7 +507,8 @@ export default function Dashboard() {
                       axisLine={false}
                       tickLine={false}
                       width={100}
-                      tick={{ fill: "#6B7280", fontSize: 11, fontWeight: 500 }}
+                      // AQUI ESTÁ A ALTERAÇÃO: Cor branca (#FFFFFF) para o texto
+                      tick={{ fill: "#FFFFFF", fontSize: 11, fontWeight: 500 }}
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
                     <Bar dataKey="value" name="Volume" fill={BRAND_COLORS.navy} radius={[0, 4, 4, 0]} barSize={24} />
@@ -522,7 +521,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* LISTA: TOP CLIENTES (RANKING LTV) - SUBSTITUI O RADAR OPERACIONAL */}
+        {/* LISTA: TOP CLIENTES (RANKING LTV) */}
         <Card className="shadow-sm border-border/60 hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-4">
             <div className="space-y-1">
