@@ -1026,6 +1026,17 @@ export type Database = {
             }
             Returns: Json
           }
+        | {
+            Args: {
+              p_email: string
+              p_name: string
+              p_phone: string
+              p_products: Json
+              p_total_price: number
+              p_transaction_id?: string
+            }
+            Returns: Json
+          }
       handle_recovery_deal:
         | {
             Args: {
