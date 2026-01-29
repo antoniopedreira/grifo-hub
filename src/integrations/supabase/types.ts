@@ -167,6 +167,66 @@ export type Database = {
           },
         ]
       }
+      deal_tag_assignments: {
+        Row: {
+          created_at: string
+          deal_id: string
+          id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          id?: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_tag_assignments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_tag_assignments_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "deal_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_tags: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       deals: {
         Row: {
           cash_value: number | null

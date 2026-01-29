@@ -19,6 +19,7 @@ import {
   Calendar,
   XCircle,
   GitBranch,
+  Tag,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -47,6 +48,7 @@ import type { Deal } from "./types";
 import { DealComments } from "./DealComments";
 import { WhatsAppChat } from "./WhatsAppChat";
 import { FormAnswersPanel } from "./FormAnswersPanel";
+import { TagBadge, TagSelector, type DealTag } from "./tags";
 
 interface DealDetailSheetProps {
   deal: Deal | null;
@@ -163,6 +165,40 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
     },
     enabled: open && !!deal?.lead_id,
   });
+
+  // Fetch tags for this deal
+  const { data: allTags = [] } = useQuery({
+    queryKey: ["deal-tags"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deal_tags")
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return data as DealTag[];
+    },
+    enabled: open,
+  });
+
+  const { data: dealTagAssignments = [] } = useQuery({
+    queryKey: ["deal-tag-assignments", deal?.id],
+    queryFn: async () => {
+      if (!deal?.id) return [];
+      const { data, error } = await supabase
+        .from("deal_tag_assignments")
+        .select("*")
+        .eq("deal_id", deal.id);
+      if (error) throw error;
+      return data as { id: string; deal_id: string; tag_id: string }[];
+    },
+    enabled: open && !!deal?.id,
+  });
+
+  const dealTags = dealTagAssignments
+    .map((a) => allTags.find((t) => t.id === a.tag_id))
+    .filter((t): t is DealTag => !!t);
+
+  const dealTagIds = dealTagAssignments.map((a) => a.tag_id);
 
   // Update deal product mutation with optimistic updates
   const updateProductMutation = useMutation({
@@ -836,6 +872,33 @@ export function DealDetailSheet({ deal, open, onOpenChange }: DealDetailSheetPro
                       </Badge>
                     )}
                   </div>
+                </div>
+
+                <Separator />
+
+                {/* Tags Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-primary flex items-center gap-2">
+                      <Tag className="h-4 w-4" />
+                      Tags
+                    </h4>
+                    <TagSelector
+                      dealId={deal.id}
+                      currentTagIds={dealTagIds}
+                    />
+                  </div>
+                  {dealTags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 p-3 rounded-lg bg-muted/30">
+                      {dealTags.map((tag) => (
+                        <TagBadge key={tag.id} tag={tag} size="md" />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted/30">
+                      Nenhuma tag atribuída
+                    </p>
+                  )}
                 </div>
 
                 {/* Loss Reason - only show if deal is in a "lost" stage AND has a loss_reason */}

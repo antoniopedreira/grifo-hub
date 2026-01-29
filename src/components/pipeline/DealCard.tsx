@@ -1,16 +1,17 @@
 import { Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
-import { format, parseISO, differenceInDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { differenceInDays } from "date-fns";
 import { CalendarDays, Clock, User, TrendingUp, Phone, MapPin, Timer } from "lucide-react";
 import type { Deal } from "./types";
 import { getRegionByPhone, getRegionColor } from "@/lib/ddd-regions";
-
+import { TagBadge } from "./tags";
+import type { DealTag } from "./tags";
 interface DealCardProps {
   deal: Deal;
   index: number;
   stageType?: string;
   onClick: () => void;
+  tags?: DealTag[];
 }
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
@@ -19,12 +20,11 @@ const priorityConfig: Record<string, { label: string; className: string }> = {
   Low: { label: "Baixa", className: "bg-emerald-50 text-emerald-600 border-emerald-200" },
 };
 
-export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
+export function DealCard({ deal, index, stageType, onClick, tags = [] }: DealCardProps) {
   const priority = deal.priority || "Medium";
   const config = priorityConfig[priority] || priorityConfig.Medium;
   const isMeetingStage = stageType === "meeting";
   const regionInfo = getRegionByPhone(deal.lead?.phone || null);
-
   // Calcula dias no estágio atual
   const daysInStage = deal.stage_entered_at
     ? differenceInDays(new Date(), new Date(deal.stage_entered_at))
@@ -165,6 +165,18 @@ export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
                     <User className="h-3 w-3" />
                     {deal.meeting_owner.name.split(" ")[0]}
                   </span>
+                )}
+              </div>
+            )}
+
+            {/* Tags */}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {tags.slice(0, 3).map((tag) => (
+                  <TagBadge key={tag.id} tag={tag} size="sm" />
+                ))}
+                {tags.length > 3 && (
+                  <span className="text-[10px] text-muted-foreground px-1">+{tags.length - 3}</span>
                 )}
               </div>
             )}

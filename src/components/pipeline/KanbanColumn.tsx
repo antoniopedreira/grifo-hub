@@ -2,12 +2,14 @@ import { Droppable } from "@hello-pangea/dnd";
 import { DealCard } from "./DealCard";
 import type { Deal, PipelineStage } from "./types";
 import { cn } from "@/lib/utils";
+import type { DealTag } from "./tags";
 
 interface KanbanColumnProps {
   stage: PipelineStage;
   deals: Deal[];
   totalValue: number;
   onDealClick: (deal: Deal) => void;
+  dealTags?: Record<string, DealTag[]>;
 }
 
 const stageTypeStyles: Record<string, {
@@ -66,7 +68,7 @@ const stageTypeStyles: Record<string, {
   },
 };
 
-export function KanbanColumn({ stage, deals, totalValue, onDealClick }: KanbanColumnProps) {
+export function KanbanColumn({ stage, deals, totalValue, onDealClick, dealTags = {} }: KanbanColumnProps) {
   const stageType = stage.type || "default";
   const styles = stageTypeStyles[stageType] || stageTypeStyles.default;
   const hasSpecialType = stageType !== "default";
@@ -130,7 +132,8 @@ export function KanbanColumn({ stage, deals, totalValue, onDealClick }: KanbanCo
                 deal={deal} 
                 index={index} 
                 stageType={stageType}
-                onClick={() => onDealClick(deal)} 
+                onClick={() => onDealClick(deal)}
+                tags={dealTags[deal.id] || []}
               />
             ))}
             {provided.placeholder}

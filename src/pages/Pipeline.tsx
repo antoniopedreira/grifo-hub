@@ -16,6 +16,7 @@ import { LostDealDialog } from "@/components/pipeline/LostDealDialog";
 import { DealDetailSheet } from "@/components/pipeline/DealDetailSheet";
 import { toast } from "sonner";
 import type { Deal, Pipeline as PipelineType, PipelineStage } from "@/components/pipeline/types";
+import type { DealTag } from "@/components/pipeline/tags";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -166,6 +167,50 @@ export default function Pipeline() {
     },
     enabled: !!selectedPipelineId && stages.length > 0,
   });
+
+  // Fetch all tags
+  const { data: allTags = [] } = useQuery({
+    queryKey: ["deal-tags"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deal_tags")
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return data as DealTag[];
+    },
+  });
+
+  // Fetch tag assignments for all deals
+  const { data: tagAssignments = [] } = useQuery({
+    queryKey: ["deal-tag-assignments-all", selectedPipelineId],
+    queryFn: async () => {
+      if (!selectedPipelineId || deals.length === 0) return [];
+      const dealIds = deals.map((d) => d.id);
+      const { data, error } = await supabase
+        .from("deal_tag_assignments")
+        .select("*")
+        .in("deal_id", dealIds);
+      if (error) throw error;
+      return data as { id: string; deal_id: string; tag_id: string }[];
+    },
+    enabled: !!selectedPipelineId && deals.length > 0,
+  });
+
+  // Build a map of deal_id -> DealTag[]
+  const dealTagsMap = useMemo(() => {
+    const map: Record<string, DealTag[]> = {};
+    tagAssignments.forEach((assignment) => {
+      const tag = allTags.find((t) => t.id === assignment.tag_id);
+      if (tag) {
+        if (!map[assignment.deal_id]) {
+          map[assignment.deal_id] = [];
+        }
+        map[assignment.deal_id].push(tag);
+      }
+    });
+    return map;
+  }, [tagAssignments, allTags]);
 
   // Mutations
   const moveDealMutation = useMutation({
@@ -476,6 +521,7 @@ export default function Pipeline() {
                     deals={stage.deals}
                     totalValue={stage.totalValue}
                     onDealClick={(deal) => setDetailSheet({ open: true, deal })}
+                    dealTags={dealTagsMap}
                   />
                 ))}
               </div>
