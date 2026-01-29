@@ -137,19 +137,14 @@ export default function Dashboard() {
 
     const fetchDashboardData = async () => {
       try {
-        const [
-          { data: allDeals },
-          { count: leadsCount }, // Removido leadsData pois só precisamos da contagem total para KPI de leads
-          { data: products },
-          { data: allSales },
-          { data: allStages },
-        ] = await Promise.all([
-          supabase.from("deals").select("*"),
-          supabase.from("leads").select("id", { count: "exact", head: true }),
-          supabase.from("products").select("id, name"),
-          supabase.from("sales").select("*, products(name), leads(full_name)"),
-          supabase.from("pipeline_stages").select("id, name, order_index"),
-        ]);
+        const [{ data: allDeals }, { count: leadsCount }, { data: products }, { data: allSales }, { data: allStages }] =
+          await Promise.all([
+            supabase.from("deals").select("*"),
+            supabase.from("leads").select("id", { count: "exact", head: true }),
+            supabase.from("products").select("id, name"),
+            supabase.from("sales").select("*, products(name), leads(full_name)"),
+            supabase.from("pipeline_stages").select("id, name, order_index"),
+          ]);
 
         // 1. KPIs FINANCEIROS
         const totalRevenue = (allSales || []).reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
@@ -157,20 +152,15 @@ export default function Dashboard() {
         const ticketMedio = totalSalesCount > 0 ? totalRevenue / totalSalesCount : 0;
 
         // 2. TAXA DE CONVERSÃO REAL (Win Rate do Pipeline Manual)
-        // Passo A: Identificar quais Deals vieram do Lastlink (Automáticos)
         const autoSaleDealIds = (allSales || []).filter((s) => s.origin === "lastlink_auto").map((s) => s.deal_id);
 
-        // Passo B: Filtrar o universo do Pipeline "Real"
-        // Exclui: Vendas automáticas E Carrinhos Abandonados (sujeira de checkout)
         const manualPipelineDeals = (allDeals || []).filter(
           (deal) => deal.status !== "abandoned" && !autoSaleDealIds.includes(deal.id),
         );
 
-        // Passo C: Contar quantos desses foram GANHOS (Won)
         const manualWonDeals = manualPipelineDeals.filter((d) => d.status === "won").length;
         const totalManualDeals = manualPipelineDeals.length;
 
-        // Passo D: Cálculo Final
         const conversionRate = totalManualDeals > 0 ? (manualWonDeals / totalManualDeals) * 100 : 0;
 
         // 3. PIPELINE ATIVO
@@ -629,6 +619,7 @@ export default function Dashboard() {
 // --- SUBCOMPONENTES ---
 
 function KpiCard({ title, value, subtext, icon: Icon, trend, trendUp, color }: any) {
+  // Cores adaptadas para Dark Mode
   const colorStyles: any = {
     gold: { bg: "bg-[#A47428]/20", text: "text-[#A47428]", border: "border-[#A47428]/30" },
     navy: { bg: "bg-white/10", text: "text-white", border: "border-white/20" },
@@ -641,31 +632,36 @@ function KpiCard({ title, value, subtext, icon: Icon, trend, trendUp, color }: a
 
   return (
     <Card
-      className={`border ${style.border} bg-[#1E3A50]/50 shadow-sm hover:shadow-md transition-all hover:-translate-y-1 duration-300 relative overflow-hidden group`}
+      className={`border ${style.border} bg-[#1E3A50]/50 shadow-sm hover:shadow-md transition-all hover:-translate-y-1 duration-300 relative overflow-hidden group h-full`}
     >
       <div className={`absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity ${style.text}`}>
         <Icon className="w-16 h-16 transform rotate-12 -mr-4 -mt-4" />
       </div>
-      <CardContent className="p-6">
-        <div className="flex items-center gap-3 mb-3">
-          <div className={`p-2 rounded-lg ${style.bg} ${style.text}`}>
-            <Icon className="w-5 h-5" />
+      <CardContent className="p-6 flex flex-col justify-between h-full">
+        <div>
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`p-2 rounded-lg ${style.bg} ${style.text}`}>
+              <Icon className="w-5 h-5" />
+            </div>
+            <span className="text-sm font-medium text-[#E1D8CF]/80">{title}</span>
           </div>
-          <span className="text-sm font-medium text-[#E1D8CF]/80">{title}</span>
-        </div>
 
-        <div className="space-y-1 relative z-10">
-          <h3 className="text-2xl font-bold tracking-tight text-white">{value}</h3>
-          <div className="flex items-center gap-2">
-            {trend && (
-              <Badge
-                variant="secondary"
-                className={`h-5 px-1.5 text-[10px] font-normal border-0 ${trendUp ? "text-green-400 bg-green-500/10" : "text-[#E1D8CF]/60 bg-white/5"}`}
-              >
-                {trend}
-              </Badge>
-            )}
-            <p className="text-xs text-[#E1D8CF]/60 truncate max-w-[120px]">{subtext}</p>
+          <div className="relative z-10">
+            <h3 className="text-2xl font-bold tracking-tight text-white mb-2">{value}</h3>
+
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {trend && (
+                <Badge
+                  variant="secondary"
+                  className={`h-auto py-0.5 px-2 text-[10px] font-normal border-0 whitespace-nowrap ${
+                    trendUp ? "text-green-400 bg-green-500/10" : "text-[#E1D8CF]/60 bg-white/5"
+                  }`}
+                >
+                  {trend}
+                </Badge>
+              )}
+              <p className="text-xs text-[#E1D8CF]/60 leading-tight">{subtext}</p>
+            </div>
           </div>
         </div>
       </CardContent>
