@@ -2,17 +2,16 @@ import { useState, useEffect } from "react";
 import {
   DollarSign,
   Users,
-  Clock,
   TrendingUp,
   Package,
   Loader2,
-  CheckSquare,
   ArrowUpRight,
   CalendarDays,
   MoreHorizontal,
   Target,
   BarChart3,
   Filter,
+  Crown,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -36,7 +35,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { format, parseISO, startOfMonth, subMonths } from "date-fns";
+import { format, parseISO, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 // --- TYPES ---
@@ -51,27 +50,24 @@ interface DealWithRelations {
   products: { name: string } | null;
 }
 
-interface MissionWithOwner {
+interface TopCustomer {
   id: string;
-  mission: string;
-  deadline: string | null;
-  status: string | null;
-  owner_id: string | null;
-  team_members: { name: string } | null;
+  name: string;
+  totalSpent: number;
+  salesCount: number;
+  lastPurchaseDate: string;
 }
 
 interface DashboardData {
   totalRevenue: number;
-  ticketMedio: number; // NOVO
-  conversionRate: number; // NOVO
+  ticketMedio: number;
+  conversionRate: number;
   inNegotiation: number;
   totalLeads: number;
-  pendingMissions: number;
   monthlyRevenue: { month: string; value: number; count: number }[];
   salesByProduct: { name: string; value: number }[];
-  dealsByStage: { name: string; count: number; value: number }[]; // NOVO
-  recentWonDeals: DealWithRelations[];
-  upcomingMissions: MissionWithOwner[];
+  dealsByStage: { name: string; count: number; value: number }[];
+  topCustomers: TopCustomer[]; // NOVO
 }
 
 // --- DESIGN TOKENS ---
@@ -87,7 +83,7 @@ const BRAND_COLORS = {
 
 const CHART_COLORS = [BRAND_COLORS.gold, BRAND_COLORS.navy, "#EAB308", "#64748B", "#0F172A"];
 
-// --- TOOLTIP PERSONALIZADO (INTERATIVIDADE) ---
+// --- TOOLTIP PERSONALIZADO ---
 const CustomTooltip = ({ active, payload, label, type = "currency" }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -111,7 +107,7 @@ const CustomTooltip = ({ active, payload, label, type = "currency" }: any) => {
 export default function Dashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState("all"); // Simulação de filtro
+  const [timeRange, setTimeRange] = useState("all");
   const [greeting, setGreeting] = useState("");
 
   const [data, setData] = useState<DashboardData>({
@@ -120,12 +116,10 @@ export default function Dashboard() {
     conversionRate: 0,
     inNegotiation: 0,
     totalLeads: 0,
-    pendingMissions: 0,
     monthlyRevenue: [],
     salesByProduct: [],
     dealsByStage: [],
-    recentWonDeals: [],
-    upcomingMissions: [],
+    topCustomers: [],
   });
 
   useEffect(() => {
@@ -139,31 +133,14 @@ export default function Dashboard() {
         const [
           { data: allDeals },
           { data: allLeads, count: leadsCount },
-          { count: pendingMissionsCount },
-          { data: wonDealsWithRelations },
-          { data: upcomingMissions },
           { data: products },
           { data: allSales },
           { data: allStages },
         ] = await Promise.all([
           supabase.from("deals").select("*"),
-          supabase.from("leads").select("*", { count: "exact" }),
-          supabase.from("team_missions").select("*", { count: "exact", head: true }).neq("status", "Concluído"),
-          supabase
-            .from("deals")
-            .select("*, leads(full_name), products(name)")
-            .eq("status", "won")
-            .order("created_at", { ascending: false })
-            .limit(5),
-          supabase
-            .from("team_missions")
-            .select("*, team_members!team_missions_owner_id_fkey(name)")
-            .neq("status", "Concluído")
-            .not("deadline", "is", null)
-            .order("deadline", { ascending: true })
-            .limit(5),
+          supabase.from("leads").select("id, full_name, status", { count: "exact" }),
           supabase.from("products").select("id, name"),
-          supabase.from("sales").select("*, products(name)"),
+          supabase.from("sales").select("*, products(name), leads(full_name)"),
           supabase.from("pipeline_stages").select("id, name, order_index"),
         ]);
 
@@ -172,7 +149,7 @@ export default function Dashboard() {
         const totalSalesCount = allSales?.length || 0;
         const ticketMedio = totalSalesCount > 0 ? totalRevenue / totalSalesCount : 0;
 
-        // 2. TAXA DE CONVERSÃO (Clientes / Leads Totais)
+        // 2. TAXA DE CONVERSÃO
         const totalClients = (allLeads || []).filter((l) => l.status === "Cliente").length;
         const conversionRate = leadsCount ? (totalClients / leadsCount) * 100 : 0;
 
@@ -182,20 +159,15 @@ export default function Dashboard() {
         );
         const inNegotiation = inNegotiationDeals.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
 
-        // 4. FUNIL DE VENDAS (Deals by Stage)
+        // 4. FUNIL DE VENDAS
         const dealsByStageMap = new Map<string, { count: number; value: number; index: number }>();
-
-        // Inicializa com as etapas existentes para garantir ordem
         (allStages || []).forEach((stage) => {
           dealsByStageMap.set(stage.name, { count: 0, value: 0, index: stage.order_index });
         });
 
-        // Popula com dados reais
         inNegotiationDeals.forEach((deal) => {
-          // Precisamos achar o nome do stage pelo ID (cruzamento de dados)
           const stageName = allStages?.find((s) => s.id === deal.stage_id)?.name || "Outros";
           const current = dealsByStageMap.get(stageName) || { count: 0, value: 0, index: 999 };
-
           dealsByStageMap.set(stageName, {
             count: current.count + 1,
             value: current.value + (Number(deal.value) || 0),
@@ -205,8 +177,8 @@ export default function Dashboard() {
 
         const dealsByStage = Array.from(dealsByStageMap.entries())
           .map(([name, data]) => ({ name, ...data }))
-          .sort((a, b) => a.index - b.index) // Ordena pela sequência do funil
-          .filter((s) => s.count > 0); // Opcional: esconder etapas vazias
+          .sort((a, b) => a.index - b.index)
+          .filter((s) => s.count > 0);
 
         // 5. EVOLUÇÃO MENSAL
         const monthlyMap = new Map<string, { value: number; count: number }>();
@@ -249,18 +221,49 @@ export default function Dashboard() {
           .sort((a, b) => b.value - a.value)
           .slice(0, 5);
 
+        // 7. TOP CLIENTES (LTV RANKING) - NOVA LÓGICA
+        const customerMap = new Map<string, TopCustomer>();
+
+        (allSales || []).forEach((sale) => {
+          if (!sale.lead_id) return;
+
+          const existing = customerMap.get(sale.lead_id);
+          const amount = Number(sale.amount) || 0;
+          const date = sale.transaction_date || "";
+
+          if (existing) {
+            customerMap.set(sale.lead_id, {
+              ...existing,
+              totalSpent: existing.totalSpent + amount,
+              salesCount: existing.salesCount + 1,
+              // Mantém a data mais recente
+              lastPurchaseDate: date > existing.lastPurchaseDate ? date : existing.lastPurchaseDate,
+            });
+          } else {
+            customerMap.set(sale.lead_id, {
+              id: sale.lead_id,
+              name: sale.leads?.full_name || "Cliente Sem Nome",
+              totalSpent: amount,
+              salesCount: 1,
+              lastPurchaseDate: date,
+            });
+          }
+        });
+
+        const topCustomers = Array.from(customerMap.values())
+          .sort((a, b) => b.totalSpent - a.totalSpent)
+          .slice(0, 5); // Top 5
+
         setData({
           totalRevenue,
           ticketMedio,
           conversionRate,
           inNegotiation,
           totalLeads: leadsCount || 0,
-          pendingMissions: pendingMissionsCount || 0,
           monthlyRevenue: sortedMonths,
           salesByProduct,
           dealsByStage,
-          recentWonDeals: (wonDealsWithRelations || []) as DealWithRelations[],
-          upcomingMissions: (upcomingMissions || []) as MissionWithOwner[],
+          topCustomers,
         });
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -312,7 +315,6 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Filtro Simulado - Drill Down futuro */}
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-[160px] bg-background">
               <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
@@ -331,7 +333,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* --- KPIS ESTRATÉGICOS (LEVEL 1) --- */}
+      {/* --- KPIS ESTRATÉGICOS --- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <KpiCard
           title="Receita Confirmada"
@@ -345,7 +347,7 @@ export default function Dashboard() {
         <KpiCard
           title="Ticket Médio"
           value={formatCurrency(data.ticketMedio)}
-          subtext="Valor médio por venda"
+          subtext="LTV Médio por cliente"
           icon={Target}
           trend="Estável"
           color="navy"
@@ -368,9 +370,8 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* --- ANÁLISE PROFUNDA (LEVEL 2) --- */}
+      {/* --- ANÁLISE DE RECEITA --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* GRÁFICO 1: EVOLUÇÃO DE RECEITA (ÁREA) */}
         <Card className="lg:col-span-2 shadow-sm border-border/60 hover:shadow-md transition-shadow">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -431,7 +432,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* GRÁFICO 2: MIX DE PRODUTOS (DONUT) */}
         <Card className="shadow-sm border-border/60 hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle>Origem da Receita</CardTitle>
@@ -484,9 +484,9 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* --- GARGALOS E OPERAÇÃO (LEVEL 3) --- */}
+      {/* --- GARGALOS E TOP CLIENTES (LEVEL 3) --- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-        {/* GRÁFICO 3: GARGALOS DO FUNIL (BAR CHART) */}
+        {/* GRÁFICO 3: GARGALOS DO FUNIL */}
         <Card className="shadow-sm border-border/60 hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle>Saúde do Pipeline</CardTitle>
@@ -522,65 +522,67 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* LISTA: PRÓXIMAS ENTREGAS */}
+        {/* LISTA: TOP CLIENTES (RANKING LTV) - SUBSTITUI O RADAR OPERACIONAL */}
         <Card className="shadow-sm border-border/60 hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-4">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-primary" />
-                Radar Operacional
+                <Badge
+                  variant="outline"
+                  className="h-8 w-8 rounded-full flex items-center justify-center border-amber-200 bg-amber-50"
+                >
+                  <Crown className="h-4 w-4 text-amber-600" />
+                </Badge>
+                Top Clientes (LTV)
               </CardTitle>
-              <CardDescription>Entregas com prazo próximo</CardDescription>
+              <CardDescription>Maiores compradores da base</CardDescription>
             </div>
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
-              Ver tudo
+              Ver todos
             </Button>
           </CardHeader>
           <CardContent className="px-0">
-            {data.upcomingMissions.length > 0 ? (
+            {data.topCustomers.length > 0 ? (
               <div className="space-y-0">
-                {data.upcomingMissions.map((mission, index) => (
+                {data.topCustomers.map((customer, index) => (
                   <div
-                    key={mission.id}
+                    key={customer.id}
                     className={`flex items-center gap-4 p-4 transition-colors hover:bg-muted/30 ${
-                      index !== data.upcomingMissions.length - 1 ? "border-b border-border/40" : ""
+                      index !== data.topCustomers.length - 1 ? "border-b border-border/40" : ""
                     }`}
                   >
-                    <div
-                      className={`w-1 h-10 rounded-full ${
-                        mission.deadline && new Date(mission.deadline) < new Date() ? "bg-red-500" : "bg-[#A47428]"
-                      }`}
-                    />
+                    <div className="flex items-center justify-center w-8 font-bold text-muted-foreground/50 text-sm">
+                      #{index + 1}
+                    </div>
+
+                    <Avatar className="h-10 w-10 border border-border">
+                      <AvatarFallback className="bg-primary/5 text-primary font-medium text-xs">
+                        {getInitials(customer.name)}
+                      </AvatarFallback>
+                    </Avatar>
 
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-foreground truncate mb-1">{mission.mission}</p>
+                      <p className="font-medium text-sm text-foreground truncate mb-0.5">{customer.name}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Avatar className="h-5 w-5 border border-border">
-                          <AvatarFallback className="text-[9px] bg-secondary text-secondary-foreground">
-                            {getInitials(mission.team_members?.name || "?")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>{mission.team_members?.name || "Sem dono"}</span>
+                        <span>{customer.salesCount} compras</span>
+                        <span className="text-border">•</span>
+                        <span>
+                          Última:{" "}
+                          {customer.lastPurchaseDate
+                            ? format(parseISO(customer.lastPurchaseDate), "dd MMM", { locale: ptBR })
+                            : "-"}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-1">
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] uppercase tracking-wide border-0 ${
-                          mission.deadline && new Date(mission.deadline) < new Date()
-                            ? "bg-red-100 text-red-700"
-                            : "bg-amber-50 text-amber-700"
-                        }`}
-                      >
-                        {mission.deadline ? format(parseISO(mission.deadline), "dd MMM", { locale: ptBR }) : "S/ Prazo"}
-                      </Badge>
+                    <div className="flex flex-col items-end">
+                      <span className="font-bold text-sm text-green-700">{formatCurrency(customer.totalSpent)}</span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <EmptyState icon={CheckSquare} message="Operação em dia." />
+              <EmptyState icon={Crown} message="Nenhum cliente com vendas registradas." />
             )}
           </CardContent>
         </Card>
