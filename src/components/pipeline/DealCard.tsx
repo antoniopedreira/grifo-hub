@@ -1,8 +1,8 @@
 import { Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarDays, Clock, User, TrendingUp, Phone, MapPin } from "lucide-react";
+import { CalendarDays, Clock, User, TrendingUp, Phone, MapPin, Timer } from "lucide-react";
 import type { Deal } from "./types";
 import { getRegionByPhone, getRegionColor } from "@/lib/ddd-regions";
 
@@ -24,6 +24,11 @@ export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
   const config = priorityConfig[priority] || priorityConfig.Medium;
   const isMeetingStage = stageType === "meeting";
   const regionInfo = getRegionByPhone(deal.lead?.phone || null);
+
+  // Calcula dias no estágio atual
+  const daysInStage = deal.stage_entered_at
+    ? differenceInDays(new Date(), new Date(deal.stage_entered_at))
+    : 0;
 
   const formattedValue = deal.value
     ? new Intl.NumberFormat("pt-BR", {
@@ -84,10 +89,27 @@ export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
           )}
         >
           <div className="space-y-3">
-            {/* Lead Name */}
-            <p className="font-semibold text-foreground truncate text-sm">
-              {deal.lead?.full_name || "Lead desconhecido"}
-            </p>
+            {/* Header: Lead Name + Days Badge */}
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-semibold text-foreground truncate text-sm flex-1">
+                {deal.lead?.full_name || "Lead desconhecido"}
+              </p>
+              {daysInStage > 0 && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium shrink-0",
+                    daysInStage >= 7
+                      ? "bg-red-50 text-red-600 border border-red-200"
+                      : daysInStage >= 3
+                        ? "bg-amber-50 text-amber-600 border border-amber-200"
+                        : "bg-muted text-muted-foreground border border-border"
+                  )}
+                >
+                  <Timer className="h-3 w-3" />
+                  {daysInStage}d
+                </span>
+              )}
+            </div>
 
             {/* Phone and Region */}
             {deal.lead?.phone && (

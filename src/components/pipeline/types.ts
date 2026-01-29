@@ -14,6 +14,7 @@ export interface Deal {
   description?: string;
   priority?: "Low" | "Medium" | "High";
   loss_reason?: string | null;
+  stage_entered_at?: string;
 
   meeting_owner_id?: string | null;
 

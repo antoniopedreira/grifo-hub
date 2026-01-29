@@ -161,6 +161,7 @@ export default function Pipeline() {
         .order("order_index");
       if (error) throw error;
       const validStageIds = stages.map((s) => s.id);
+      // stage_entered_at já vem no *, não precisa adicionar na select
       return (data as any[]).filter((d) => validStageIds.includes(d.stage_id)) as Deal[];
     },
     enabled: !!selectedPipelineId && stages.length > 0,

@@ -184,6 +184,7 @@ export type Database = {
           pipeline_id: string | null
           priority: string | null
           product_id: string | null
+          stage_entered_at: string | null
           stage_id: string | null
           status: Database["public"]["Enums"]["deal_status"] | null
           title: string | null
@@ -205,6 +206,7 @@ export type Database = {
           pipeline_id?: string | null
           priority?: string | null
           product_id?: string | null
+          stage_entered_at?: string | null
           stage_id?: string | null
           status?: Database["public"]["Enums"]["deal_status"] | null
           title?: string | null
@@ -226,6 +228,7 @@ export type Database = {
           pipeline_id?: string | null
           priority?: string | null
           product_id?: string | null
+          stage_entered_at?: string | null
           stage_id?: string | null
           status?: Database["public"]["Enums"]["deal_status"] | null
           title?: string | null
