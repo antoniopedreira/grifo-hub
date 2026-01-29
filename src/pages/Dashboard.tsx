@@ -139,13 +139,13 @@ export default function Dashboard() {
       try {
         const [
           { data: allDeals },
-          { data: allLeads, count: leadsCount },
+          { count: leadsCount }, // Removido leadsData pois só precisamos da contagem total para KPI de leads
           { data: products },
           { data: allSales },
           { data: allStages },
         ] = await Promise.all([
           supabase.from("deals").select("*"),
-          supabase.from("leads").select("id, full_name, status", { count: "exact" }),
+          supabase.from("leads").select("id", { count: "exact", head: true }),
           supabase.from("products").select("id, name"),
           supabase.from("sales").select("*, products(name), leads(full_name)"),
           supabase.from("pipeline_stages").select("id, name, order_index"),
@@ -156,9 +156,22 @@ export default function Dashboard() {
         const totalSalesCount = allSales?.length || 0;
         const ticketMedio = totalSalesCount > 0 ? totalRevenue / totalSalesCount : 0;
 
-        // 2. TAXA DE CONVERSÃO
-        const totalClients = (allLeads || []).filter((l) => l.status === "Cliente").length;
-        const conversionRate = leadsCount ? (totalClients / leadsCount) * 100 : 0;
+        // 2. TAXA DE CONVERSÃO REAL (Win Rate do Pipeline Manual)
+        // Passo A: Identificar quais Deals vieram do Lastlink (Automáticos)
+        const autoSaleDealIds = (allSales || []).filter((s) => s.origin === "lastlink_auto").map((s) => s.deal_id);
+
+        // Passo B: Filtrar o universo do Pipeline "Real"
+        // Exclui: Vendas automáticas E Carrinhos Abandonados (sujeira de checkout)
+        const manualPipelineDeals = (allDeals || []).filter(
+          (deal) => deal.status !== "abandoned" && !autoSaleDealIds.includes(deal.id),
+        );
+
+        // Passo C: Contar quantos desses foram GANHOS (Won)
+        const manualWonDeals = manualPipelineDeals.filter((d) => d.status === "won").length;
+        const totalManualDeals = manualPipelineDeals.length;
+
+        // Passo D: Cálculo Final
+        const conversionRate = totalManualDeals > 0 ? (manualWonDeals / totalManualDeals) * 100 : 0;
 
         // 3. PIPELINE ATIVO
         const inNegotiationDeals = (allDeals || []).filter(
@@ -361,10 +374,10 @@ export default function Dashboard() {
         <KpiCard
           title="Taxa de Conversão"
           value={`${data.conversionRate.toFixed(1)}%`}
-          subtext="Leads que viraram clientes"
+          subtext="Vendas Diretas / Pipeline"
           icon={TrendingUp}
-          trend="Meta: 10%"
-          trendUp={data.conversionRate > 5}
+          trend="Eficiência Comercial"
+          trendUp={data.conversionRate > 20}
           color="success"
         />
         <KpiCard
@@ -438,7 +451,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* GRÁFICO DE DONUT CORRIGIDO */}
+        {/* GRÁFICO DE DONUT */}
         <Card className="shadow-sm border-[#A47428]/20 bg-[#1E3A50]/50 hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle className="text-white">Origem da Receita</CardTitle>
