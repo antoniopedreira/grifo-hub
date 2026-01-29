@@ -78,7 +78,7 @@ const BRAND_COLORS = {
   success: "#10B981",
   danger: "#EF4444",
   gray: "#6B7280",
-  text: "#FFFFFF", // Cor do texto para gráficos no modo Dark
+  text: "#FFFFFF",
 };
 
 const CHART_COLORS = [BRAND_COLORS.gold, BRAND_COLORS.navy, "#EAB308", "#64748B", "#0F172A"];
@@ -87,7 +87,7 @@ const CHART_COLORS = [BRAND_COLORS.gold, BRAND_COLORS.navy, "#EAB308", "#64748B"
 const CustomTooltip = ({ active, payload, label, type = "currency" }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#112232] border border-[#A47428]/30 p-3 rounded-lg shadow-xl outline-none min-w-[150px]">
+      <div className="bg-[#112232] border border-[#A47428]/30 p-3 rounded-lg shadow-xl outline-none min-w-[150px] z-50">
         <p className="text-sm font-semibold text-white mb-1">{label}</p>
         {payload.map((entry: any, index: number) => (
           <p
@@ -438,6 +438,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
+        {/* GRÁFICO DE DONUT CORRIGIDO */}
         <Card className="shadow-sm border-[#A47428]/20 bg-[#1E3A50]/50 hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle className="text-white">Origem da Receita</CardTitle>
@@ -447,11 +448,11 @@ export default function Dashboard() {
             {data.salesByProduct.length > 0 ? (
               <div className="h-[320px] relative">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
+                  <PieChart margin={{ top: 0, left: 0, right: 0, bottom: 0 }}>
                     <Pie
                       data={data.salesByProduct}
                       cx="50%"
-                      cy="50%"
+                      cy="45%" // Gráfico levemente para cima
                       innerRadius={70}
                       outerRadius={100}
                       paddingAngle={3}
@@ -465,20 +466,29 @@ export default function Dashboard() {
                     <Tooltip content={<CustomTooltip />} />
                     <Legend
                       verticalAlign="bottom"
-                      height={72}
+                      height={100} // Altura reservada para legenda
                       iconType="circle"
                       layout="vertical"
                       align="center"
+                      wrapperStyle={{ width: "100%", bottom: 0 }}
                       formatter={(value, entry: any) => (
-                        <span className="text-xs text-[#E1D8CF] font-medium ml-1">
-                          {value}{" "}
-                          <span className="text-[#E1D8CF]/60">({(entry.payload.percent * 100).toFixed(0)}%)</span>
+                        // TRUNCATE: Limita a largura do texto e adiciona reticências
+                        <span
+                          className="text-xs text-[#E1D8CF] font-medium ml-1 inline-flex items-center gap-1 max-w-[220px]"
+                          title={value}
+                        >
+                          <span className="truncate">{value}</span>
+                          <span className="text-[#E1D8CF]/60 whitespace-nowrap">
+                            ({(entry.payload.percent * 100).toFixed(0)}%)
+                          </span>
                         </span>
                       )}
                     />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20">
+
+                {/* Texto Central Alinhado com o Gráfico deslocado */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-[120px]">
                   <span className="text-3xl font-bold text-white">{data.salesByProduct.length}</span>
                   <span className="text-[10px] text-[#A47428] uppercase tracking-widest">Produtos</span>
                 </div>
@@ -520,17 +530,11 @@ export default function Dashboard() {
                       axisLine={false}
                       tickLine={false}
                       width={100}
-                      // AQUI A CORREÇÃO: tick agora é BRANCO
+                      // Texto branco para contraste
                       tick={{ fill: "#FFFFFF", fontSize: 11, fontWeight: 500 }}
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(164, 116, 40, 0.1)" }} />
-                    <Bar
-                      dataKey="value"
-                      name="Volume"
-                      fill={BRAND_COLORS.gold} // Mudado para Dourado para contraste no fundo escuro
-                      radius={[0, 4, 4, 0]}
-                      barSize={24}
-                    />
+                    <Bar dataKey="value" name="Volume" fill={BRAND_COLORS.gold} radius={[0, 4, 4, 0]} barSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -612,7 +616,6 @@ export default function Dashboard() {
 // --- SUBCOMPONENTES ---
 
 function KpiCard({ title, value, subtext, icon: Icon, trend, trendUp, color }: any) {
-  // Cores adaptadas para Dark Mode
   const colorStyles: any = {
     gold: { bg: "bg-[#A47428]/20", text: "text-[#A47428]", border: "border-[#A47428]/30" },
     navy: { bg: "bg-white/10", text: "text-white", border: "border-white/20" },
