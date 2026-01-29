@@ -78,6 +78,7 @@ const BRAND_COLORS = {
   success: "#10B981",
   danger: "#EF4444",
   gray: "#6B7280",
+  text: "#FFFFFF", // Cor do texto para gráficos no modo Dark
 };
 
 const CHART_COLORS = [BRAND_COLORS.gold, BRAND_COLORS.navy, "#EAB308", "#64748B", "#0F172A"];
@@ -86,11 +87,18 @@ const CHART_COLORS = [BRAND_COLORS.gold, BRAND_COLORS.navy, "#EAB308", "#64748B"
 const CustomTooltip = ({ active, payload, label, type = "currency" }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-popover border border-border p-3 rounded-lg shadow-xl outline-none min-w-[150px]">
-        <p className="text-sm font-semibold text-popover-foreground mb-1">{label}</p>
+      <div className="bg-[#112232] border border-[#A47428]/30 p-3 rounded-lg shadow-xl outline-none min-w-[150px]">
+        <p className="text-sm font-semibold text-white mb-1">{label}</p>
         {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-sm font-medium flex items-center gap-2" style={{ color: entry.color }}>
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+          <p
+            key={index}
+            className="text-sm font-medium flex items-center gap-2"
+            style={{ color: entry.color === BRAND_COLORS.navy ? "#fff" : entry.color }}
+          >
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: entry.color === BRAND_COLORS.navy ? "#fff" : entry.color }}
+            />
             {entry.name}:{" "}
             {type === "currency"
               ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(entry.value)
@@ -299,14 +307,14 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8 p-4 md:p-8 max-w-[1600px] mx-auto animate-in fade-in duration-700">
+    <div className="space-y-8 p-4 md:p-8 max-w-[1600px] mx-auto animate-in fade-in duration-700 bg-[#112232] text-[#E1D8CF]">
       {/* --- HEADER EXECUTIVO --- */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-border/40 pb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-[#A47428]/20 pb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-2">
             {greeting}, {user?.email?.split("@")[0] || "Gestor"} <span className="text-2xl">👋</span>
           </h1>
-          <p className="text-muted-foreground flex items-center gap-2 mt-2">
+          <p className="text-[#E1D8CF]/70 flex items-center gap-2 mt-2">
             <CalendarDays className="h-4 w-4 text-[#A47428]" />
             {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </p>
@@ -314,18 +322,18 @@ export default function Dashboard() {
 
         <div className="flex items-center gap-3">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[160px] bg-background">
-              <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+            <SelectTrigger className="w-[160px] bg-[#1E3A50] border-[#A47428]/20 text-white">
+              <Filter className="w-4 h-4 mr-2 text-[#A47428]" />
               <SelectValue placeholder="Período" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-[#112232] border-[#A47428]/20 text-white">
               <SelectItem value="all">Todo o Período</SelectItem>
               <SelectItem value="30d">Últimos 30 dias</SelectItem>
               <SelectItem value="90d">Último Trimestre</SelectItem>
             </SelectContent>
           </Select>
 
-          <Button className="bg-[#A47428] hover:bg-[#8a6120] text-white shadow-lg shadow-[#A47428]/20 transition-all hover:-translate-y-0.5">
+          <Button className="bg-[#A47428] hover:bg-[#8a6120] text-white shadow-lg shadow-[#A47428]/20 transition-all hover:-translate-y-0.5 border-0">
             <ArrowUpRight className="mr-2 h-4 w-4" /> Relatório PDF
           </Button>
         </div>
@@ -370,14 +378,14 @@ export default function Dashboard() {
 
       {/* --- ANÁLISE DE RECEITA --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        <Card className="lg:col-span-2 shadow-sm border-border/60 hover:shadow-md transition-shadow">
+        <Card className="lg:col-span-2 shadow-sm border-[#A47428]/20 bg-[#1E3A50]/50 hover:shadow-md transition-shadow">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Performance de Vendas</CardTitle>
-                <CardDescription>Evolução financeira mensal (Cash-in)</CardDescription>
+                <CardTitle className="text-white">Performance de Vendas</CardTitle>
+                <CardDescription className="text-[#E1D8CF]/60">Evolução financeira mensal (Cash-in)</CardDescription>
               </div>
-              <Badge variant="secondary" className="bg-[#A47428]/10 text-[#A47428]">
+              <Badge variant="secondary" className="bg-[#A47428]/20 text-[#A47428] border-0">
                 Semestral
               </Badge>
             </div>
@@ -389,22 +397,22 @@ export default function Dashboard() {
                   <AreaChart data={data.monthlyRevenue} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={BRAND_COLORS.gold} stopOpacity={0.2} />
+                        <stop offset="5%" stopColor={BRAND_COLORS.gold} stopOpacity={0.4} />
                         <stop offset="95%" stopColor={BRAND_COLORS.gold} stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                     <XAxis
                       dataKey="month"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: "#6B7280", fontSize: 12 }}
+                      tick={{ fill: BRAND_COLORS.text, fontSize: 12 }}
                       dy={10}
                     />
                     <YAxis
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: "#6B7280", fontSize: 12 }}
+                      tick={{ fill: BRAND_COLORS.text, fontSize: 12 }}
                       tickFormatter={(val) => `R$${(val / 1000).toFixed(0)}k`}
                     />
                     <Tooltip
@@ -430,10 +438,10 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-border/60 hover:shadow-md transition-shadow">
+        <Card className="shadow-sm border-[#A47428]/20 bg-[#1E3A50]/50 hover:shadow-md transition-shadow">
           <CardHeader>
-            <CardTitle>Origem da Receita</CardTitle>
-            <CardDescription>Top 5 produtos vendidos</CardDescription>
+            <CardTitle className="text-white">Origem da Receita</CardTitle>
+            <CardDescription className="text-[#E1D8CF]/60">Top 5 produtos vendidos</CardDescription>
           </CardHeader>
           <CardContent>
             {data.salesByProduct.length > 0 ? (
@@ -462,17 +470,17 @@ export default function Dashboard() {
                       layout="vertical"
                       align="center"
                       formatter={(value, entry: any) => (
-                        <span className="text-xs text-foreground/80 font-medium ml-1">
+                        <span className="text-xs text-[#E1D8CF] font-medium ml-1">
                           {value}{" "}
-                          <span className="text-muted-foreground">({(entry.payload.percent * 100).toFixed(0)}%)</span>
+                          <span className="text-[#E1D8CF]/60">({(entry.payload.percent * 100).toFixed(0)}%)</span>
                         </span>
                       )}
                     />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20">
-                  <span className="text-3xl font-bold text-foreground">{data.salesByProduct.length}</span>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Produtos</span>
+                  <span className="text-3xl font-bold text-white">{data.salesByProduct.length}</span>
+                  <span className="text-[10px] text-[#A47428] uppercase tracking-widest">Produtos</span>
                 </div>
               </div>
             ) : (
@@ -485,10 +493,10 @@ export default function Dashboard() {
       {/* --- GARGALOS E TOP CLIENTES (LEVEL 3) --- */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         {/* GRÁFICO 3: GARGALOS DO FUNIL */}
-        <Card className="shadow-sm border-border/60 hover:shadow-md transition-shadow">
+        <Card className="shadow-sm border-[#A47428]/20 bg-[#1E3A50]/50 hover:shadow-md transition-shadow">
           <CardHeader>
-            <CardTitle>Saúde do Pipeline</CardTitle>
-            <CardDescription>Volume financeiro travado em cada etapa</CardDescription>
+            <CardTitle className="text-white">Saúde do Pipeline</CardTitle>
+            <CardDescription className="text-[#E1D8CF]/60">Volume financeiro travado em cada etapa</CardDescription>
           </CardHeader>
           <CardContent>
             {data.dealsByStage.length > 0 ? (
@@ -499,7 +507,12 @@ export default function Dashboard() {
                     layout="vertical"
                     margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="rgba(0,0,0,0.05)" />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      horizontal={true}
+                      vertical={false}
+                      stroke="rgba(255,255,255,0.05)"
+                    />
                     <XAxis type="number" hide />
                     <YAxis
                       dataKey="name"
@@ -507,11 +520,17 @@ export default function Dashboard() {
                       axisLine={false}
                       tickLine={false}
                       width={100}
-                      // AQUI ESTÁ A ALTERAÇÃO: Cor branca (#FFFFFF) para o texto
+                      // AQUI A CORREÇÃO: tick agora é BRANCO
                       tick={{ fill: "#FFFFFF", fontSize: 11, fontWeight: 500 }}
                     />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
-                    <Bar dataKey="value" name="Volume" fill={BRAND_COLORS.navy} radius={[0, 4, 4, 0]} barSize={24} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(164, 116, 40, 0.1)" }} />
+                    <Bar
+                      dataKey="value"
+                      name="Volume"
+                      fill={BRAND_COLORS.gold} // Mudado para Dourado para contraste no fundo escuro
+                      radius={[0, 4, 4, 0]}
+                      barSize={24}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -522,21 +541,21 @@ export default function Dashboard() {
         </Card>
 
         {/* LISTA: TOP CLIENTES (RANKING LTV) */}
-        <Card className="shadow-sm border-border/60 hover:shadow-md transition-shadow">
+        <Card className="shadow-sm border-[#A47428]/20 bg-[#1E3A50]/50 hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-4">
             <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-white">
                 <Badge
                   variant="outline"
-                  className="h-8 w-8 rounded-full flex items-center justify-center border-amber-200 bg-amber-50"
+                  className="h-8 w-8 rounded-full flex items-center justify-center border-[#A47428] bg-[#A47428]/10"
                 >
-                  <Crown className="h-4 w-4 text-amber-600" />
+                  <Crown className="h-4 w-4 text-[#A47428]" />
                 </Badge>
                 Top Clientes (LTV)
               </CardTitle>
-              <CardDescription>Maiores compradores da base</CardDescription>
+              <CardDescription className="text-[#E1D8CF]/60">Maiores compradores da base</CardDescription>
             </div>
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+            <Button variant="ghost" size="sm" className="text-[#A47428] hover:text-[#A47428]/80 hover:bg-[#A47428]/10">
               Ver todos
             </Button>
           </CardHeader>
@@ -546,25 +565,25 @@ export default function Dashboard() {
                 {data.topCustomers.map((customer, index) => (
                   <div
                     key={customer.id}
-                    className={`flex items-center gap-4 p-4 transition-colors hover:bg-muted/30 ${
-                      index !== data.topCustomers.length - 1 ? "border-b border-border/40" : ""
+                    className={`flex items-center gap-4 p-4 transition-colors hover:bg-[#112232]/50 ${
+                      index !== data.topCustomers.length - 1 ? "border-b border-[#A47428]/10" : ""
                     }`}
                   >
-                    <div className="flex items-center justify-center w-8 font-bold text-muted-foreground/50 text-sm">
+                    <div className="flex items-center justify-center w-8 font-bold text-[#A47428] text-sm">
                       #{index + 1}
                     </div>
 
-                    <Avatar className="h-10 w-10 border border-border">
-                      <AvatarFallback className="bg-primary/5 text-primary font-medium text-xs">
+                    <Avatar className="h-10 w-10 border border-[#A47428]/30">
+                      <AvatarFallback className="bg-[#A47428]/20 text-[#A47428] font-medium text-xs">
                         {getInitials(customer.name)}
                       </AvatarFallback>
                     </Avatar>
 
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-foreground truncate mb-0.5">{customer.name}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <p className="font-medium text-sm text-white truncate mb-0.5">{customer.name}</p>
+                      <div className="flex items-center gap-2 text-xs text-[#E1D8CF]/60">
                         <span>{customer.salesCount} compras</span>
-                        <span className="text-border">•</span>
+                        <span className="text-[#A47428]/30">•</span>
                         <span>
                           Última:{" "}
                           {customer.lastPurchaseDate
@@ -575,7 +594,7 @@ export default function Dashboard() {
                     </div>
 
                     <div className="flex flex-col items-end">
-                      <span className="font-bold text-sm text-green-700">{formatCurrency(customer.totalSpent)}</span>
+                      <span className="font-bold text-sm text-green-400">{formatCurrency(customer.totalSpent)}</span>
                     </div>
                   </div>
                 ))}
@@ -593,21 +612,22 @@ export default function Dashboard() {
 // --- SUBCOMPONENTES ---
 
 function KpiCard({ title, value, subtext, icon: Icon, trend, trendUp, color }: any) {
+  // Cores adaptadas para Dark Mode
   const colorStyles: any = {
-    gold: { bg: "bg-amber-50/50", text: "text-[#A47428]", border: "border-[#A47428]/20" },
-    navy: { bg: "bg-slate-50/50", text: "text-[#112232]", border: "border-[#112232]/20" },
-    success: { bg: "bg-emerald-50/50", text: "text-emerald-600", border: "border-emerald-600/20" },
-    blue: { bg: "bg-blue-50/50", text: "text-blue-600", border: "border-blue-600/20" },
-    red: { bg: "bg-red-50/50", text: "text-red-600", border: "border-red-600/20" },
+    gold: { bg: "bg-[#A47428]/20", text: "text-[#A47428]", border: "border-[#A47428]/30" },
+    navy: { bg: "bg-white/10", text: "text-white", border: "border-white/20" },
+    success: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
+    blue: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20" },
+    red: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20" },
   };
 
   const style = colorStyles[color] || colorStyles.navy;
 
   return (
     <Card
-      className={`border shadow-sm hover:shadow-md transition-all hover:-translate-y-1 duration-300 relative overflow-hidden group`}
+      className={`border ${style.border} bg-[#1E3A50]/50 shadow-sm hover:shadow-md transition-all hover:-translate-y-1 duration-300 relative overflow-hidden group`}
     >
-      <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity ${style.text}`}>
+      <div className={`absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity ${style.text}`}>
         <Icon className="w-16 h-16 transform rotate-12 -mr-4 -mt-4" />
       </div>
       <CardContent className="p-6">
@@ -615,21 +635,21 @@ function KpiCard({ title, value, subtext, icon: Icon, trend, trendUp, color }: a
           <div className={`p-2 rounded-lg ${style.bg} ${style.text}`}>
             <Icon className="w-5 h-5" />
           </div>
-          <span className="text-sm font-medium text-muted-foreground">{title}</span>
+          <span className="text-sm font-medium text-[#E1D8CF]/80">{title}</span>
         </div>
 
         <div className="space-y-1 relative z-10">
-          <h3 className="text-2xl font-bold tracking-tight text-foreground">{value}</h3>
+          <h3 className="text-2xl font-bold tracking-tight text-white">{value}</h3>
           <div className="flex items-center gap-2">
             {trend && (
               <Badge
                 variant="secondary"
-                className={`h-5 px-1.5 text-[10px] font-normal ${trendUp ? "text-green-700 bg-green-50" : "text-muted-foreground bg-muted"}`}
+                className={`h-5 px-1.5 text-[10px] font-normal border-0 ${trendUp ? "text-green-400 bg-green-500/10" : "text-[#E1D8CF]/60 bg-white/5"}`}
               >
                 {trend}
               </Badge>
             )}
-            <p className="text-xs text-muted-foreground/80 truncate max-w-[120px]">{subtext}</p>
+            <p className="text-xs text-[#E1D8CF]/60 truncate max-w-[120px]">{subtext}</p>
           </div>
         </div>
       </CardContent>
@@ -640,10 +660,10 @@ function KpiCard({ title, value, subtext, icon: Icon, trend, trendUp, color }: a
 function EmptyState({ icon: Icon, message }: any) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center space-y-3 h-full">
-      <div className="p-4 bg-muted/50 rounded-full">
-        <Icon className="h-8 w-8 text-muted-foreground/40" />
+      <div className="p-4 bg-white/5 rounded-full">
+        <Icon className="h-8 w-8 text-[#E1D8CF]/20" />
       </div>
-      <p className="text-sm text-muted-foreground font-medium max-w-[200px]">{message}</p>
+      <p className="text-sm text-[#E1D8CF]/40 font-medium max-w-[200px]">{message}</p>
     </div>
   );
 }
