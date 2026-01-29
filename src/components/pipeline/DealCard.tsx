@@ -94,21 +94,19 @@ export function DealCard({ deal, index, stageType, onClick }: DealCardProps) {
               <p className="font-semibold text-foreground truncate text-sm flex-1">
                 {deal.lead?.full_name || "Lead desconhecido"}
               </p>
-              {daysInStage > 0 && (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium shrink-0",
-                    daysInStage >= 7
-                      ? "bg-red-50 text-red-600 border border-red-200"
-                      : daysInStage >= 3
-                        ? "bg-amber-50 text-amber-600 border border-amber-200"
-                        : "bg-muted text-muted-foreground border border-border"
-                  )}
-                >
-                  <Timer className="h-3 w-3" />
-                  {daysInStage}d
-                </span>
-              )}
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium shrink-0",
+                  daysInStage >= 7
+                    ? "bg-red-50 text-red-600 border border-red-200"
+                    : daysInStage >= 3
+                      ? "bg-amber-50 text-amber-600 border border-amber-200"
+                      : "bg-muted text-muted-foreground border border-border"
+                )}
+              >
+                <Timer className="h-3 w-3" />
+                {daysInStage}d
+              </span>
             </div>
 
             {/* Phone and Region */}
