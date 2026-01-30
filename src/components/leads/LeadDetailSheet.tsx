@@ -150,7 +150,7 @@ const formatAnswerValue = (key: string, value: unknown): string => {
 };
 
 // Função auxiliar para traduzir o valor numérico para texto da faixa
-const getRevenueLabel = (value: number | null) => {
+const getRevenueLabel = (value: number | null | undefined) => {
   if (value === null || value === undefined) return "Não informado";
   if (value === 0) return "Até R$ 500 mil";
   if (value === 500000) return "Entre R$ 500 mil e R$ 1 mi";
@@ -161,6 +161,17 @@ const getRevenueLabel = (value: number | null) => {
   return "R$ " + value.toLocaleString("pt-BR");
 };
 
+// Opções de faturamento para o select
+const revenueOptions = [
+  { value: "null", label: "Não informado" },
+  { value: "0", label: "Até R$ 500 mil" },
+  { value: "500000", label: "Entre R$ 500 mil e R$ 1 mi" },
+  { value: "1000000", label: "Entre R$ 1 mi e R$ 5 mi" },
+  { value: "5000000", label: "Entre R$ 5 mi e R$ 10 mi" },
+  { value: "10000000", label: "Entre R$ 10 mi e R$ 50 mi" },
+  { value: "50000000", label: "Acima de R$ 50 mi" },
+];
+
 export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("perfil");
@@ -169,6 +180,11 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
   const [editName, setEditName] = useState(lead?.full_name || "");
   const [editEmail, setEditEmail] = useState(lead?.email || "");
   const [editPhone, setEditPhone] = useState(lead?.phone || "");
+  const [editRevenue, setEditRevenue] = useState<string>(
+    lead?.company_revenue !== null && lead?.company_revenue !== undefined 
+      ? String(lead.company_revenue) 
+      : "null"
+  );
   const [isEditing, setIsEditing] = useState(false);
 
   // Manual sale form state
@@ -182,6 +198,11 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
       setEditName(lead.full_name || "");
       setEditEmail(lead.email || "");
       setEditPhone(lead.phone || "");
+      setEditRevenue(
+        lead.company_revenue !== null && lead.company_revenue !== undefined 
+          ? String(lead.company_revenue) 
+          : "null"
+      );
       setIsEditing(false);
     }
   }, [lead]);
@@ -257,12 +278,14 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
   const updateLead = useMutation({
     mutationFn: async () => {
       if (!lead?.id) return;
+      const revenueValue = editRevenue === "null" ? null : parseInt(editRevenue, 10);
       const { error } = await supabase
         .from("leads")
         .update({
           full_name: editName || null,
           email: editEmail || null,
           phone: editPhone || null,
+          company_revenue: revenueValue,
         })
         .eq("id", lead.id);
       if (error) throw error;
@@ -361,6 +384,11 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
     setEditName(lead?.full_name || "");
     setEditEmail(lead?.email || "");
     setEditPhone(lead?.phone || "");
+    setEditRevenue(
+      lead?.company_revenue !== null && lead?.company_revenue !== undefined 
+        ? String(lead.company_revenue) 
+        : "null"
+    );
     setIsEditing(false);
   };
 
@@ -510,7 +538,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
 
                   <Separator />
 
-                  {/* NOVO: Faturamento (Baseado no Company Revenue) */}
+                  {/* Faturamento (Baseado no Company Revenue) - Editável */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-full bg-blue-100">
@@ -518,7 +546,22 @@ export function LeadDetailSheet({ lead, open, onOpenChange }: LeadDetailSheetPro
                       </div>
                       <span className="text-sm text-muted-foreground">Faturamento</span>
                     </div>
-                    <span className="text-sm font-medium text-foreground">{getRevenueLabel(lead.company_revenue)}</span>
+                    {isEditing ? (
+                      <Select value={editRevenue} onValueChange={setEditRevenue}>
+                        <SelectTrigger className="w-[180px] h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {revenueOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="text-sm font-medium text-foreground">{getRevenueLabel(lead.company_revenue)}</span>
+                    )}
                   </div>
 
                   <Separator />
